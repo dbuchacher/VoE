@@ -92,12 +92,7 @@ SDF fonts, prime keys, query model, hardware convergence.
 
 ## /home/maxi/brain/corpus/ — The Corpus
 
-Three snapshots of the accumulated design knowledge:
-  corpus-2026-03-05.md
-  corpus-2026-03-06.md
-  corpus-2026-03-13.md
-
-Key sections (by line number in corpus-2026-03-06.md):
+Key sections (line numbers for corpus-2026-03-13.md):
   154   Prime Keys — semantic primitives, 20-30x throughput
   323   Emotional Rendering — non-verbal as data
   557   Kill Font Libraries — baked glyph atlas, SDF
