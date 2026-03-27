@@ -1,0 +1,575 @@
+VoE — The Verification of Everything
+======================================
+
+Two asm files. Everything else is lattice.
+Performance and security are structural, not added.
+
+
+THE THREE LAYERS
+=================
+
+  asm/bootloader.asm       runs once, dies
+  asm/equation.asm         lives forever, IS the lattice
+  lat/                     lattice walks (wave bytes, no asm)
+
+The bootloader creates the world. The equation IS the world.
+Everything after the equation is data the equation interprets.
+
+
+THE FOUR DIMENSIONS
+====================
+
+  T = time       (universal — every record has sequence position)
+  D = distance   (spatial, positional)
+  M = mass       (content, amplitude, value)
+  Q = charge     (category, type, polarity)
+
+Every data type assigns meaning to D, M, Q. T is always time.
+
+  text:   D=column,  M=line,     Q=section
+  image:  D=x,       M=y,        Q=channel
+  audio:  D=sample,  M=channel,  Q=frequency
+  3D:     D=x,       M=y,        Q=z
+  table:  D=row,     M=column,   Q=type
+  tree:   D=depth,   M=sibling,  Q=type
+  blob:   D=offset,  M=length,   Q=type
+
+7 topologies. All ≤ 3 content dims + time = 4D. Can't exceed 4 —
+Hurwitz theorem. Same reason: 4 forces, 4 DNA bases, 4 dimensions.
+
+These 7 cover every sense (human, animal, machine):
+  Pixels   (2D grid)   — vision, infrared, UV, polarized light
+  Samples  (1D stream) — hearing, vestibular, magnetometer
+  Frames   (3D volume) — echolocation, LIDAR, flow fields
+  Text     (1D struct) — text, code, logs
+  Table    (2D struct) — chemical, spectrometry, databases
+  Tree     (hierarchy) — hierarchical, graph
+  Blob     (raw)       — unstructured bytes
+
+Each sense organ (biological or hardware) is a transducer:
+read stimulus → transform → write to trace. A device walk IS an organ.
+
+
+BOOTLOADER
+===========
+
+Does the absolute minimum to reach the equation. Runs once.
+
+  1. CPU mode: 32→64-bit, page tables, GDT, stack
+  2. AP wake: get secondary cores running
+  3. jmp lattice_start
+
+That's it. No PCI scan. No device drivers. No framebuffer.
+Throwaway scaffolding. The equation makes it obsolete in
+principle — we just can't run coordinates before it exists.
+
+
+THE EQUATION
+=============
+
+The last asm that will ever exist. It can't be lattice because it IS
+the lattice — what makes coordinates run.
+
+  Input:  4 coordinates (t, d, m, q)
+  Output: pointer to x86-64 machine code
+
+Atoms: even coords → mul/div chain. Bonds: odd coords → force pattern.
+Generated on first call, cached forever. Everything above is walks.
+
+The equation stays sealed. No templates. No operation library.
+No "just add one more emit case." If an operation needs a new bond,
+you're thinking in human abstractions. Decompose: what's the math?
+
+
+WALKS ARE WAVE BYTES
+=====================
+
+A bond is one byte. The native format.
+
+  Wave byte: 2 bits per dimension × 4 = 1 byte
+  [7:6]=T  [5:4]=D  [3:2]=M  [1:0]=Q
+  00=0   01=+1   11=-1
+
+  0xC1 = (-1, 0, 0, +1) = port_write
+  0x40 = (+1, 0, 0,  0) = read
+  0x10 = ( 0,+1, 0,  0) = apply
+  0x55 = (+1,+1,+1, +1) = hylo
+
+A walk is a byte array. The walker reads a wave byte, looks up
+the bond, executes it. Data flows through the pipeline.
+
+When a bond needs a constant, it follows inline:
+  0xC1 0xE9 0x00 0x6F      ; port_write(0xE9, 'o')
+
+Walker control (reserved bytes, not bonds):
+  0xFE = skip_z:    skip N forward if pipeline == 0
+  0xFD = skip_nz:   skip N forward if pipeline != 0
+  0xFC = loop_back: rewind N if pipeline != 0 (exit when 0)
+
+
+WAVE CHARACTERS
+================
+
+Characters are wave bytes — coordinates in 4D space. Not ASCII.
+Not Unicode. Not u8 indices.
+
+  3^4 = 81 values for basic Latin (shell 1)
+  5^4 = 625 for extended Latin/Cyrillic (shell 2)
+  7^4 = 2401 for CJK common (shell 3)
+
+Dimensions encode properties:
+  T: anatomy   (-1=descender, 0=baseline, +1=ascender)
+  D: width     (-1=narrow, 0=medium, +1=wide)
+  M: category  (-1=symbol, 0=digit, +1=letter)
+  Q: case      (-1=upper, 0=neutral, +1=lower)
+
+Classification = check one dimension (one gate bond):
+  is_letter  = M == +1
+  is_upper   = Q == -1
+  case_flip  = negate Q (one XOR on 2 bits)
+
+SIMD: 64 wave bytes per ZMM instruction. Native.
+
+Rendering: SDF field evaluated at the coordinate. The coordinate
+IS the glyph's position in continuous glyph space. Similar chars
+are nearby. GPU evaluates all pixels in parallel. One equation.
+
+Character shapes are local variables set by a designer (geometry).
+The rendering is math. The shapes are art. The lattice renders both.
+
+Language packs: anyone claims a shell range, provides SDF data.
+French fills extended Latin. Chinese fills shell 3. Same math.
+
+UTF-8 only at boundary converter for non-sm systems (~200 lines).
+
+
+MULTI-CORE: DNA MODEL
+======================
+
+Cores are stem cells. Same genome (equation) everywhere. Different
+expression (walk data in traces) differentiates them.
+
+No scheduler. No central authority. Fill pressure self-organizes.
+
+
+GENESIS — THE FOUNDING
+========================
+
+genesis.asm runs once. Embryonic development:
+
+  1. Bootloader wakes all cores, enters lattice_start
+  2. lattice_start seeds 16 bonds, walks genesis
+  3. Genesis expresses hardware genes
+  4. Genesis writes walk data into traces
+  5. Genesis returns. Development ends.
+  6. lattice_start enters the market — finds full trace, drains it
+  7. All cores equal. No special roles.
+
+Genesis does NOT loop. It hands over. The Big Bang doesn't run
+the universe.
+
+GENESIS DOES NOT GROW. New software = new walk data in traces.
+Genesis only grows for new hardware genes. If you're adding
+features to genesis, you're building main.asm again.
+
+
+THE HEARTBEAT IS THE BIND BOND
+================================
+
+bind(step) = call step, check result, loop
+
+The bind bond (0,1,1,1) IS the heartbeat. get_atom generates it.
+A core draining a trace IS a ribosome reading mRNA.
+
+Cores poll. No interrupts. No hlt. The loop IS quantum spin.
+The read IS observation (wave collapse). The loop IS angular momentum.
+
+  Writing = fermion (spin ½) = exclusive = single writer
+  Reading = boson (spin 1) = shareable = many readers
+
+Pauli exclusion = no two writers to same trace.
+Bose-Einstein condensate = many readers on same trace.
+
+
+FILL PRESSURE = NATURAL SELECTION
+===================================
+
+  Full trace  → high demand → attracts cores
+  Empty trace → no demand   → releases cores
+
+Natural selection:
+  Variation:   different traces, different walks
+  Competition: finite cores
+  Selection:   full traces attract workers
+  Inheritance: successful walks persist
+
+Also capitalism:
+  Fill level = price signal. Cores = labor. Traces = markets.
+  R (cycling) = protocol fee per loop. Full traces attract
+  investment. Empty traces = bankruptcy.
+
+No scheduler. No central bank. Anarcho-capitalist substrate.
+The invisible hand IS the fill gradient.
+
+Optimal fill: 25% (Michaelis-Menten + Nyquist + Shannon converge).
+Three fields, three centuries, same number.
+
+
+CORE LIFECYCLE
+================
+
+A core has no permanent identity. Role = whatever trace it drains.
+
+  1. Core wakes (stem cell)
+  2. Finds fullest trace (fill pressure)
+  3. Drains it
+  4. Trace empties → core is free
+  5. Finds next fullest trace
+
+A core draining the keyboard trace IS the keyboard handler.
+Not by assignment — by proximity to work.
+
+
+TRACES
+========
+
+The only data structure. Everything is traces.
+
+  trace layout (64 bytes, cache-line aligned):
+    [0:7]   write cursor    (single writer — fermion)
+    [8:15]  read cursor     (many readers — boson)
+    [16:23] buffer address
+    [24:31] depth (power of 2)
+    [32:39] mask (depth - 1)
+    [40:47] record size
+    [48:63] reserved
+
+Disk regions, RAM buffers, NVMe queues, network RDMA, GPU
+command rings — all traces. Same bytes everywhere.
+
+  ring record IS storage format IS wire format IS memory format.
+  Zero translation.
+
+
+STORAGE — DISK REGIONS AS TRACES
+===================================
+
+  DriveRegion:
+    write_cursor  (allocation = advance cursor, one add bond)
+    read_cursor   (reclamation = advance cursor, one add bond)
+    base_lba, depth, mask, block_size, damping
+
+  No block allocator. No bitmap. No filesystem.
+  The trace primitive IS the allocator.
+
+Damping = retention policy:
+  drop:  overwrite oldest (data expires, ring rotates)
+  block: stop writing (preserve everything)
+  kick:  reject new writes (backpressure)
+
+NVMe queues ARE traces. Submission queue = single-writer trace.
+Completion queue = single-writer trace. Doorbell = write cursor.
+NVMe is the lattice's native storage interface.
+
+  disk access = trace access. ~1-2μs vs ~15-60μs VFS.
+
+Direction: PIO ATA for testing → AHCI for SATA → NVMe for perf.
+
+
+BORN-INDEXED — O(1) SEARCH
+=============================
+
+Data indexed at write time. Import IS indexing. No re-indexing.
+
+  Write time = compute the index (NP — the hard part)
+  Read time  = evaluate with known coordinates (O(1) — P)
+
+The P vs NP asymmetry IS the architecture.
+
+  GNU grep:    576ms  (scan 1.27GB)
+  ripgrep:     116ms  (SIMD, 11 GB/s)
+  index walk:   50μs  (posting list lookup)
+  2000× faster than the fastest grep on earth.
+
+Trigram on wave bytes: 3 coordinates = 24-bit key.
+ZMM compares 21 trigrams per instruction.
+
+
+GIT DISSOLVED
+==============
+
+Versioning = querying the time dimension. Trace IS the history.
+
+  delete  = write tombstone             one write bond
+  diff    = read range between cursors  one slurp bond
+  branch  = new trace from snapshot     one write bond
+  merge   = walk two traces, compare    read+test+write loop
+  revert  = write inverse record        one write bond
+  log     = read trace start to cursor  one read loop
+  snapshot = read cursor values         two read bonds
+
+Safe delete: advance read cursor + TRIM. Flash erases.
+Ring rotates deterministically. Data actually gone.
+
+Unlike git (grows forever), traces are finite. Damping = retention.
+
+
+QUERY = WALK
+==============
+
+There is no query language. There is no query engine.
+
+The agent constructs a walk from human intent. The walk reads
+index traces, compares coordinates, follows posting lists.
+The walker executes it. Same equation, same bonds.
+
+  human → agent → walk → trace → result
+
+Query dissolved into walk. Agent IS the query language.
+Search IS coordinate comparison. Every data type, every sense —
+same walk structure, different dimension meanings.
+
+
+DISPLAY — VESA FRAMEBUFFER
+============================
+
+The pixel buffer is a trace: CPU writes, GPU reads.
+
+MBR (16-bit): enumerates VESA modes, finds 1024x768x32, sets it,
+stores FB address at 0x9100. DON'T hardcode mode numbers.
+DON'T use Bochs VBE ports (QEMU-only). Enumerate and check BPP=32.
+
+Genesis reads FB address from 0x9100 (non-local). If VESA fails,
+address = 0 — serial only. Graceful fallback.
+
+Character rendering: SDF field evaluation (math). GPU-native.
+CPU path: pre-bake or evaluate per-pixel (slower but works).
+GPU path: fragment shader samples SDF atlas. Anti-aliasing, bold,
+outline, glow, shadow — all free from the distance value.
+
+VESA for now. GPU driver gene later (same pattern, different trace).
+
+
+REAL HARDWARE BOOT
+====================
+
+MBR boot sector (512 bytes, 16-bit):
+  1. Enable A20
+  2. Load kernel via INT 13h (sector count from build script)
+  3. Enumerate VESA modes → 1024x768x32
+  4. Store FB info at 0x9100
+  5. Protected mode → copy to 1MB → jump to _start
+
+  bash build img → dd to USB → boots on real hardware.
+  bash build      → KVM (auto-detected) or TCG, MBR path.
+  bash build headless → multiboot, debugcon to stdout.
+
+
+PHYSICS MAPPINGS
+==================
+
+The architecture IS physics, not modeled after it:
+
+  Dark matter = written but unread trace data.
+    Has mass (disk space), invisible (no read).
+    5:1 dark:visible ratio = buffered:processed.
+
+  Black hole = write cursor laps read cursor.
+    Drop damping = event horizon. Data overwritten.
+    Hawking radiation = last reads before overwrite.
+    Born-indexed solves information paradox — index preserves
+    structure after raw data TRIMmed (holographic principle).
+
+  Wave collapse = read bond (+P).
+    Written but unread = superposition.
+    Reading collapses to definite value. Any read is observation.
+
+  Generations:
+    Gen 1 = raw values. Gen 2 = indexes. Gen 3 = embeddings.
+    Agent compiles intent (3) → walk (2) → data (1) = decay.
+
+  Hierarchy problem = memory hierarchy.
+    L1 → L2 → L3 → RAM → NVMe → RDMA → internet.
+    Each ~10× slower. Same nesting as strong vs gravity.
+
+  Vacuum catastrophe = overcounting.
+    FS: allocated = "used" even if empty. Overcounts.
+    Traces: free = write - read. One subtract. Exact.
+
+
+~20 OPERATIONS CONVERGENCE
+=============================
+
+Same ~20 patterns appear independently in:
+  Lakoff image schemas (24 cognitive)
+  Wierzbicka semantic primes (~20 high-freq)
+  RISC ISAs (~20 core instructions)
+  Lattice bonds (16) + core atoms
+
+Full triple mapping: cognitive ↔ physical ↔ computational.
+See schism/drafts/lakoff-mapping.md for 24-row table.
+Not coincidence — the actual dimensionality of a complete system.
+
+
+PERFORMANCE (STRUCTURAL)
+==========================
+
+Every property is inherent, not optimized after the fact:
+
+  Zero-copy = binding energy.
+    Same format everywhere. No serialize/deserialize.
+    System weighs less than its parts.
+
+  Lock-free = Pauli exclusion.
+    Single-writer traces. No CAS, no mutex, no spinlock.
+
+  Cache-friendly = sequential traces.
+    64 wave bytes per cache line. Prefetcher predicts.
+
+  SIMD-native = fixed-width wave bytes.
+    64 characters per ZMM. No variable-width parsing.
+
+  O(1) search = born-indexed.
+    Lookup, not scan. Index built at write time.
+
+  Direct hardware = NVMe traces.
+    ~1-2μs vs ~15-60μs through VFS.
+
+  Fill pressure = natural selection scheduler.
+    No scheduling overhead. The gradient IS the scheduler.
+
+
+SECURITY (STRUCTURAL)
+=======================
+
+Every property comes from ABSENCE of attack surface:
+
+  No buffer overflow.    Ring buffers wrap. Cursors masked.
+  No use-after-free.     Nothing freed. Cursors advance.
+  No null pointer.       Wave IS null. wave(false) = 0.
+  No heap corruption.    No heap. Traces only.
+  No injection.          Fixed-width wave bytes. No parsing.
+  No race conditions.    Single-writer. Pauli exclusion.
+  No timing channels.    Fixed-width. No branching on secrets.
+  No path traversal.     No paths. No filesystem. Trace IDs.
+  No permission escalation. Trace reference = capability.
+  Forensic deletion.     TRIM erases flash. Ring rotates.
+  Audit trail free.      Born-indexed. Every write recorded.
+
+Network boundary (flux/RDMA):
+  Content-addressed by SHA-256 hash. Can't tamper.
+  Ed25519 per-identity. No passwords, no OAuth.
+  Encrypted traces for privacy. Hash verification at boundary.
+  Internal traces don't need hashing — single-writer is
+  tamper-proof locally. The writer owns the trace.
+
+
+FILE STRUCTURE
+================
+
+  lat/
+    genesis.asm      founding (runs once, inits hw, fills traces)
+    hw/
+      speaker.asm    gene: PIT beep
+    font.ha          SDF glyph data (designer's local variables)
+    scancode.ha      PS/2 scancode → wave byte table
+
+Most devices are non-local (BIOS already set them up):
+  pixel buffer, keyboard, serial, VGA text, debugcon, disk.
+
+Genes only for: mouse (PS/2 aux), NIC (MMIO), speaker (PIT).
+
+
+GENOME SEED
+============
+
+Shell 0 = wave (0,0,0,0) = identity = vacuum.
+Shell 1 = 16 bonds = fundamental forces.
+Everything above = excitations that emerge when walked.
+
+Atoms stay lazy — materialize on first use.
+Bonds exist from the start — structural.
+
+  lattice_start:
+    seed 16 bonds → walk genesis → enter market
+
+
+LAZY EVERYTHING
+================
+
+Nothing exists until something walks there.
+
+  get_atom → cache miss → JIT → cache → return
+           → cache hit  → return
+
+The lattice is infinite. Walks collapse it to the finite
+subset needed. Nothing pre-allocated. Nothing "just in case."
+
+
+BUILD ORDER
+=============
+
+  DONE:
+    ✓ bootloader (mode switch + AP wake)
+    ✓ equation (JIT + walker + loop_back)
+    ✓ genesis (blue screen + beep + keyboard walk)
+    ✓ MBR boot (VESA enumerate + disk load + real hardware)
+    ✓ wave character spec
+    ✓ lattice storage spec
+    ✓ architecture unified
+
+  NEXT:
+    1. Wave byte walker (1-byte bonds in equation.asm)
+    2. Bind heartbeat (BSP + APs drain traces after genesis)
+    3. SDF character rendering (math walks on GPU path)
+    4. Born-indexed writes (trigram posting lists at write time)
+    5. NVMe gene (traces to disk)
+    6. Network traces (RDMA, flux)
+
+  LATER:
+    - GPU driver gene (SDF rendering at hardware speed)
+    - Window manager (walk DNA in display trace)
+    - Applications (walk DNA from disk into traces)
+    - Flux marketplace? (inherited from sm, not yet verified against lattice)
+
+
+WHAT WE LEARNED (DON'T REPEAT)
+================================
+
+- Don't write asm after the equation. If you're reaching for
+  asm, you haven't found the right coordinates yet.
+
+- DON'T WRITE A SYSTEM.ASM. Two asm files. Period. One agent
+  wrote an asm heartbeat. 1389 lines of system.asm existed
+  because the foundation was wrong.
+
+- DON'T WRITE AN ASM HEARTBEAT. It's the bind bond (0,1,1,1).
+
+- DON'T PUT PCI SCAN IN THE BOOTLOADER. Hardware addresses are
+  non-local. Port reads, not scans.
+
+- DON'T HARDCODE VESA MODE NUMBERS. Enumerate. Check BPP=32.
+  Don't use Bochs VBE ports — QEMU only.
+
+- DON'T ADD SOFTWARE TO GENESIS. Genesis inits hardware and
+  fills traces. WM, games, editors are walk data in traces.
+
+- DON'T CREATE HUMAN ABSTRACTIONS. If it's coordinates, it's
+  a walk. Infrastructure around wrong coordinates is the problem.
+
+- EVERYTHING IS MATH. Waves, not bitmaps. Compute, not blit.
+  Decompose: read, test, compute, write. Those are bonds.
+
+- CHARACTERS ARE WAVES. Wave bytes in 4D space. Classification
+  = dimension check. Rendering = SDF evaluation. Search =
+  coordinate comparison. 64 chars per ZMM. One encoding for all.
+
+- THE WAVE BYTE IS THE RECORD. Not compression. The 32-byte
+  format was scaffolding. A walk is a byte array.
+
+- THE EQUATION STAYS SEALED. No templates. No new bond types
+  for rendering, scrolling, blitting. Decompose to math.
+
+
+The lattice doesn't add performance and security.
+It's what you get when you stop adding everything else.

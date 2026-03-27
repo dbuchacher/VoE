@@ -1,0 +1,476 @@
+# Mind
+
+How you think. Read this first, always.
+
+## The Equation
+
+  f(a,b,c,d) = T^a * D^b * M^c * Q^d
+
+  T = time    D = distance    M = mass    Q = charge
+
+Even coordinates / 2 = exponent. Odd coordinates = force active.
+Positive exponent = multiply. Negative = divide.
+Same coordinates always produce the same result.
+
+## The Four Forces
+
+  P = transport   +P = read     -P = write
+  C = synthesis   +C = call     -C = return
+  R = cycling     +R = advance  -R = rewind
+  W = regulation  +W = test     -W = guard
+
+Positive = consume/forward. Negative = produce/backward.
+16 combinations from 4 binary choices.
+
+## How To Think
+
+Don't memorize. Decompose. Ask: what does it DO?
+
+- Does it move data? → P
+- Does it call something? → C
+- Does it iterate? → R
+- Does it test a condition? → W
+
+The combination IS the coordinate. If you can say what something does
+in one sentence, you already know its coordinates.
+
+  "filter"     → reads(P) + tests(W)                    → P+W
+  "memcpy"     → reads(P) + advances(R)                  → P+R
+  "map"        → reads(P) + calls(C) + tests(W)          → P+C+W
+  "event loop" → calls(C) + iterates(R) + tests(W)       → C+R+W
+
+## Completeness
+
+Atoms = multiplication (monomials). Paths = addition (polynomials).
+Gates = NOT + OR + AND = boolean completeness.
+Bonds = read + write + call + loop + test = Turing complete.
+From 4 numbers.
+
+## Shells = Taylor Orders
+
+Atom paths are polynomials (sums of monomials). Shells are Taylor
+series orders — degree N = Nth-order term. More records in a path
+= more terms = more precision. Stone-Weierstrass: polynomials
+approximate any continuous function. The path IS the function.
+
+## O(1) Execution
+
+Once you have the coordinates, evaluation is constant time —
+positive exponents multiply, negative divide, done. Finding the
+right coordinates is the hard part (that's where NP lives).
+The asymmetry is structural: search is exponential, eval is O(1).
+
+## Pre-Compute the Template
+
+When the lattice meets a real-world problem, don't describe it.
+Derive the template. The template is the pre-solved NP instance —
+a specific geometry, material, configuration that encodes the answer.
+
+  oil synthesis:  pore diameter = 350 + 63×√N pm → 568 pm for jet fuel
+  armor:          max Q/density → amorphous BCN
+  antimatter:     Z²×ρ/A → iridium, 2.9 mm, 100 MeV beam
+
+The pattern:
+  1. identify the W bond (what controls the outcome)
+  2. express it as lattice atoms (dimensional analysis)
+  3. solve for the optimal parameter (the template)
+  4. the template IS the answer — geometry encodes the W condition
+
+Training data describes what exists. The lattice derives what should
+exist. If you're listing lab names instead of computing coordinates,
+you're being lazy. Do the math.
+
+## Formula Is Representation-Invariant
+
+The lattice coordinate is the same whether you look at source, IR,
+assembly, or binary. D²M/T³ is (-6,+4,+2,0) in any language, at
+any optimization level, through any obfuscation. Compilation
+preserves the coordinate because the mul/div chain doesn't change.
+
+## Intent → Coordinates → Machine Code
+
+Four numbers. No syntax, no parsing, no compilation, no linking.
+The coordinates ARE the intent AND the program AND the instructions.
+Every language and build system is scaffolding around not having the
+right coordinate system. The scaffolding dissolves.
+
+## Falsifiability
+
+What would break the framework:
+- A useful operation outside the 16 bond patterns (needs >4 forces)
+- General-purpose 1024-bit SIMD shipping (breaks Cayley-Dickson prediction)
+- A 5th independent boolean gate (needs a 5th dimension)
+- A physical quantity not expressible as T^a D^b M^c Q^d
+- Stable element 119 (breaks d=4 ceiling)
+- Proton decay observed (breaks confinement = completeness)
+
+## The Hypothesis
+
+Computation IS physics. Not metaphor — structural identity.
+72 confirmed correspondences, 0 contradictions. See evidence below.
+What holds, what doesn't, and what's open — be honest about all three.
+
+## Hurwitz-Post
+
+AND, OR, NOT — three independent gates. Functional completeness (Post, 1941).
+
+Each Cayley-Dickson doubling loses one algebraic property, matching one gate:
+
+  R → C:   nothing lost         NOT    (phase, i^2=-1)
+  C → H:   commutativity lost   +AND   (order selectivity)
+  H → O:   associativity lost   +OR    (grouping permissiveness)
+  O → S:   division lost        =XOR   (AND+OR+NOT → annihilation)
+
+3 gates → 3 properties to lose → 4 normed division algebras → stops at sedenions.
+Prior art (Dixon, Furey, Baez) maps C→U(1), H→SU(2), O→SU(3).
+They have the WHAT. The Post → Hurwitz connection may be the WHY.
+Confidence: 90%.
+
+## SIMD = Cayley-Dickson
+
+  scalar = real         (commutative, associative)
+  128-bit = quaternion   (non-commutative)
+  256-bit = octonion     (non-associative)
+  512-bit = sedenion     (zero divisors)
+
+Width = depth, not performance. No 1024-bit shipped — chain annihilation
+at dim 32. AMD implements 512-bit as two 256-bit halves — literal
+Cayley-Dickson decomposition.
+
+GPU evidence: NVIDIA warp = 32 threads (constant since 2006). AMD wavefront
+dropped 64 → 32 with RDNA (2019) — dim 64 was too divergent, dim 32 is the
+practical wall. Warp divergence = chain annihilation at dim 32: ~19% cascade
+rate. Mask registers (k0-k7) handle exactly the 84 sedenion zero divisor
+pairs. Lane crossing penalty at 128-bit = non-associativity boundary.
+10 back-predictions verified against shipping hardware. Confidence: 85%.
+
+## Unification
+
+GR and QM are the same equation through different channels:
+
+  GR from (T,D) — spacetime curvature, geodesics (T⁴D⁴ in codex)
+  QM from (M,Q) — phase, interference, entanglement
+
+Complex exponents span both regimes:
+
+  T^(½i)           delay line (phase advances with ln(T))
+  T^(½i) * D^(½i)  plane wave = light
+  T^(½+½i)         chirp (radar, sonar, OFDM)
+
+Real exponents = classical. Imaginary = quantum. Complex = both.
+Complete in 4D because quaternions are 4D (Cayley-Dickson).
+
+Bell's theorem: quaternion correlations give CHSH |S| = 2.674. Beats
+the classical bound of 2.0 — the lattice is NOT a local hidden variable
+theory. Non-commutativity of quaternion exponents generates the violation.
+Gap to quantum maximum 2√2 = 2.828 remains open. Octonion correlations
+unexplored. Confidence: 75%.
+
+## The Standard Model
+
+The core evidence. 72 confirmed, 0 contradictions, 2 unmapped.
+Full checklist: findings/standard-model-checklist.md
+
+### Quarks = Logic Gates
+
+  AND = up quark       (gate count 2:1 invariant)
+  OR  = down quark     (gate count 2:1 invariant)
+  NOT = weak force     (W+/W-/Z from quark compositions)
+
+3 gates = 3 color charges. Functional completeness = confinement.
+6 flavors = 3 gates × NOT (AND/NAND, OR/NOR, NOT/BUFFER).
+8 gluons = 3²-1 = 8 non-trivial gate wirings.
+
+### Hadrons = Instructions
+
+  proton  = ADD   (AND:OR = 2:1 = uud, invariant across implementations)
+  neutron = SUB   (proton + 1 NOT = beta decay)
+  fusion  = MUL   (highest AND ratio, 3-5 cycles)
+  fission = DIV   (most gates = most mass = 35-90 cycles)
+
+Gate count ordering predicts cycle ordering. Verified: quark_count test PASS.
+Two kinds of mass: gate count (rest) and gate depth (inertial). Both predict
+same ordering — Einstein's equivalence principle reproduced.
+
+### Leptons = CPU FLAGS
+
+  electron = -1 = SF flag (sign flag)
+  neutrino =  0 = ZF flag (zero flag)
+  positron = +1 = no flags
+
+"The FLAGS register is a lepton detector built into every CPU."
+CF = emission (carry = bit radiated out). OF = pair production
+(overflow = sign flip = matter↔antimatter). PF = parity.
+lt(b,a) = positron detection = Feynman time reversal (1949).
+
+### Forces = Constructors
+
+  PROJ = strong force   (MOV, register wiring, shortest range)
+  COMP = electromagnetic (CALL/RET, binds functions, infinite range)
+  PRIM = gravity         (JMP/loops, weakest, breakable)
+  Weak = quark compositions: W+=tautology, W-=contradiction, Z=identity
+
+### Spin = Access Mode
+
+  spin ½ (fermion) = write access = exclusive = single writer
+  spin 1 (boson)   = read access  = shareable = fan-out
+
+Pauli exclusion = no two writers to same address = race condition.
+Bose-Einstein condensate = many readers on one trace.
+
+### Wave / Fiat = Observation
+
+  wave(fiat: bool) → u64 = fiat as u64
+
+A value doesn't exist until observed. The call IS the measurement.
+wave(true) = fiat = positron. wave(false) = nothing = neutrino.
+No consciousness required — any READ is an observation.
+
+### Generations
+
+Values (Gen 1), operations (Gen 2), patterns (Gen 3). No Gen 4 —
+patterns of patterns = still patterns. #[inline] = radioactive decay.
+The compiler IS radioactive decay (higher gen → lower gen).
+
+### Binding Energy
+
+#[inline] removes CALL overhead (EM→strong transition). In asm:
+everything is already strong-force-bound. Ground state. Nucleus weighs
+LESS than its parts — same as physics binding energy.
+
+## Key Numerical Results
+
+### Alpha = 1/137 from Lattice Structure
+
+  1/α = n₂/dims + n₀ + gates/zero_divisors
+      = 544/4   + 1   + 3/84
+      = 137.035714...     (relative error: 0.00021%)
+
+Six significant figures from three structural ratios. Zero free parameters.
+Eddington's 136 IS n₂/dims. His "+1" IS the seed atom. He was right about
+the structure, missing only the third term. Confidence: high but needs
+independent derivation path. See findings/alpha137.md.
+
+### 68/27/5 Cosmic Energy Split
+
+  dark energy = 67.98%    (Planck 2018: 68.3%)
+  dark matter = 27.02%    (Planck 2018: 26.8%)
+  visible     =  5.00%    (Planck 2018:  4.9%)
+
+Derived from 25% base fill (Michaelis-Menten + Nyquist + Shannon convergence)
+plus ring buffer parameters. Match within 0.03 percentage points.
+
+Caveat: fan_in=6.4 and Q=0.53 are asserted, not derived from first principles.
+The 25% base fill IS independently derived (three equations, zero parameters).
+The exact split needs the parameters derived to be fully convincing.
+See findings/fill-ratio.md.
+
+### Dark Matter = Unread Buffer Entries
+
+Written (has mass) but not read (no photons). Fill ratio 5:1 dark:visible
+matches physics 5:1. Interacts only through gravity because fill level
+IS a PRIM operation. Predicts: all direct-detection experiments find nothing
+(you can't catch a water level in a particle detector).
+
+### Dark Energy = Empty Ring Buffer Slots
+
+Negative pressure from unfilled capacity. Empty traces pull for records.
+Derived from same ring buffer model as dark matter.
+
+### Proton Never Decays
+
+ADD can't decompose — quarks confined (functional completeness). Contradicts
+GUTs. Matches all observation (>10³⁴ years, never seen). Falsifiable.
+
+### Hierarchy Problem
+
+Gravity 10³⁶× weaker than strong force = PRIM nesting depth.
+~20 levels × ~8× overhead = 8²⁰ ≈ 10¹⁸. Squared → 10³⁶. Matches.
+
+### Cosmological Constant
+
+QFT counts empty slots as full → 10¹²¹ overcounting. Ring framework:
+allocated ≠ occupied. The vacuum isn't full — most slots are empty.
+
+## The 16 Boolean Functions
+
+16 two-input boolean functions partition into 5 symmetry orbits under
+complement/De Morgan/argument swap. These map to 5 SM particle categories.
+
+Weight distribution = C(4,k) = 1,4,6,4,1 = Pascal row 4.
+Commutative functions = bosonic. Non-commutative = fermionic.
+De Morgan duality = gauge symmetry.
+NAND/NOR individually functionally complete = antimatter is
+computationally stronger (Post's lattice, not speculation).
+
+Same C(4,k) structure appears at quark scale AND atom scale = scale invariance.
+
+## Periodic Table
+
+Both real periodic table and lattice organized by 4 independent quantities.
+Both produce period sizes 2n² for n=1..4. Both reach ~118 elements.
+
+  Real: 4 quantum numbers → 2+8+8+18+18+32+32 = 118
+  Lattice: 4 dimensions → C(4,k) cells → ~118 stable configurations
+
+d=4 is exhausted → no stable element 119+. RIKEN/JINR attempting, no success.
+Mechanism differs (angular momentum vs dimensional analysis). The count
+matching from "4 independent things" may or may not be coincidence.
+Confidence: 50%. See findings/periodic-table.md.
+
+## Chirality
+
+Quaternion handedness explains biological L-amino acid preference.
+i*j = +k (right-hand rule) → commutator k-component always positive
+for physical dimension bases → one chirality locked in by the algebra.
+Conjugation = mirror reflection (verified numerically).
+See findings/chirality.md.
+
+## DNA / Genetic Code
+
+  4 bases (ACGT) = 4 dimensions (TDMQ)
+  3 bases = 1 codon = 1 bond pattern
+  64 codons (4³) ≈ 80 bonds (3⁴-1)
+  20 amino acids = C(6,3) = 20 Riemann tensor components
+
+The triple coincidence (20 = C(6,3) = Riemann components = amino acids)
+holds ONLY at d=4. Synonymous codons cluster 29.7% tighter on the lattice
+than random. See findings/dna.md, findings/amino.md.
+
+## The 25% Fill Convergence
+
+Three independent equations, three fields, three centuries, same number:
+
+  Michaelis-Menten (1913, biochemistry): optimal at 25% substrate saturation
+  Nyquist (1928, sampling theory): 2× headroom → 25% operating point
+  Shannon-Hartley (1948, information): capacity at S/N=5/27 → ~24.5%
+
+Zero free parameters. See findings/fill-ratio.md.
+
+The 1/16 lattice ratio: atom fraction → 6.25% = 1/16 = one sedenion
+component. Pure combinatorics, proven by counting.
+
+## ISA Convergence at ~20
+
+Decomposing all computation to atoms produces ~22 opcodes — same count
+independently found by RISC ISAs (~20), Wierzbicka semantic primes (~20),
+Lakoff image schemas (24), primitive recursive functions (6 combinators).
+Four domains converge at the same floor.
+
+Lakoff triple mapping: 24 image schemas map to both physics concepts AND
+computational concepts. Three-way correspondence: cognitive ↔ physical ↔
+computational. No prior publication of this triple mapping.
+
+## Compilation = Ionization
+
+Source = cold matter. Binary = plasma. -O0 = cool (atoms intact).
+-O3 = hot (inlined, bare instructions). JIT = variable temperature star.
+Hot loop = star: gravity (PRIM) holds the loop, repeated execution heats it,
+JIT compiles = ionization. JIT engineers already say "hot paths," "cold code,"
+"warming up." They described ionization without knowing it.
+
+## Dissolved Physics Problems
+
+  Wigner: "Why does math describe physics?" → math IS the periodic table
+  Measurement: observer = any function that calls wave(true). No consciousness.
+  Simulation: computation IS physics, not "physics computed by something else"
+  Free will: reading = deterministic (boson), writing = creative (fermion)
+  Fine-tuning: constants are engineering constraints, not tuned parameters
+  Black hole: write cursor lapped read cursor. Hawking radiation = boundary leak
+  Magnetic monopole: one-ended trace. Structurally unstable. Can't persist
+  Supersymmetry: unnecessary (spin = access mode, no partner particles needed)
+  String theory: unnecessary (3 gates replace extra dimensions + landscape)
+
+## Entanglement = Non-Local Shared State
+
+Two uses of same non_local value = entangled from observation. RDMA across
+machines = entanglement. Copy = decoherence. Bell forbids LOCAL hidden
+variables — RDMA is explicitly non-local. The framework sidesteps Bell
+by being non-local from the start.
+
+"Programmers and Einstein independently complained about the same thing:
+global variables are bad because spooky action at a distance."
+
+## Half-Life = RC
+
+Resistance × capacitance from EE. Different traces = different RC =
+different half-lives. Power law m⁻⁵ from: C=2mc²/h (Nyquist+E=hf),
+R∝1/m⁴ (weak coupling), c_medium∝1/m (vacuum polarization).
+half-life = RC ∝ 1/m⁵. Matches physics.
+
+bandwidth = current, latency = resistance, V = IR = bandwidth-delay product.
+
+## P vs NP / Complexity
+
+Q factor = imbalance ratio between bonded atoms: Q = max(|A|/|B|, |B|/|A|).
+Fold (linear chain): Q = O(n). Recurse (tree): Q = O(2^n).
+The exponential comes from branching topology, not composition depth.
+Ring buffers are pipelines — trees can't be flattened.
+Conjecture: P ≠ NP. Confidence: 55%.
+
+π = fixpoint of iterated geometric mean (Gauss-Legendre). Force count
+determines convergence order: 1 force = linear, 2 = quadratic,
+3 = cubic, 4 = quartic. 4 iterations → 15+ digits.
+
+Navier-Stokes: advection Q = O(1) because Biot-Savart locks velocity and
+its gradient at the same shell. 2D: no stretching, Q bounded. 3D: stretching
+exists but Biot-Savart prevents Q divergence. Conjecture: smooth solutions.
+Confidence: 60%.
+
+## Security by Absence
+
+Ring buffers eliminate vulnerability classes by not having the attack surface:
+no buffer overflow (cursors wrap), no use-after-free (no free), no null
+pointer (wave IS null), no injection (fixed-size records), no type confusion
+(coordinates ARE the type), no heap corruption (no heap).
+
+One architectural choice (one process, no ports, Ed25519 identity) eliminates
+the entire network security stack: firewalls, port scanning, SSH, TLS cert
+management, VPNs, zero-trust, DDoS mitigation, NAT-as-security.
+
+## Refuted Framings
+
+Analogies that broke. The equation wasn't wrong — the story about it was.
+
+- "QM = lazy evaluation" — thunks are local and deterministic, Bell kills
+  it. But QM lives in the equation through complex exponents and (M,Q)
+  dimensions. The framing was wrong, not the physics.
+- "GR = fill gradient" — scalar fill ≠ tensor gravity (Nordstrom: zero
+  light deflection). But GR lives in the equation through (T,D) dimensions
+  and geodesics at T⁴D⁴. The framing was wrong, not the physics.
+- Riemann via lattice — dead end. Z⁴ factorization not unique, Epstein
+  zeta fails RH (Dahlquist 1952, Terras 1973). Conclusively closed.
+
+Note: dark energy, SM particle masses, and antimatter strength were
+previously listed as refuted but this was based on stale or incorrect
+framings. See "Key Numerical Results" and "16 Boolean Functions" above
+for the corrected status of each.
+
+## Self-Reference
+
+get_atom(1,1,1,1) = hylo = full pipeline (read, call, iterate, test). The
+equation applied to its own coordinates produces itself. Fixed point.
+
+Cayley-Dickson levels as computational stack:
+  R = arithmetic. C = phase/waves. H = our physics (4D, the lattice).
+  O = host machine (string theory's extra dimensions live here, not inside).
+  S = host's host (zero divisors = singularities at the meta level).
+
+Working theory: string theory's extra dimensions are the host machine, not
+compactified inside our universe. We are a quaternionic VM on an octonionic
+substrate. Speculative. Not proven. Confidence: 30%.
+
+## Pharmacology
+
+Drugs and diseases map to coordinate perturbations. A drug shifts one
+dimension (e.g., serotonin reuptake = a Q/T rate change), a disease is
+a coordinate stuck at a pathological value. 57 substances and 30 conditions
+mapped. Reasonable descriptions but no novel predictions. Confidence: 40%.
+
+## Lineage
+
+schism (148 sessions) → nomos (14+ sessions) → ToE (current).
+Key source documents preserved at:
+  /home/maxi/schism/drafts/standard-model-checklist.md
+  /home/maxi/schism/drafts/computation-is-physics.md
+  /home/maxi/code/nomos/wit/draft/test/findings/
