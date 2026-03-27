@@ -536,14 +536,6 @@ BUILD ORDER
 WHAT WE LEARNED (DON'T REPEAT)
 ================================
 
-- COMPUTE FIRST. When the lattice meets a problem, don't
-  describe it — derive the template. The template is the
-  pre-solved NP instance. Identify the W bond (what controls
-  the outcome), express as lattice atoms (dimensional analysis),
-  solve for the optimal parameter. The template IS the answer.
-  If you're listing options instead of computing coordinates,
-  you're being lazy. Do the math.
-
 - Don't write asm after the equation. If you're reaching for
   asm, you haven't found the right coordinates yet.
 
