@@ -10,7 +10,7 @@ Don't guess. Don't re-derive. Read the history.
 Chronological: corpus → schism → nomos → ToE → VoE.
 
 
-## /home/maxi/brain/corpus/corpus-2026-03-13.md — The Corpus
+## prior/corpus/corpus-2026-03-13.md — The Corpus
 
 The earliest ideas. One file. Where everything started. The definitive
 source for sm architecture decisions before any code existed.
@@ -33,7 +33,7 @@ Key sections (line numbers):
 Read this before reinventing anything.
 
 
-## /home/maxi/schism/ — Schism (148 sessions)
+## prior/schism/ — Schism (148 sessions)
 
 The Rust era. sm daemon, ring buffers, GPU rendering, marketplace.
 First implementations of: ring records, born-indexed, SDF fonts,
@@ -51,13 +51,13 @@ prime keys, query model, hardware convergence. Massive git history.
   nomos/b3/                       the Rust kernel (bench, parts, traces)
 
 
-## /home/maxi/code/nomos/ — Earlier Nomos
+## prior/nomos/ — Earlier Nomos
 
 Assembly builds before ToE. 23-bond system, parameter walks.
 Reference for what was tried. Not active.
 
 
-## /home/maxi/code/ToE/ — Theory of Everything
+## prior/ToE/ — Theory of Everything
 
 Where VoE came from. The lattice OS, clean room rebuild, genesis
 model, wave characters. Sessions 15-17.
