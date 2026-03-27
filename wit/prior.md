@@ -8,14 +8,7 @@ The answers are already in here. Search before you build.
   nomos     → 284 commits, 58MB git (assembly era)
   ToE       → 17 sessions, 36 commits, 3MB git (lattice era)
 
-USE GIT HISTORY. Every decision, every mistake, every discovery.
-
-  git log --oneline                         see what happened
-  git log -p --grep="keyword"               find when something was discussed
-  git show <hash>                           see exactly what changed
-  git log --all --oneline | grep "font"     find font-related work
-
-Don't guess. Don't re-derive. 2 seconds to search. Hours to reinvent.
+USE GIT HISTORY. 2 seconds to search. Hours to reinvent.
 
 
 ## prior/corpus/corpus-2026-03-13.md — The Corpus
