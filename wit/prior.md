@@ -117,15 +117,13 @@ Reference for what was tried. Not active.
 
 ## /home/maxi/brain/corpus/ — The Corpus
 
-Three snapshots of accumulated design knowledge. The DEFINITIVE
-source for sm architecture decisions, shower thoughts, benchmarks,
-and the ideas that became VoE. If it was discussed, it's here.
+Accumulated design knowledge. The DEFINITIVE source for sm
+architecture decisions, shower thoughts, benchmarks, and the
+ideas that became VoE. If it was discussed, it's here.
 
-  corpus-2026-03-05.md    earliest snapshot
-  corpus-2026-03-06.md    middle snapshot
   corpus-2026-03-13.md    latest snapshot (most complete)
 
-Key sections (line numbers for corpus-2026-03-06.md):
+Key sections (line numbers for corpus-2026-03-13.md):
   17    Origin story — what died and why
   154   Prime Keys — semantic primitives, 20-30x throughput
   323   Emotional Rendering — non-verbal as data
