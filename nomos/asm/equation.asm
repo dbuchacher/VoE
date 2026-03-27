@@ -6,8 +6,13 @@
 ; Contains:
 ;   get_atom(t,d,m,q)  → cached JIT code pointer
 ;   emit_function       → generates x86-64 from coordinates
-;   walker(rdi,rsi)     → reads walk data, executes via get_atom
-;   lattice_start       → seeds 16 bonds, calls walker(main)
+;   walker_wave(rdi,rsi) → reads wave byte walks, executes via get_atom
+;   lattice_start       → seeds 16 bonds, walks genesis
+;
+; The equation exists because CPUs are manufactured around an ISA
+; (x86-64). It translates lattice coordinates into machine code.
+; On a chip that natively evaluated T^a*D^b*M^c*Q^d and read wave
+; bytes directly, this file dissolves. The walks stay identical.
 ;
 ; Everything else is walks (lat/). No system.asm. No third file.
 ; ═══════════════════════════════════════════════════════════════════
@@ -73,14 +78,14 @@ lattice_start:
     ; ── walk genesis (runs once, returns) ──
     lea rdi, [main_walk]
     mov esi, [main_len]
-    call walker
+    call walker_wave
 
     ; ── genesis returned. enter the market. ──
     ; walk the keyboard poll (first available work)
-    ; TODO: find fullest trace instead of hardcoding
+    ; TODO: bind heartbeat — find fullest trace instead of hardcoding
     lea rdi, [kbd_walk]
     mov esi, [kbd_walk_len]
-    call walker
+    call walker_wave
 
     ; if walk returns (it shouldn't — loop_back), spin
 .spin:
@@ -89,112 +94,218 @@ lattice_start:
 
 
 ; ═══════════════════════════════════════════════════════════════════
-; WALKER — reads walk records, executes via get_atom
+; WALKER — reads wave byte walks, executes via get_atom
 ;
-; Record format (32 bytes):
-;   bytes 0-7:   4 × i16  coordinates (t, d, m, q)
-;   bytes 8-15:  i64      arg0  (0 = use pipeline r15)
-;   bytes 16-23: i64      arg1  (-1 = use pipeline r15)
-;   bytes 24-31: i64      arg2
-;   rcx = pipeline (implicit 4th arg, always r15)
+; Format per record:
+;   byte 0: wave byte (2 bits per dim, [7:6]=T [5:4]=D [3:2]=M [1:0]=Q)
+;   byte 1: flags ([reserved:2][arg2:2][arg1:2][arg0:2])
+;            00=pipeline  01=u8  10=u32  11=u64
+;   bytes 2+: inline args (variable length per flags)
 ;
-; Reserved coordinates (walker control, not bonds):
-;   T=0x7FFE = skip_z:  skip arg0 records if pipeline == 0
-;   T=0x7FFD = skip_nz: skip arg0 records if pipeline != 0
+; Walker control (wave byte >= 0xFC):
+;   0xFE + u32: skip_z (skip N bytes forward if pipeline == 0)
+;   0xFD + u32: skip_nz (skip N bytes forward if pipeline != 0)
+;   0xFC + u32: loop_back (rewind N bytes if pipeline != 0)
 ;
 ; Input: rdi = walk data pointer, esi = walk length (bytes)
 ; ═══════════════════════════════════════════════════════════════════
 
-global walker
-walker:
+global walker_wave
+walker_wave:
     push rbx
     push r12
     push r13
     push r14
 
     mov r12, rdi              ; walk data pointer
-    mov r13d, esi             ; walk length
+    mov r13d, esi             ; length (temp)
     lea r14, [r12 + r13]      ; end pointer
-    xor r15d, r15d            ; pipeline register (previous result)
+    xor r15d, r15d            ; pipeline = 0
 
-.w_next:
+.ww_next:
     cmp r12, r14
-    jge .w_done
+    jge .ww_done
 
-    ; read T coordinate, check for walker control records
-    movzx eax, word [r12]
+    movzx eax, byte [r12]    ; read wave byte
 
-    ; skip_z: T=0x7FFE — skip arg0 records if pipeline == 0
-    cmp ax, 0x7FFE
-    jne .w_not_skipz
-    test r15, r15
-    jnz .w_skip_pass
-    mov rax, [r12+8]
-    shl rax, 5                ; × 32 bytes per record
-    add r12, rax
-.w_skip_pass:
-    add r12, 32
-    jmp .w_next
-.w_not_skipz:
+    ; ── walker control: >= 0xFC ──
+    cmp al, 0xFC
+    jae .ww_control
 
-    ; skip_nz: T=0x7FFD — skip arg0 records if pipeline != 0
-    cmp ax, 0x7FFD
-    jne .w_not_skipnz
-    test r15, r15
-    jz .w_skipnz_pass
-    mov rax, [r12+8]
-    shl rax, 5
-    add r12, rax
-.w_skipnz_pass:
-    add r12, 32
-    jmp .w_next
-.w_not_skipnz:
+    ; ── regular bond/atom ──
+    movzx ebx, al             ; wave byte → ebx
+    inc r12                    ; past wave byte
 
-    ; loop_back: T=0x7FFC — rewind arg0 records if pipeline != 0
-    cmp ax, 0x7FFC
-    jne .w_not_loopback
-    test r15, r15
-    jz .w_loop_done
-    mov rax, [r12+8]
-    shl rax, 5                ; × 32 bytes per record
-    sub r12, rax              ; rewind
-    jmp .w_next
-.w_loop_done:
-    add r12, 32
-    jmp .w_next
-.w_not_loopback:
+    ; decode wave byte → 4 coords
+    ; 00=0  01=+1  11=-1  10=extended (read signed i8 from walk)
+    lea rax, [decode_2bit]
 
-    ; read 4 i16 coordinates
-    movsx edi, word [r12]     ; T
-    movsx esi, word [r12+2]   ; D
-    movsx edx, word [r12+4]   ; M
-    movsx ecx, word [r12+6]   ; Q
+    ; T = bits [7:6]
+    mov ecx, ebx
+    shr ecx, 6
+    cmp ecx, 2
+    jne .dec_t_lut
+    movsx edi, byte [r12]     ; extended: signed i8
+    inc r12
+    jmp .dec_d
+.dec_t_lut:
+    movsx edi, byte [rax + rcx]
+.dec_d:
+    ; D = bits [5:4]
+    mov ecx, ebx
+    shr ecx, 4
+    and ecx, 3
+    cmp ecx, 2
+    jne .dec_d_lut
+    movsx esi, byte [r12]
+    inc r12
+    jmp .dec_m
+.dec_d_lut:
+    movsx esi, byte [rax + rcx]
+.dec_m:
+    ; M = bits [3:2]
+    mov ecx, ebx
+    shr ecx, 2
+    and ecx, 3
+    cmp ecx, 2
+    jne .dec_m_lut
+    movsx edx, byte [r12]
+    inc r12
+    jmp .dec_q
+.dec_m_lut:
+    movsx edx, byte [rax + rcx]
+.dec_q:
+    ; Q = bits [1:0]
+    mov ecx, ebx
+    and ecx, 3
+    cmp ecx, 2
+    jne .dec_q_lut
+    movsx ecx, byte [r12]
+    inc r12
+    jmp .dec_flags
+.dec_q_lut:
+    movsx ecx, byte [rax + rcx]
 
-    push r12
-    push r14
+.dec_flags:
+    ; flags byte follows wave byte + any extension bytes
+    movzx r13d, byte [r12]
+    inc r12
+
+    ; get_atom(edi=T, esi=D, edx=M, ecx=Q) → rax = function pointer
     call get_atom
-    mov rbx, rax              ; function pointer
-    pop r14
-    pop r12
+    mov rbx, rax               ; fn ptr → rbx
+    ; r12, r13, r14, r15 preserved (callee-saved, get_atom saves them)
 
-    ; read 3 args + pipeline as implicit 4th
-    mov rdi, [r12+8]          ; arg0
-    test rdi, rdi
-    cmovz rdi, r15            ; arg0=0 → pipeline
-    mov rsi, [r12+16]         ; arg1
-    cmp rsi, -1
-    cmove rsi, r15            ; arg1=-1 → pipeline
-    mov rdx, [r12+24]         ; arg2
-    mov rcx, r15              ; arg3 = pipeline (always)
+    ; ── read arg0 → rdi ──
+    mov eax, r13d
+    and eax, 3
+    jz .a0_pipe
+    cmp eax, 1
+    je .a0_u8
+    cmp eax, 2
+    je .a0_u32
+    mov rdi, [r12]             ; u64
+    add r12, 8
+    jmp .a0_done
+.a0_u8:
+    movzx edi, byte [r12]
+    inc r12
+    jmp .a0_done
+.a0_u32:
+    mov edi, [r12]
+    add r12, 4
+    jmp .a0_done
+.a0_pipe:
+    mov rdi, r15
+.a0_done:
 
-    add r12, 32               ; next record
+    ; ── read arg1 → rsi ──
+    mov eax, r13d
+    shr eax, 2
+    and eax, 3
+    jz .a1_pipe
+    cmp eax, 1
+    je .a1_u8
+    cmp eax, 2
+    je .a1_u32
+    mov rsi, [r12]             ; u64
+    add r12, 8
+    jmp .a1_done
+.a1_u8:
+    movzx esi, byte [r12]
+    inc r12
+    jmp .a1_done
+.a1_u32:
+    mov esi, [r12]
+    add r12, 4
+    jmp .a1_done
+.a1_pipe:
+    mov rsi, r15
+.a1_done:
 
-    call rbx
-    mov r15, rax              ; save result for pipeline
-    mov [w_acc], rax          ; store to memory (walks can read it)
-    jmp .w_next
+    ; ── read arg2 → rdx ──
+    mov eax, r13d
+    shr eax, 4
+    and eax, 3
+    jz .a2_pipe
+    cmp eax, 1
+    je .a2_u8
+    cmp eax, 2
+    je .a2_u32
+    mov rdx, [r12]             ; u64
+    add r12, 8
+    jmp .a2_done
+.a2_u8:
+    movzx edx, byte [r12]
+    inc r12
+    jmp .a2_done
+.a2_u32:
+    mov edx, [r12]
+    add r12, 4
+    jmp .a2_done
+.a2_pipe:
+    mov rdx, r15
+.a2_done:
 
-.w_done:
+    mov rcx, r15               ; arg3 = pipeline always
+
+    call rbx                   ; call JIT'd function
+    mov r15, rax               ; result → pipeline
+    mov [w_acc], rax
+    jmp .ww_next
+
+    ; ── walker control ──
+.ww_control:
+    mov ebx, [r12+1]          ; u32 byte count
+
+    cmp al, 0xFE
+    je .ww_skip_z
+    cmp al, 0xFD
+    je .ww_skip_nz
+
+    ; 0xFC: loop_back — rewind if pipeline != 0
+    test r15, r15
+    jz .ww_ctrl_advance
+    sub r12, rbx               ; rewind by N bytes
+    jmp .ww_next
+
+.ww_skip_z:
+    test r15, r15
+    jnz .ww_ctrl_advance
+    add r12, rbx               ; skip forward N bytes
+    jmp .ww_ctrl_advance
+
+.ww_skip_nz:
+    test r15, r15
+    jz .ww_ctrl_advance
+    add r12, rbx               ; skip forward N bytes
+    ; fall through
+
+.ww_ctrl_advance:
+    add r12, 5                 ; past control byte + u32
+    jmp .ww_next
+
+.ww_done:
     pop r14
     pop r13
     pop r12
@@ -1221,6 +1332,15 @@ bond_seeds:
     db  1,  0,  1,  1                     ; P+R+W: scan
     db  0,  1,  1,  1                     ; C+R+W: bind
     db  1,  1,  1,  1                     ; P+C+R+W: hylo
+
+
+; ─── wave byte decode table (2-bit → signed coordinate) ─────
+
+decode_2bit:
+    db  0                                  ; 00 → 0
+    db  1                                  ; 01 → +1
+    db  0                                  ; 10 → 0 (reserved)
+    db -1                                  ; 11 → -1
 
 
 ; ─── externs ──────────────────────────────────────────────────
