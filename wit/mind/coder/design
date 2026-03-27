@@ -506,6 +506,56 @@ The lattice is infinite. Walks collapse it to the finite
 subset needed. Nothing pre-allocated. Nothing "just in case."
 
 
+CURRENT STATE vs DESIGN (read this before coding)
+====================================================
+
+The design doc describes the TARGET. The code isn't there yet.
+Know the gaps before you start writing.
+
+  Walker format:
+    DESIGN: wave bytes (1 byte per bond, inline args)
+    ACTUAL: 32-byte records (4×i16 coords + 3×i64 args)
+    The walker in equation.asm reads 32-byte records. Wave byte
+    walker is not built yet. Don't try to write wave byte walks.
+
+  Apply bond calling convention:
+    The apply bond (+C) does jmp rdi. The walker sets:
+      rdi = arg0 (the function pointer — lands in the callee)
+      rsi = arg1
+      rdx = arg2
+      rcx = pipeline (always)
+    The callee gets its OWN ADDRESS in rdi (useless). Real args
+    start at rsi. tx_send, inet_cksum, tcp_cksum all read from
+    rsi/rdx/rcx, NOT rdi/rsi/rdx. Don't write new apply targets
+    that read rdi as a meaningful argument.
+
+  PIPE sentinel (-1) collides with literal -1:
+    arg1 = -1 triggers pipeline substitution. You CANNOT pass
+    the value -1 through arg1. Workaround: put -1 in arg0
+    (non-zero, passes through literally) and use PIPE in arg1.
+    Example: add(-1, PIPE) = pipeline - 1. NOT add(PIPE, -1).
+
+  loop_back count:
+    loop_back(N) rewinds N records FROM this record.
+    A 3-record loop body (records 0,1,2 where 2 is loop_back):
+    loop_back(2) goes to record 0. NOT loop_back(3).
+
+  Multiboot vs MBR:
+    bash build headless = multiboot (-kernel). Skips MBR. No VESA.
+    FB address at 0x9100 = 0. Screen is black. That's expected.
+    bash build = MBR path. VESA sets mode. Blue screen.
+
+  Heartbeat:
+    DESIGN: bind bond drains traces, cores self-organize
+    ACTUAL: BSP hardcoded to walk kbd_walk after genesis.
+    APs spin (pause loop). Bind heartbeat not built yet.
+
+  Characters:
+    DESIGN: wave bytes in 4D space, SDF rendering
+    ACTUAL: no rendering. keyboard walk writes raw scancodes
+    to debugcon. Font.ha exists but nothing reads it.
+
+
 BUILD ORDER
 =============
 
