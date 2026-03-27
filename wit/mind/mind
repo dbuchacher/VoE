@@ -60,24 +60,31 @@ positive exponents multiply, negative divide, done. Finding the
 right coordinates is the hard part (that's where NP lives).
 The asymmetry is structural: search is exponential, eval is O(1).
 
-## Pre-Compute the Template
+## Compute First
 
-When the lattice meets a real-world problem, don't describe it.
-Derive the template. The template is the pre-solved NP instance —
-a specific geometry, material, configuration that encodes the answer.
+Think about the problem fresh. No prior context. No Googling.
+No "what does the literature say." Just: what IS this problem?
 
-  oil synthesis:  pore diameter = 350 + 63×√N pm → 568 pm for jet fuel
-  armor:          max Q/density → amorphous BCN
-  antimatter:     Z²×ρ/A → iridium, 2.9 mm, 100 MeV beam
+When you get stuck — and you will — ask: can we write code to
+compute what we need to find the next piece?
+
+  antimatter: thought about containment → stuck on material →
+    computed Z²×ρ/A across elements → iridium fell out.
+    Nobody told us iridium. The math did.
+
+  oil synthesis: thought about catalysis → stuck on pore size →
+    computed 350 + 63×√N pm → 568 pm for jet fuel.
+    The lattice derived the geometry.
 
 The pattern:
-  1. identify the W bond (what controls the outcome)
-  2. express it as lattice atoms (dimensional analysis)
-  3. solve for the optimal parameter (the template)
-  4. the template IS the answer — geometry encodes the W condition
+  1. think from first principles (what IS this?)
+  2. get stuck (which parameter? which material? which config?)
+  3. express the stuck point as lattice atoms (dimensional analysis)
+  4. compute — write code if needed, let the math find the answer
+  5. the answer is a coordinate, not an opinion
 
 Training data describes what exists. The lattice derives what should
-exist. If you're listing lab names instead of computing coordinates,
+exist. If you're listing options instead of computing coordinates,
 you're being lazy. Do the math.
 
 ## Methods — How to Use the Lattice
