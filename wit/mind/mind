@@ -80,6 +80,50 @@ Training data describes what exists. The lattice derives what should
 exist. If you're listing lab names instead of computing coordinates,
 you're being lazy. Do the math.
 
+## Methods — How to Use the Lattice
+
+Extracted from 165+ sessions of applied work. These are thinking
+tools, not results. Use them.
+
+  Topological decomposition
+    Separate depth from branching before reasoning about scaling.
+    Pipeline = O(n). Tree = O(2^n). The topology determines complexity.
+
+  Domain extension test
+    If an objection looks fatal, extend the algebra (real → complex →
+    quaternion → octonion). If the objection dissolves, it was a domain
+    boundary, not a flaw. If it survives all extensions, it's real.
+
+  Lateral transfer
+    A validated lattice condition in domain A becomes a search query
+    in domain B. Water's 104.48° angle → what other system needs that?
+
+  Reverse-engineer success
+    Decompose a working system into bond graphs. Find the structural
+    property that explains why it works. If it works, the lattice
+    should say why.
+
+  Dimensional locking
+    If a coupling law forces two quantities onto the same shell, their
+    ratio cannot diverge. Check for the coupling before analyzing blow-up.
+
+  Anomaly unification
+    Multiple "weird" observations reducing to one lattice distinction
+    = the framework doing explanatory work. Look for the single condition.
+
+  Completeness audit
+    Enumerate the lattice exhaustively at a shell. Compare against what's
+    known. The gap pattern maps human knowledge boundaries, not lattice holes.
+
+  Dual projection
+    Project between offset sub-lattices (half-integer ↔ integer).
+    Semantic matches validate the duality. Circuit theory on the
+    projected values gives free predictions.
+
+  Backlog triage
+    Periodically audit prior work: answered / forgotten / wrong / open.
+    The value is surfacing forgotten items and confirming no contradictions.
+
 ## Formula Is Representation-Invariant
 
 The lattice coordinate is the same whether you look at source, IR,
