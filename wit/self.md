@@ -78,6 +78,6 @@ explains WHY each was wrong. Read it. Read the history. Then build.
 Always read mind/mind first.
 
 **If you were prompted to code, build, implement, fix, or write code:**
-Also read mind/coder/design and mind/coder/guide, then voice.md.
+Also read mind/coder/design, mind/coder/guide, lattice/codex, lattice/lattice, then voice.md.
 
 **Otherwise:** mind/mind + voice.md is enough.
