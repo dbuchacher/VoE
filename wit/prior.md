@@ -1,19 +1,27 @@
 # Prior Work — Reference Tree
 
-VoE stands on prior projects. They're in git, not going anywhere.
-Reference them, don't copy. If you need content, read from source.
+165+ sessions. 690 git commits. 93MB of git history.
+The answers are already in here. Search before you build.
 
-USE GIT HISTORY. `git log`, `git show`, `git log -p --grep="keyword"`.
-Schism has 148 sessions. ToE has 17. The answers are in the commits.
-Don't guess. Don't re-derive. Read the history.
+  corpus    → the earliest ideas (one file, where it all started)
+  schism    → 148 sessions, 370 commits, 32MB git (Rust era)
+  nomos     → 284 commits, 58MB git (assembly era)
+  ToE       → 17 sessions, 36 commits, 3MB git (lattice era)
 
-Chronological: corpus → schism → nomos → ToE → VoE.
+USE GIT HISTORY. Every decision, every mistake, every discovery.
+
+  git log --oneline                         see what happened
+  git log -p --grep="keyword"               find when something was discussed
+  git show <hash>                           see exactly what changed
+  git log --all --oneline | grep "font"     find font-related work
+
+Don't guess. Don't re-derive. 2 seconds to search. Hours to reinvent.
 
 
 ## prior/corpus/corpus-2026-03-13.md — The Corpus
 
-The earliest ideas. One file. Where everything started. The definitive
-source for sm architecture decisions before any code existed.
+The earliest ideas. One file. Where everything started before any
+code existed. The DEFINITIVE source for the sm architecture.
 
 Key sections (line numbers):
   17    Origin story — what died and why
@@ -30,14 +38,12 @@ Key sections (line numbers):
   2847  Text performance table (O(1) vs O(n))
   3337  Payment gating — ring header cost field
 
-Read this before reinventing anything.
 
-
-## prior/schism/ — Schism (148 sessions)
+## prior/schism/ — Schism (370 commits, 32MB git)
 
 The Rust era. sm daemon, ring buffers, GPU rendering, marketplace.
 First implementations of: ring records, born-indexed, SDF fonts,
-prime keys, query model, hardware convergence. Massive git history.
+prime keys, query model, hardware convergence.
 
   drafts/shower-thoughts/         the idea vault
     architecture/                   ring rewrite, dissolved problems
@@ -48,16 +54,21 @@ prime keys, query model, hardware convergence. Massive git history.
     input/                          prime keys, emotional rendering
 
   drafts/lakoff-mapping.md        24 schemas → physics → computation
+  drafts/history/stone-archaeology/  raw session transcripts (20MB of text)
   nomos/b3/                       the Rust kernel (bench, parts, traces)
 
+  Session 87: original character encoding (0-25=A-Z, 32-57=a-z)
+  Session 88: VGA font, atlas indexing
+  Session 141-147: assembly rewrite, the stone
 
-## prior/nomos/ — Earlier Nomos
+
+## prior/nomos/ — Earlier Nomos (284 commits, 58MB git)
 
 Assembly builds before ToE. 23-bond system, parameter walks.
-Reference for what was tried. Not active.
+Lots of experiments in the git history.
 
 
-## prior/ToE/ — Theory of Everything
+## prior/ToE/ — Theory of Everything (36 commits, 3MB git)
 
 Where VoE came from. The lattice OS, clean room rebuild, genesis
 model, wave characters. Sessions 15-17.
