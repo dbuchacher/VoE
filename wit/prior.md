@@ -1,7 +1,13 @@
 # Prior Work — Reference Tree
 
-VoE stands on three prior projects. They're in git, not going anywhere.
-Reference them, don't copy. If you need the content, read from source.
+VoE stands on prior projects. They're in git, not going anywhere.
+Reference them, don't copy. If you need content, read from source.
+
+USE GIT HISTORY. The answers are in commits, diffs, and session logs.
+`git log`, `git show`, `git log --all -p --grep="keyword"`. If you
+can't find something in the files, it's in the git history. Every
+decision, every mistake, every discovery — committed. Don't guess.
+Don't re-derive. Read the history.
 
 ## /home/maxi/code/ToE/ — Theory of Everything
 
@@ -107,3 +113,33 @@ Key sections (by line number in corpus-2026-03-06.md):
 
 Assembly builds before ToE. 23-bond system, parameter walks.
 Reference for what was tried. Not active.
+
+
+## /home/maxi/brain/corpus/ — The Corpus
+
+Three snapshots of accumulated design knowledge. The DEFINITIVE
+source for sm architecture decisions, shower thoughts, benchmarks,
+and the ideas that became VoE. If it was discussed, it's here.
+
+  corpus-2026-03-05.md    earliest snapshot
+  corpus-2026-03-06.md    middle snapshot
+  corpus-2026-03-13.md    latest snapshot (most complete)
+
+Key sections (line numbers for corpus-2026-03-06.md):
+  17    Origin story — what died and why
+  154   Prime Keys — semantic primitives, 20-30x throughput
+  323   Emotional Rendering — non-verbal as data
+  438   Ideas & Blueprints — agent-built UIs
+  557   Kill Font Libraries — baked glyph atlas, SDF, morphable fonts
+  622   smfs — born-indexed, query model, grep dissolved
+  677   Disk layout — raw smfs, no filesystem, NVMe direct
+  695   Terminal dissolved — agents replace coreutils
+  2453  Ring primitive record types (7 topologies)
+  2741  Text System — atlas indices u16, not Unicode, SIMD
+  2764  Everything is Numbers — fixed-width arrays, L1 speed
+  2847  Text performance table (O(1) vs O(n))
+  3337  Payment gating — ring header cost field
+
+These files also have git history at /home/maxi/brain/.
+The corpus IS the shower thoughts + specs + benchmarks + decisions
+that shaped everything. Read it before reinventing anything.
