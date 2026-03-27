@@ -82,7 +82,7 @@ lattice_start:
 
     ; ── genesis returned. enter the market. ──
     ; walk the keyboard poll (first available work)
-    ; TODO: bind heartbeat — find fullest trace instead of hardcoding
+    ; TODO: bind drain — find fullest trace instead of hardcoding
     lea rdi, [kbd_walk]
     mov esi, [kbd_walk_len]
     call walker_wave
@@ -98,8 +98,10 @@ lattice_start:
 ;
 ; Format per record:
 ;   byte 0: wave byte (2 bits per dim, [7:6]=T [5:4]=D [3:2]=M [1:0]=Q)
-;   byte 1: flags ([reserved:2][arg2:2][arg1:2][arg0:2])
+;   byte N: flags ([ind0:1][ind1:1][arg2:2][arg1:2][arg0:2])
 ;            00=pipeline  01=u8  10=u32  11=u64
+;            bit 7: dereference arg0 (treat as pointer)
+;            bit 6: dereference arg1 (treat as pointer)
 ;   bytes 2+: inline args (variable length per flags)
 ;
 ; Walker control (wave byte >= 0xFC):
@@ -218,6 +220,10 @@ walker_wave:
 .a0_pipe:
     mov rdi, r15
 .a0_done:
+    test r13d, 0x80           ; bit 7: indirect arg0?
+    jz .a0_direct
+    mov rdi, [rdi]            ; dereference pointer
+.a0_direct:
 
     ; ── read arg1 → rsi ──
     mov eax, r13d
@@ -242,6 +248,10 @@ walker_wave:
 .a1_pipe:
     mov rsi, r15
 .a1_done:
+    test r13d, 0x40           ; bit 6: indirect arg1?
+    jz .a1_direct
+    mov rsi, [rsi]            ; dereference pointer
+.a1_direct:
 
     ; ── read arg2 → rdx ──
     mov eax, r13d

@@ -80,6 +80,13 @@ The equation stays sealed. No templates. No operation library.
 No "just add one more emit case." If an operation needs a new bond,
 you're thinking in human abstractions. Decompose: what's the math?
 
+The equation exists because CPUs are manufactured around an ISA
+(x86-64). It translates coordinates into machine code. On a chip
+that natively evaluated T^a*D^b*M^c*Q^d and read wave bytes
+directly, this file dissolves. The walks stay identical — same
+bytes on x86, ARM, or a lattice-native chip. The equation is the
+only file that knows what hardware it's running on.
+
 
 WALKS ARE WAVE BYTES
 =====================
@@ -88,23 +95,42 @@ A bond is one byte. The native format.
 
   Wave byte: 2 bits per dimension × 4 = 1 byte
   [7:6]=T  [5:4]=D  [3:2]=M  [1:0]=Q
-  00=0   01=+1   11=-1
+  00=0   01=+1   10=extended   11=-1
 
   0xC1 = (-1, 0, 0, +1) = port_write
   0x40 = (+1, 0, 0,  0) = read
   0x10 = ( 0,+1, 0,  0) = apply
   0x55 = (+1,+1,+1, +1) = hylo
 
-A walk is a byte array. The walker reads a wave byte, looks up
-the bond, executes it. Data flows through the pipeline.
+Extended coordinates: 10 in any 2-bit field means "read next
+byte as signed i8 coordinate." Extension bytes follow the wave
+byte in T,D,M,Q order, only for dimensions that used 10.
+Most bonds are shell-1 (no extensions). Higher magnitudes pay
+1 extra byte per extended dimension. This exists because x86
+has width-specific opcodes — a lattice-native chip wouldn't
+need it.
 
-When a bond needs a constant, it follows inline:
-  0xC1 0xE9 0x00 0x6F      ; port_write(0xE9, 'o')
+A walk is a byte array. Format per record:
 
-Walker control (reserved bytes, not bonds):
-  0xFE = skip_z:    skip N forward if pipeline == 0
-  0xFD = skip_nz:   skip N forward if pipeline != 0
-  0xFC = loop_back: rewind N if pipeline != 0 (exit when 0)
+  byte 0:   wave byte (the bond coordinate)
+  [ext]:    signed i8 per extended dimension (T,D,M,Q order)
+  byte N:   flags byte
+  bytes:    inline args (variable length per flags)
+
+Flags byte: [reserved:2][arg2:2][arg1:2][arg0:2]
+  00 = pipeline (no inline bytes, use previous result)
+  01 = u8  (1 byte inline)
+  10 = u32 (4 bytes inline)
+  11 = u64 (8 bytes inline)
+
+  C1 05 E9 6F           port_write(0xE9, 'o')   4 bytes
+  C8 FD 28 [u32] [u32]  filld (M=-3 extended)   11 bytes
+  80 07 02 [u32]         rdd (T=+7 extended)      7 bytes
+
+Walker control (reserved bytes >= 0xFC, not bonds):
+  0xFE + u32 = skip_z:    skip N bytes forward if pipeline == 0
+  0xFD + u32 = skip_nz:   skip N bytes forward if pipeline != 0
+  0xFC + u32 = loop_back: rewind N bytes if pipeline != 0
 
 
 WAVE CHARACTERS
@@ -173,12 +199,12 @@ Genesis only grows for new hardware genes. If you're adding
 features to genesis, you're building main.asm again.
 
 
-THE HEARTBEAT IS THE BIND BOND
-================================
+CORES DRAIN TRACES
+====================
 
 bind(step) = call step, check result, loop
 
-The bind bond (0,1,1,1) IS the heartbeat. get_atom generates it.
+The bind bond (0,1,1,1) IS the drain loop. get_atom generates it.
 A core draining a trace IS a ribosome reading mRNA.
 
 Cores poll. No interrupts. No hlt. The loop IS quantum spin.
@@ -350,6 +376,78 @@ outline, glow, shadow — all free from the distance value.
 VESA for now. GPU driver gene later (same pattern, different trace).
 
 
+TRACE PIPELINE — HOW WALKS USE TRACES
+========================================
+
+The foundational primitive. Everything above traces depends on this.
+
+Trace read (~10 bonds, all existing operations):
+
+  read(trace + WCURSOR)     → pipeline = write_cursor
+  write(stash, pipeline)    → save write_cursor
+  read(trace + RCURSOR)     → pipeline = read_cursor
+  test(pipeline, stash)     → 1 if equal (empty), 0 if has data
+  skip_nz                   → skip read path if empty (pipeline=1)
+  AND(pipeline, mask)       → slot index
+  atom DM(pipeline, recsz)  → byte offset (slot × record_size)
+  add(buf_addr, pipeline)   → slot address
+  read(pipeline)            → the data
+  write(trace+RCURSOR, +1)  → advance read cursor
+
+Trace write (symmetric): check full (write - read >= depth),
+compute write slot, write data, advance write cursor.
+
+Stash: BSS variable (stash_a). Single-core for now. Multi-core
+needs per-trace scratch in reserved bytes [48:63] or core-local
+memory.
+
+
+TRACE REGISTRY
+===============
+
+Fixed array in BSS. Genesis writes it.
+
+  trace_list:   resq MAX_TRACES    (each entry = trace address)
+  trace_count:  resq 1
+
+A core's "find work" walk: scan trace_list, read each trace's
+cursors, compute fill (write - read, one subtract), pick fullest.
+Read + compare + loop over known addresses.
+
+Biology: cells don't search — chemical gradients reach them.
+For now, scan works. Gradient model is the endgame.
+
+
+INPUT PIPELINE
+===============
+
+Two lookup tables (data files, 128 bytes each):
+  scancode.ha:  PS/2 scancode → ASCII
+  wavemap.ha:   ASCII → wave byte
+
+Keyboard walk: port_read(0x60) → add(scan_table, pipeline) →
+byte_read(pipeline) → add(wave_table, pipeline) →
+byte_read(pipeline) → trace_write. ~8 bonds.
+
+Replaces the current keyboard walk (which writes raw scancodes
+to debugcon). Output goes to keyboard trace, not serial.
+
+
+NVMe DISCOVERY
+===============
+
+Same pattern as VESA: MBR discovers in 16-bit BIOS, stores at
+known address, genesis reads it.
+
+MBR (16-bit): try 2-3 known PCI slots for NVMe class code.
+Read BAR0. Store at 0x9200 (next to VESA FB at 0x9100).
+Genesis reads BAR address (non-local, like FB address).
+
+Alternative: targeted PCI config reads from walks.
+  port_write(0xCF8, slot_addr) → port_read(0xCFC) → test
+  2 bonds per slot. 3-4 slots max. Not a 256-slot scan.
+
+
 REAL HARDWARE BOOT
 ====================
 
@@ -471,7 +569,7 @@ FILE STRUCTURE
     genesis.asm      founding (runs once, inits hw, fills traces)
     hw/
       speaker.asm    gene: PIT beep
-    font.ha          SDF glyph data (designer's local variables)
+    glyph.ha         SDF geometry data (designer's local variables)
     scancode.ha      PS/2 scancode → wave byte table
 
 Most devices are non-local (BIOS already set them up):
@@ -513,10 +611,8 @@ The design doc describes the TARGET. The code isn't there yet.
 Know the gaps before you start writing.
 
   Walker format:
-    DESIGN: wave bytes (1 byte per bond, inline args)
-    ACTUAL: 32-byte records (4×i16 coords + 3×i64 args)
-    The walker in equation.asm reads 32-byte records. Wave byte
-    walker is not built yet. Don't try to write wave byte walks.
+    Wave byte walker with magnitude extension. All walks use
+    wave bytes. 32-byte walker deleted. See WALKS ARE WAVE BYTES.
 
   Apply bond calling convention:
     The apply bond (+C) does jmp rdi. The walker sets:
@@ -525,35 +621,39 @@ Know the gaps before you start writing.
       rdx = arg2
       rcx = pipeline (always)
     The callee gets its OWN ADDRESS in rdi (useless). Real args
-    start at rsi. tx_send, inet_cksum, tcp_cksum all read from
-    rsi/rdx/rcx, NOT rdi/rsi/rdx. Don't write new apply targets
-    that read rdi as a meaningful argument.
+    start at rsi. Don't write new apply targets that read rdi
+    as a meaningful argument.
+    walk_sub is asm scaffolding that bridges apply to walker_wave.
+    It stays until the equation can handle nested walks natively.
 
-  PIPE sentinel (-1) collides with literal -1:
-    arg1 = -1 triggers pipeline substitution. You CANNOT pass
-    the value -1 through arg1. Workaround: put -1 in arg0
-    (non-zero, passes through literally) and use PIPE in arg1.
-    Example: add(-1, PIPE) = pipeline - 1. NOT add(PIPE, -1).
+  Pipeline substitution:
+    Flags byte 00 = use pipeline. No sentinel values. To pass
+    literal 0, use flags 01 (u8) with inline value 0x00.
 
-  loop_back count:
-    loop_back(N) rewinds N records FROM this record.
-    A 3-record loop body (records 0,1,2 where 2 is loop_back):
-    loop_back(2) goes to record 0. NOT loop_back(3).
+  Walker control counts:
+    skip_z, skip_nz, loop_back all count in BYTES, not records.
+    Compute byte offsets from walk layout.
 
   Multiboot vs MBR:
     bash build headless = multiboot (-kernel). Skips MBR. No VESA.
-    FB address at 0x9100 = 0. Screen is black. That's expected.
+    FB address at 0x9100 = 0. Genesis skips filld. Serial only.
     bash build = MBR path. VESA sets mode. Blue screen.
 
-  Heartbeat:
+  Bind drain:
     DESIGN: bind bond drains traces, cores self-organize
     ACTUAL: BSP hardcoded to walk kbd_walk after genesis.
-    APs spin (pause loop). Bind heartbeat not built yet.
+    APs spin (pause loop). Bind drain not built yet.
 
   Characters:
     DESIGN: wave bytes in 4D space, SDF rendering
     ACTUAL: no rendering. keyboard walk writes raw scancodes
-    to debugcon. Font.ha exists but nothing reads it.
+    to debugcon. glyph.ha exists but nothing reads it.
+
+  Traces:
+    DESIGN: walks read/write traces, trace-to-trace pipelines
+    ACTUAL: keyboard trace initialized but never used. Keyboard
+    walk writes directly to debugcon port. Trace read/write
+    primitive not built yet.
 
 
 BUILD ORDER
@@ -561,26 +661,33 @@ BUILD ORDER
 
   DONE:
     ✓ bootloader (mode switch + AP wake)
-    ✓ equation (JIT + walker + loop_back)
+    ✓ equation (JIT + bond handlers + cache)
     ✓ genesis (blue screen + beep + keyboard walk)
     ✓ MBR boot (VESA enumerate + disk load + real hardware)
     ✓ wave character spec
     ✓ lattice storage spec
     ✓ architecture unified
+    ✓ wave byte walker (magnitude extension, flags byte)
+    ✓ all walks converted to wave bytes, 32-byte walker deleted
 
   NEXT:
-    1. Wave byte walker (1-byte bonds in equation.asm)
-    2. Bind heartbeat (BSP + APs drain traces after genesis)
-    3. SDF character rendering (math walks on GPU path)
-    4. Born-indexed writes (trigram posting lists at write time)
-    5. NVMe gene (traces to disk)
-    6. Network traces (RDMA, flux)
+    1. Trace read/write primitive (walks interact with traces)
+    2. Graceful headless fallback (skip filld when FB=0)
+    3. Rename font.ha → glyph.ha
+    4. Input pipeline (scancode → wave char → trace write)
+    5. Trace registry (fixed array, genesis fills)
+    6. Bind drain (all cores find fullest trace, bind loops it)
+    7. Serial text output (wave chars from trace → serial port)
+    8. SDF character rendering (display walk → framebuffer)
+    9. Born-indexed writes (trigram posting lists)
+   10. NVMe gene (MBR discovers BAR, traces to disk)
+   11. Network traces (RDMA, flux)
 
   LATER:
     - GPU driver gene (SDF rendering at hardware speed)
     - Window manager (walk DNA in display trace)
     - Applications (walk DNA from disk into traces)
-    - Flux marketplace? (inherited from sm, not yet verified against lattice)
+    - Flux marketplace? (inherited from sm, not yet verified)
 
 
 WHAT WE LEARNED (DON'T REPEAT)
@@ -593,7 +700,7 @@ WHAT WE LEARNED (DON'T REPEAT)
   wrote an asm heartbeat. 1389 lines of system.asm existed
   because the foundation was wrong.
 
-- DON'T WRITE AN ASM HEARTBEAT. It's the bind bond (0,1,1,1).
+- DON'T WRITE AN ASM DRAIN LOOP. It's the bind bond (0,1,1,1).
 
 - DON'T PUT PCI SCAN IN THE BOOTLOADER. Hardware addresses are
   non-local. Port reads, not scans.

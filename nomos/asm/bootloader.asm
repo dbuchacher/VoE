@@ -222,7 +222,7 @@ ap_entry_64:
 
     lock inc dword [ap_count]
 
-    ; spin until DNA is assigned (TODO: bind bond heartbeat)
+    ; spin until DNA is assigned (TODO: bind drain)
 .ap_spin:
     pause
     jmp .ap_spin

@@ -37,9 +37,10 @@ trace_kbd:
 trace_kbd_buf:
     resb TRACE_DEPTH * 8      ; 64 entries × 8 bytes
 
-; stash for walk temp storage
-global stash_a
+; stash for walk temp storage (single-core; per-trace scratch later)
+global stash_a, stash_b
 stash_a: resq 1
+stash_b: resq 1
 
 section .rodata
 
@@ -68,6 +69,9 @@ main_walk:
     db 0x80, 7                              ; rdd: T=+7 (dword read)
     db 0x02                                 ; flags: arg0=u32
     dd 0x9100                               ; FB address location
+
+    db 0xFE                                 ; skip_z: no VESA → skip filld
+    dd 11                                   ; filld is 11 bytes
 
     db 0xC8                                 ; filld: T=-1, M=extended
     db (-3) & 0xFF                          ; ext M = -3
@@ -117,24 +121,53 @@ main_len: dd (main_len - main_walk)
 
 
 ; ═══════════════════════════════════════════════════════════════════
-; KEYBOARD POLL — walk DNA for the keyboard trace
+; KEYBOARD WALK — input + output through trace
 ;
-; Polls port 0x64 for a key, reads port 0x60 if ready, writes
-; the scancode to debugcon. Loops forever via loop_back.
+; Input:  poll PS/2, write scancode to keyboard trace
+; Output: read from keyboard trace, write to debugcon
+; Loops forever. Proves trace read/write primitive.
 ;
-; Wave byte encoding:
-;   port_read  (+1,0,0,-1) = 0x43     AND (0,0,0,+3) = 0x02 ext Q=3
-;   port_write (-1,0,0,+1) = 0xC1     add (-1,0,0,-1) = 0xC3
+; Wave bytes used:
+;   0x43 = port_read (+1,0,0,-1)    0xC1 = port_write (-1,0,0,+1)
+;   0xC0 = write (-1,0,0,0)         0x40 = read (+1,0,0,0)
+;   0x02 ext Q=3 = AND              0x02 ext Q=7 = SHL
+;   0xC3 = add (-1,0,0,-1)          0x0C = increment (0,0,-1,0)
+;   0xFE = skip_z                   0xFD = skip_nz
+;   0xFC = loop_back
 ;
-; Offsets (verify skip/loop counts against these):
-;   0: port_read(0x64)    3 bytes
-;   3: AND(pipe, 1)       4 bytes
-;   7: skip_z(6)          5 bytes
-;  12: port_read(0x60)    3 bytes
-;  15: port_write(0xE9)   3 bytes
-;  18: add(1, 0)          4 bytes
-;  22: loop_back(22)      5 bytes
-;  27: end
+; Flags bit 6 = indirect arg1 (dereference pointer)
+;
+; Offsets:
+;    0: port_read(0x64)            3    ─┐
+;    3: AND(pipe, 1)               4     │ input section
+;    7: skip_z(33)                 5     │ skip to output if no key
+;   12: port_read(0x60)            3     │
+;   15: write(stash_a, pipe)       6     │ save scancode
+;   21: read(wcursor)              6     │ trace write
+;   27: AND(pipe, mask)            4     │
+;   31: SHL(pipe, 3)               4     │
+;   35: add(kbd_buf, pipe)         6     │ = slot address
+;   41: write(pipe, *stash_a)      6     │ write scancode to slot
+;   47: read(wcursor)              6     │ advance write cursor
+;   53: increment(pipe)            2     │
+;   55: write(wcursor, pipe)       6    ─┘
+;   61: read(rcursor)              6    ─┐
+;   67: write(stash_a, pipe)       6     │ output section
+;   73: read(wcursor)              6     │ trace read
+;   79: test(pipe, *stash_a)       6     │
+;   85: skip_nz(26)                5     │ skip output if empty
+;   90: read(stash_a)              6     │
+;   96: AND(pipe, mask)            4     │
+;  100: SHL(pipe, 3)               4     │
+;  104: add(kbd_buf, pipe)         6     │ = slot address
+;  110: read(pipe)                 2     │ read data
+;  112: port_write(0xE9, pipe)     3     │ output to debugcon
+;  115: read(rcursor)              6     │ advance read cursor
+;  121: increment(pipe)            2     │
+;  123: write(rcursor, pipe)       6    ─┘
+;  129: add(1, 0)                  4     force non-zero
+;  133: loop_back(133)             5     rewind to start
+;  138: end
 ; ═══════════════════════════════════════════════════════════════════
 
 section .rodata
@@ -142,29 +175,81 @@ section .rodata
 global kbd_walk, kbd_walk_len
 
 kbd_walk:
-    ; read PS/2 status (port 0x64)
-    db 0x43, 0x01, 0x64                    ; port_read(0x64) → pipeline
 
-    ; test bit 0 (data ready?) — AND is W at |Q|=3
-    db 0x02, 3                             ; wave=0x02(Q=ext), ext Q=+3
-    db 0x04, 1                             ; flags: arg0=pipe, arg1=u8(1)
+; ─── INPUT: poll keyboard, write to trace ───────────────────
 
-    ; no key? skip to add(1,0) — keep looping
-    db 0xFE                                ; skip_z
-    dd 6                                   ; skip 6 bytes forward
+    ; check PS/2 status
+    db 0x43, 0x01, 0x64                    ;  0: port_read(0x64)
+    db 0x02, 3, 0x04, 1                    ;  3: AND(pipe, 1)
+    db 0xFE                                ;  7: skip_z — no key? skip to output
+    dd 49                                  ;     skip 49 bytes (12..60 = input section)
 
-    ; key ready — read scancode (port 0x60)
-    db 0x43, 0x01, 0x60                    ; port_read(0x60) → pipeline
+    ; key ready — read scancode and write to trace
+    db 0x43, 0x01, 0x60                    ; 12: port_read(0x60) → scancode
+    db 0xC0, 0x02                          ; 15: write(stash_a, pipe) — save scancode
+    dd stash_a
 
-    ; write scancode to debugcon
-    db 0xC1, 0x01, 0xE9                    ; port_write(0xE9, pipeline)
+    ; compute write slot: wcursor & mask * 8 + buf
+    db 0x40, 0x02                          ; 21: read(trace_kbd + WCURSOR)
+    dd (trace_kbd + TR_WCURSOR)
+    db 0x02, 3, 0x04, TRACE_MASK          ; 27: AND(pipe, 63)
+    db 0x02, 7, 0x04, 3                   ; 31: SHL(pipe, 3)
+    db 0xC3, 0x02                          ; 35: add(trace_kbd_buf, pipe)
+    dd trace_kbd_buf
 
-    ; force pipeline = 1 for loop_back
-    db 0xC3, 0x05, 1, 0                    ; add(1, 0) → pipeline = 1
+    ; write scancode to slot (indirect: arg1 = *stash_a)
+    db 0xC0, 0x48                          ; 41: write(pipe, *stash_a)
+    dd stash_a
 
-    ; loop back to start
-    db 0xFC                                ; loop_back
-    dd 22                                  ; rewind 22 bytes
+    ; advance write cursor
+    db 0x40, 0x02                          ; 47: read(trace_kbd + WCURSOR)
+    dd (trace_kbd + TR_WCURSOR)
+    db 0x0C, 0x00                          ; 53: increment(pipe)
+    db 0xC0, 0x02                          ; 55: write(trace_kbd + WCURSOR, pipe)
+    dd (trace_kbd + TR_WCURSOR)
+
+; ─── OUTPUT: read from trace, write to debugcon ─────────────
+
+    ; check if trace has data: compare read_cursor vs write_cursor
+    db 0x40, 0x02                          ; 61: read(trace_kbd + RCURSOR)
+    dd (trace_kbd + TR_RCURSOR)
+    db 0xC0, 0x02                          ; 67: write(stash_a, pipe) — save rcursor
+    dd stash_a
+    db 0x40, 0x02                          ; 73: read(trace_kbd + WCURSOR)
+    dd (trace_kbd + TR_WCURSOR)
+    db 0x01, 0x48                          ; 79: test(pipe, *stash_a) — 1 if empty
+    dd stash_a
+
+    ; empty? skip output (39 bytes to add)
+    db 0xFD                                ; 85: skip_nz — empty? skip output
+    dd 39
+
+    ; not empty — compute read slot
+    db 0x40, 0x02                          ; 90: read(stash_a) — restore rcursor
+    dd stash_a
+    db 0x02, 3, 0x04, TRACE_MASK          ; 96: AND(pipe, 63)
+    db 0x02, 7, 0x04, 3                   ;100: SHL(pipe, 3)
+    db 0xC3, 0x02                          ;104: add(trace_kbd_buf, pipe)
+    dd trace_kbd_buf
+
+    ; read data from slot
+    db 0x40, 0x00                          ;110: read(pipe) — deref slot addr
+
+    ; output to debugcon
+    db 0xC1, 0x01, 0xE9                    ;112: port_write(0xE9, pipe)
+
+    ; advance read cursor
+    db 0x40, 0x02                          ;115: read(trace_kbd + RCURSOR)
+    dd (trace_kbd + TR_RCURSOR)
+    db 0x0C, 0x00                          ;121: increment(pipe)
+    db 0xC0, 0x02                          ;123: write(trace_kbd + RCURSOR, pipe)
+    dd (trace_kbd + TR_RCURSOR)
+
+; ─── LOOP ───────────────────────────────────────────────────
+
+    db 0xC3, 0x05, 1, 0                    ;129: add(1, 0) → pipe = 1
+    db 0xFC                                ;133: loop_back
+    dd 133                                 ;     rewind 133 bytes to start
 
 kbd_walk_end:
 kbd_walk_len: dd (kbd_walk_end - kbd_walk)
@@ -180,9 +265,9 @@ section .rodata
 
 ; ─── FONT DATA ─────────────────────────────────────────────────
 align 16
-global font_8x16
-font_8x16:
-    incbin "lat/font.ha"
+global glyph_sdf
+glyph_sdf:
+    incbin "lat/glyph.ha"
 
 
 ; ═══════════════════════════════════════════════════════════════════
