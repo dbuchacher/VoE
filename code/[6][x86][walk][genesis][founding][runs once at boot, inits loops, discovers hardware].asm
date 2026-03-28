@@ -164,11 +164,32 @@ main_walk:
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 'n'               ;   NVMe not found
 
-; 7. render test — single call to render_char with packed coord
-    w 0,+1,0,0                              ; apply(render_char, packed_coord)
+; 7. render "nomos" — computed SDF from phonetic coordinates
+;    n: alveolar nasal voiced       = (T=1, D=0, M=-1, Q=1) → square + center dot
+;    o: back vowel rounded          = (T=1, D=-1, M=1, Q=-1) → circle outline + right dot
+;    m: labial nasal voiced         = (T=1, D=1, M=-1, Q=1) → square + left dot
+;    s: alveolar fricative voiceless = (T=1, D=0, M=0, Q=-1) → diamond outline + center dot
+%define PH(t,d,m,q) (((t) & 0xFF) | (((d) & 0xFF) << 8) | (((m) & 0xFF) << 16) | (((q) & 0xFF) << 24))
+    w 0,+1,0,0
     db F(U32,U32,P)
     dd render_char
-    dd 0x01000001                           ; simple nonzero value (T=1, D=0, M=0, Q=1)
+    dd PH(1, 0,-1, 1)                      ; 'n' — square, center dot, filled
+    w 0,+1,0,0
+    db F(U32,U32,P)
+    dd render_char
+    dd PH(1,-1, 1,-1)                      ; 'o' — circle, right dot, outline
+    w 0,+1,0,0
+    db F(U32,U32,P)
+    dd render_char
+    dd PH(1, 1,-1, 1)                      ; 'm' — square, left dot, filled
+    w 0,+1,0,0
+    db F(U32,U32,P)
+    dd render_char
+    dd PH(1,-1, 1,-1)                      ; 'o' — circle, right dot, outline
+    w 0,+1,0,0
+    db F(U32,U32,P)
+    dd render_char
+    dd PH(1, 0, 0,-1)                      ; 's' — diamond, center dot, outline
 
 ; 8. done — signal genesis complete
     w -1,0,0,+1                             ; port_write(0xE9, 'T') — 'T' for "loop ready"
@@ -229,15 +250,141 @@ render_char:
     shl r13d, 2
     add r13, r12
 
-    ; simple 16×32 white rectangle for now (proving FB access works)
-    mov ecx, 32                           ; rows
+    ; ── computed SDF: shape from coordinates ──
+    ; M (byte 2) selects body shape:
+    ;   +1 = circle (vowel):   dist = max(dx,dy) + min(dx,dy)/2 - r
+    ;    0 = diamond (fricative): dist = dx + dy - r
+    ;   -1 = square (stop):    dist = max(dx,dy) - r
+    ; D (byte 1) positions marker dot: +1→left(4), 0→center(8), -1→right(12)
+    ; Q (byte 3): +1=filled, -1=outline
+    ; center=(8,16), radius=6
+
+    mov ecx, 32                           ; row counter (32..1)
 .row:
-    mov edx, 16                           ; cols (count down)
+    mov edx, 16                           ; col counter (16..1)
 .col:
     dec edx
+
+    ; dx = |col - 8|
     mov eax, edx
+    sub eax, 8
+    mov esi, eax
+    sar esi, 31
+    xor eax, esi
+    sub eax, esi                          ; eax = |col - 8|
+    mov esi, eax                          ; esi = dx
+
+    ; dy = |row_from_top - 16|  (row counter counts down, row_from_top = 32 - ecx)
+    mov eax, 32
+    sub eax, ecx                          ; row_from_top
+    sub eax, 16                           ; row - center_y
+    mov edi, eax
+    sar edi, 31
+    xor eax, edi
+    sub eax, edi                          ; eax = dy
+    mov edi, eax
+
+    ; order: esi=dmax, edi=dmin
+    cmp esi, edi
+    jge .ordered
+    xchg esi, edi
+.ordered:
+
+    ; ── body distance from M ──
+    mov eax, ebx
+    shr eax, 16
+    movsx eax, al                         ; M = openness
+
+    mov r8d, esi                          ; start with dmax
+    cmp eax, 0
+    jg .circle
+    jl .square
+    add r8d, edi                          ; diamond: dmax + dmin
+    jmp .dist_ok
+.circle:
+    mov eax, edi
+    shr eax, 1
+    add r8d, eax                          ; circle: dmax + dmin/2
+    jmp .dist_ok
+.square:
+.dist_ok:
+    sub r8d, 6                            ; - radius
+    ; r8d = body distance (signed)
+
+    ; ── marker dot: small square at top of cell ──
+    ; D (byte 1): marker_cx = 8 - D*4
+    mov eax, ebx
+    shr eax, 8
+    movsx eax, al                         ; D
+    shl eax, 2                            ; D*4
+    mov esi, 8
+    sub esi, eax                          ; marker_cx
+
+    ; |col - marker_cx|
+    mov eax, edx                          ; col
+    sub eax, esi
+    mov esi, eax
+    sar esi, 31
+    xor eax, esi
+    sub eax, esi                          ; |col - marker_cx|
+    mov esi, eax
+
+    ; |row_from_top - 4|
+    mov eax, 32
+    sub eax, ecx                          ; row_from_top
+    sub eax, 4                            ; - marker_cy
+    mov edi, eax
+    sar edi, 31
+    xor eax, edi
+    sub eax, edi                          ; |row - 4|
+
+    ; marker_dist = max(|dx|, |dy|) - 2
+    cmp esi, eax
+    jge .mmax
+    mov esi, eax
+.mmax:
+    sub esi, 2
+
+    ; union: dist = min(body, marker)
+    cmp r8d, esi
+    jle .union_ok
+    mov r8d, esi
+.union_ok:
+
+    ; ── Q: voiceless = outline ──
+    mov eax, ebx
+    shr eax, 24
+    movsx eax, al                         ; Q
+    cmp eax, 0
+    jge .no_outline
+    mov eax, r8d
+    mov esi, eax
+    sar esi, 31
+    xor eax, esi
+    sub eax, esi                          ; |dist|
+    dec eax
+    mov r8d, eax
+.no_outline:
+
+    ; ── pixel output ──
+    cmp r8d, 1
+    jge .skip                             ; outside
+
+    cmp r8d, -1
+    jle .solid                            ; fully inside
+
+    ; edge: blend (simplified — just use 50% gray for edge pixels)
+    mov esi, 0x99AABB                     ; light blend color
+    jmp .write
+
+.solid:
+    mov esi, 0xFFFFFFFF                   ; white
+.write:
+    mov eax, edx                          ; col
     shl eax, 2
-    mov dword [r13 + rax], 0xFFFFFFFF
+    mov [r13 + rax], esi
+
+.skip:
     test edx, edx
     jnz .col
 
