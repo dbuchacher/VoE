@@ -1,19 +1,26 @@
 VoE — The Verification of Everything
 ======================================
 
-Two asm files. Everything else is lattice.
+All x86 dissolves. Walks stay.
 Performance and security are structural, not added.
 
 
-THE THREE LAYERS
-=================
+THE BOOT CHAIN
+===============
 
-  asm/bootloader.asm       runs once, dies
-  asm/equation.asm         lives forever, IS the lattice
-  lat/                     lattice walks (wave bytes, no asm)
+  [1] boot     → loads kernel from disk, sets VESA mode (MBR, 16-bit, dies)
+  [2] cpu      → mode switch 32→64 bit, page tables, wakes APs (dies)
+  [3] handoff  → seeds 16 bonds, runs genesis, enters market (last x86)
+  [4] equation → JIT: 4 coordinates in, x86 function out (sealed, driver)
+  [5] walker   → interprets wave byte walks via equation (sealed, driver)
+  [6] genesis  → founding walk: inits traces, discovers hardware (runs once)
+  walks/       → the OS: kbd, speaker, pci, everything that grows
 
-The bootloader creates the world. The equation IS the world.
-Everything after the equation is data the equation interprets.
+  [0] walk.inc  NASM macros to write walks as coordinates (build tool)
+
+The equation and walker are the x86 driver for the lattice.
+On a balanced ternary processor (4 trits), both dissolve.
+The walks stay identical — same coordinates, native execution.
 
 
 THE FOUR DIMENSIONS
@@ -421,16 +428,12 @@ For now, scan works. Gradient model is the endgame.
 INPUT PIPELINE
 ===============
 
-Two lookup tables (data files, 128 bytes each):
-  scancode.ha:  PS/2 scancode → ASCII
-  wavemap.ha:   ASCII → wave byte
+Scancode → wave byte conversion should be computed lazily at runtime.
+Pre-baked lookup tables (scancode.ha, wavemap.ha) were deleted —
+wrong approach. Wave encoding is derived from coordinates, not stored.
 
-Keyboard walk: port_read(0x60) → add(scan_table, pipeline) →
-byte_read(pipeline) → add(wave_table, pipeline) →
-byte_read(pipeline) → trace_write. ~8 bonds.
-
-Replaces the current keyboard walk (which writes raw scancodes
-to debugcon). Output goes to keyboard trace, not serial.
+Current keyboard walk: polls PS/2, outputs raw scancodes to debugcon.
+Target: scancode → wave byte → trace write. ~8 bonds.
 
 
 NVMe DISCOVERY
@@ -565,13 +568,22 @@ Network boundary (flux/RDMA):
 FILE STRUCTURE
 ================
 
-  lat/
-    genesis.asm      founding (runs once, inits hw, fills traces)
-    hw/
-      speaker.asm    gene: PIT beep
-    glyph.ha         SDF geometry data (designer's local variables)
-    scancode.ha      PS/2 scancode → wave byte table
-    wavemap.ha       ASCII → wave byte (128 bytes, 4D character encoding)
+  code/
+    [0] walk.inc     build tool: NASM macros for writing walks as coordinates
+    [1] boot         MBR: loads kernel, sets VESA (16-bit, runs once)
+    [2] cpu          mode switch 32→64, page tables, AP wake (runs once)
+    [3] handoff      seeds bonds, runs genesis, enters market (runs once)
+    [4] equation     JIT compiler: coordinates → x86 (sealed driver)
+    [5] walker       wave byte interpreter (sealed driver)
+    [6] genesis      founding walk: inits hardware, fills traces (runs once)
+    [data] glyph.ha  8×16 bitmap font (scaffolding, dissolves with SDF)
+    walks/
+      kbd.asm        keyboard poll walk
+      speaker.asm    440Hz beep walk
+      pci.asm        NVMe BAR discovery macro
+
+  File names use bracket notation: [order][platform][name][description].asm
+  ls shows the whole system. No hunting through directories.
 
 Most devices are non-local (BIOS already set them up):
   pixel buffer, keyboard, serial, VGA text, debugcon, disk.
@@ -652,8 +664,8 @@ Know the gaps before you start writing.
 
   Characters:
     DESIGN: wave bytes in 4D space, SDF rendering
-    ACTUAL: no rendering. keyboard walk writes raw scancodes
-    to debugcon. glyph.ha exists but nothing reads it.
+    ACTUAL: bitmap glyph renderer (scaffolding) draws "nomos" on screen.
+    glyph.ha is 8×16 bitmap data, not SDF. Dissolves when SDF arrives.
 
   Traces:
     DESIGN: walks read/write traces, trace-to-trace pipelines
@@ -675,12 +687,17 @@ BUILD ORDER
     ✓ architecture unified
     ✓ wave byte walker (magnitude extension, flags byte)
     ✓ all walks converted to wave bytes, 32-byte walker deleted
+    ✓ graceful headless fallback (skip filld when FB=0)
+    ✓ walk.inc (write coordinates not hex, NASM macros, zero cost)
+    ✓ bracket file naming (ls shows the whole system)
+    ✓ kernel split (equation + walker + handoff, clean boundaries)
+    ✓ scaffolding inlined into genesis (render + walk_sub)
+    ✓ bitmap glyph renderer (scaffolding, renders "nomos")
+    ✓ NVMe PCI discovery (BAR stored, not yet used)
 
   NEXT:
     1. Trace read/write primitive (walks interact with traces)
-    2. Graceful headless fallback (skip filld when FB=0)
-    3. Rename font.ha → glyph.ha
-    4. Input pipeline (scancode → wave char → trace write)
+    2. Input pipeline (scancode → wave char → trace write)
     5. Trace registry (fixed array, genesis fills)
     6. Bind drain (all cores find fullest trace, bind loops it)
     7. Serial text output (wave chars from trace → serial port)
@@ -702,9 +719,10 @@ WHAT WE LEARNED (DON'T REPEAT)
 - Don't write asm after the equation. If you're reaching for
   asm, you haven't found the right coordinates yet.
 
-- DON'T WRITE A SYSTEM.ASM. Two asm files. Period. One agent
-  wrote an asm heartbeat. 1389 lines of system.asm existed
-  because the foundation was wrong.
+- DON'T WRITE A SYSTEM.ASM. The x86 files are fixed (boot,
+  cpu, handoff, equation, walker, genesis). One agent wrote an
+  asm heartbeat. 1389 lines of system.asm existed because the
+  foundation was wrong.
 
 - DON'T WRITE AN ASM DRAIN LOOP. It's the bind bond (0,1,1,1).
 
@@ -717,11 +735,9 @@ WHAT WE LEARNED (DON'T REPEAT)
 - DON'T ADD SOFTWARE TO GENESIS. Genesis inits hardware and
   fills traces. WM, games, editors are walk data in traces.
 
-- DON'T BLOAT EXISTING FILES. New walk → new file. New table →
-  new file. New scaffolding → new file. One agent stuffed
-  kbd_walk, render_char, PCI probe, scancode table, wave table,
-  cursor vars, trace registry, and NVMe BAR all into genesis.asm.
-  Genesis is ONE-TIME BOOT. It became a junk drawer. Split it.
+- DON'T BLOAT GENESIS. New walk → new file in walks/.
+  Genesis is ONE-TIME BOOT. It inits hardware and fills traces.
+  WM, games, editors are walk data in traces, not genesis code.
 
 - DON'T CREATE HUMAN ABSTRACTIONS. If it's coordinates, it's
   a walk. Infrastructure around wrong coordinates is the problem.
