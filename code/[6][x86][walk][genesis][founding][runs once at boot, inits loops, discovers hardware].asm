@@ -10,17 +10,9 @@
 bits 64
 
 %include "[0][tool][walk.inc][NASM macros to write walks as coordinates instead of hex].inc"
+%include "walks/loop.asm"
 
-; ─── loop layout constants ──────────────────────────────────
-; A loop is a 64-byte header (cache-line aligned) describing a ring buffer.
-; These offsets are byte positions within that header.
-LP_WCURSOR equ 0        ; write cursor: where the next write goes
-LP_RCURSOR equ 8        ; read cursor: where the next read comes from
-LP_BUFADDR equ 16       ; pointer to the actual ring buffer memory
-LP_DEPTH   equ 24       ; how many slots in the ring (power of 2)
-LP_MASK    equ 32       ; depth - 1, used to wrap cursors (cursor AND mask = slot index)
-LP_RECSZ   equ 40       ; bytes per record in this loop
-
+; ─── keyboard loop constants ──────────────────────────────────
 LOOP_DEPTH equ 64      ; 64 slots in the keyboard loop
 LOOP_MASK  equ (LOOP_DEPTH - 1)  ; = 63 = 0x3F
 
@@ -137,6 +129,21 @@ main_walk:
     db F(U32,U8,P)
     dd loop_count
     db 1
+
+; 5b. loop self-test — write 'L' to loop, read back, echo to debugcon
+;     If the loop primitive works: prints 'L'. If broken: silence or garbage.
+;     Uses the keyboard loop we just initialized above.
+    w -1,0,0,-1                             ; add(0x4C, 0) → pipeline = 'L' (0x4C)
+    db F(U8,U8,P), 0x4C, 0
+    loop_write loop_kbd                     ; write 'L' to keyboard loop
+
+    loop_empty loop_kbd                     ; pipeline = 1 (empty) or 0 (has data)
+    skip_nz (.test_end - .test_read)        ; if empty after write, something broke — skip
+.test_read:
+    loop_read loop_kbd                      ; read from loop → pipeline (should be 'L')
+    w -1,0,0,+1                             ; port_write(0xE9, pipeline) — echo to debugcon
+    db F(U8,P,P), 0xE9
+.test_end:
 
 ; 6. NVMe discovery — probe PCI slots 3-6 for an NVMe controller
 ;    If found, stores BAR0 in nvme_bar. Prints 'N' (found) or 'n' (not found).

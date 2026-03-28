@@ -722,9 +722,15 @@ Know the gaps before you start writing.
 
   Loops:
     DESIGN: walks read/write loops, loop-to-loop pipelines
-    ACTUAL: keyboard loop initialized but never used. Keyboard
-    walk writes directly to debugcon port. Loop read/write
-    primitive not built yet.
+    ACTUAL: loop read/write primitive built (walks/loop.asm).
+    Three macros: loop_empty, loop_read, loop_write.
+    Genesis self-test: write 'L', read back, echo to debugcon.
+    Keyboard walk still writes directly to debugcon — not yet
+    converted to use loops (that's the input pipeline, item 2).
+    Loop macros read header fields (mask, recsz, bufaddr) via
+    indirect dereference flags. Generic for any loop/record size.
+    Uses atom TD (+2,+2,0,0) for slot_index × record_size —
+    first atom ever executed in a walk.
 
 
 BUILD ORDER
@@ -747,17 +753,17 @@ BUILD ORDER
     ✓ scaffolding inlined into genesis (render + walk_sub)
     ✓ bitmap glyph renderer (scaffolding, renders "nomos")
     ✓ NVMe PCI discovery (BAR stored, not yet used)
+    ✓ loop read/write primitive (walks/loop.asm, self-test passes)
 
   NEXT:
-    1. Loop read/write primitive (walks interact with loops)
-    2. Input pipeline (scancode → wave char → loop write)
-    5. Loop registry (fixed array, genesis fills)
-    6. Bind drain (all cores find fullest loop, bind loops it)
-    7. Serial text output (wave chars from loop → serial port)
-    8. SDF character rendering (display walk → framebuffer)
-    9. Born-indexed writes (trigram posting lists)
-   10. NVMe gene (MBR discovers BAR, loops to disk)
-   11. Network loops (RDMA, flux)
+    1. Input pipeline (scancode → wave char → loop write)
+    2. Loop registry (fixed array, genesis fills)
+    3. Bind drain (all cores find fullest loop, bind loops it)
+    4. Serial text output (wave chars from loop → serial port)
+    5. SDF character rendering (display walk → framebuffer)
+    6. Born-indexed writes (trigram posting lists)
+    7. NVMe gene (MBR discovers BAR, loops to disk)
+    8. Network loops (RDMA, flux)
 
   LATER:
     - GPU driver gene (SDF rendering at hardware speed)
