@@ -1,16 +1,29 @@
 ; ═══════════════════════════════════════════════════════════════════
-; legacy-bootloader.asm — create the world, then leave
+; [2] CPU entry — 32-bit to 64-bit mode switch, then hand off to lattice
 ;
-; Does 3 things:
-;   1. CPU mode: 32-bit → 64-bit (page tables, GDT, stack)
-;   2. AP wake: get secondary cores running
-;   3. jmp lattice_start
+; The MBR [1] jumps here at 1MB. We're in 32-bit protected mode.
+; The CPU can't run 64-bit code yet. This file fixes that.
 ;
-; This is throwaway scaffolding. Named "legacy" because the equation
-; makes it obsolete in principle — we just can't run coordinates
-; before the equation exists.
+; What this does:
+;   1. Copy the AP trampoline to 0x8000 (low memory, for waking other cores later)
+;   2. Build page tables (identity map 0-1GB + 3-4GB for MMIO)
+;   3. Enable PAE, long mode (EFER.LME), and paging — now we're 64-bit
+;   4. Load a 64-bit GDT and far jump into long mode
+;   5. Zero BSS (the bootloader didn't do it for us in multiboot path)
+;   6. Wake secondary cores via INIT/SIPI IPI sequence
+;   7. Jump to lattice_start [3] — never returns
 ;
-; ~150 lines. Runs once.
+; The trampoline (raw bytes at the bottom) is a separate 16→32→64 bit
+; mode switch that gets copied to physical 0x8000. APs execute it after
+; receiving the SIPI. It's raw hex because it runs at a fixed physical
+; address — NASM can't relocate it. Each byte is hand-assembled.
+;
+; APs (secondary cores) wake up, get a per-core stack from their APIC ID,
+; and spin waiting for work. The bind drain (not built yet) will give them
+; traces to process. For now they just pause-loop.
+;
+; After this file runs, we're in 64-bit mode with all cores awake.
+; x86 setup is done. The lattice takes over.
 ; ═══════════════════════════════════════════════════════════════════
 
 ; ─── entry trampoline (MBR jumps to 1MB, this is the first byte) ──
@@ -35,11 +48,15 @@ align 4096
 global ap_stacks
 ap_stacks:      resb 4096 * 16            ; 16 AP stacks, 4K each
 
+; page tables — in dedicated section so BSS zeroing doesn't clobber them
+section .pagetables nobits alloc write
 align 4096
 pml4:           resb 4096
 pdpt:           resb 4096
 pd0:            resb 4096                  ; low memory 0-1GB
 pd3:            resb 4096                  ; high memory (MMIO)
+
+section .bss
 
 ; ─── data ──────────────────────────────────────────────────────
 
@@ -156,6 +173,15 @@ long_mode:
     mov es, ax
     mov ss, ax
     mov rsp, stack_top
+
+    ; ── zero BSS ──
+    extern __bss_start, __bss_end
+    lea rdi, [__bss_start]
+    lea rcx, [__bss_end]
+    sub rcx, rdi
+    shr rcx, 3                             ; count in qwords
+    xor eax, eax
+    rep stosq
 
     ; ── wake APs ──
     call wake_cores

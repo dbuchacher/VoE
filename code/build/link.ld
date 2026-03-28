@@ -19,6 +19,10 @@ SECTIONS
         *(.data)
     }
 
+    .pagetables ALIGN(4K) : {
+        *(.pagetables)
+    }
+
     .bss ALIGN(4K) : {
         __bss_start = .;
         *(.bss)

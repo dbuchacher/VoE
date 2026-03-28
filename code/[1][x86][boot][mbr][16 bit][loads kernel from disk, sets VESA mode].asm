@@ -1,8 +1,23 @@
 ; ═══════════════════════════════════════════════════════════════════
-; mbr.asm — Master Boot Record (512 bytes)
+; [1] MBR — Master Boot Record (exactly 512 bytes, first thing BIOS runs)
 ;
-; BIOS → load kernel → VESA 1024x768x32 → protected mode → go.
-; FB info stored at 0x9100 for the lattice (addr, bpp, pitch).
+; The BIOS reads exactly one sector (512 bytes) from disk into memory
+; at address 0x7C00 and jumps to it. That's this file. We're in 16-bit
+; real mode with access to BIOS interrupts (INT 13h = disk, INT 10h = video).
+;
+; What this does:
+;   1. Enable A20 gate (lets us address above 1MB — yes, this is still needed)
+;   2. Load the kernel from disk into memory at 0x10000 using BIOS disk reads
+;   3. Enumerate VESA video modes to find 1024×768×32bpp with linear framebuffer
+;   4. Store the framebuffer address at 0x9100 (genesis reads it later)
+;   5. Switch to 32-bit protected mode
+;   6. Copy the kernel to 1MB (where the linker expects it)
+;   7. Jump to 1MB — the kernel entry point [2]
+;
+; If VESA fails, framebuffer address = 0. Genesis skips the screen fill.
+; The build script sets SEC1/SEC2 = how many disk sectors to load.
+;
+; After this file runs, we never come back. It's a trampoline.
 ; ═══════════════════════════════════════════════════════════════════
 
 bits 16

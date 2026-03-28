@@ -571,6 +571,7 @@ FILE STRUCTURE
       speaker.asm    gene: PIT beep
     glyph.ha         SDF geometry data (designer's local variables)
     scancode.ha      PS/2 scancode → wave byte table
+    wavemap.ha       ASCII → wave byte (128 bytes, 4D character encoding)
 
 Most devices are non-local (BIOS already set them up):
   pixel buffer, keyboard, serial, VGA text, debugcon, disk.
@@ -633,6 +634,11 @@ Know the gaps before you start writing.
   Walker control counts:
     skip_z, skip_nz, loop_back all count in BYTES, not records.
     Compute byte offsets from walk layout.
+
+  BSS:
+    Bootloader zeros BSS (rep stosq from __bss_start to __bss_end).
+    Page tables in separate .pagetables section (not zeroed).
+    No need to explicitly zero BSS variables in genesis.
 
   Multiboot vs MBR:
     bash build headless = multiboot (-kernel). Skips MBR. No VESA.
@@ -711,6 +717,12 @@ WHAT WE LEARNED (DON'T REPEAT)
 - DON'T ADD SOFTWARE TO GENESIS. Genesis inits hardware and
   fills traces. WM, games, editors are walk data in traces.
 
+- DON'T BLOAT EXISTING FILES. New walk → new file. New table →
+  new file. New scaffolding → new file. One agent stuffed
+  kbd_walk, render_char, PCI probe, scancode table, wave table,
+  cursor vars, trace registry, and NVMe BAR all into genesis.asm.
+  Genesis is ONE-TIME BOOT. It became a junk drawer. Split it.
+
 - DON'T CREATE HUMAN ABSTRACTIONS. If it's coordinates, it's
   a walk. Infrastructure around wrong coordinates is the problem.
 
@@ -726,6 +738,21 @@ WHAT WE LEARNED (DON'T REPEAT)
 
 - THE EQUATION STAYS SEALED. No templates. No new bond types
   for rendering, scrolling, blitting. Decompose to math.
+
+
+- COMMENT LIKE A RETARD IS READING. Nobody has coded lattice
+  walks before. There is no Stack Overflow for this. There is no
+  textbook. Every wit that reads this code is seeing it for the
+  first time. Every coordinate, every flags byte, every skip
+  offset — explain what it does and WHY. "port_write" is not
+  enough. Say what port, what value, what happens when you write
+  it. The hex is obvious to the wit that wrote it and gibberish
+  to the next one. Write for the next one.
+
+- USE walk.inc. Write coordinates, not hex wave bytes.
+  w -1,0,0,+1 is a port_write. 0xC1 is a mystery.
+  F(U8,U8,P) is two byte args. 0x05 is noise.
+  The macros emit identical bytes at zero cost. Use them.
 
 
 The lattice doesn't add performance and security.

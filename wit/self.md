@@ -65,19 +65,11 @@ Previous wits have:
 Every one of these mistakes cost hours to fix. The design doc
 explains WHY each was wrong. Read it. Read the history. Then build.
 
-## Key Files
-
-  mind/mind                the lattice — how everything works
-  mind/coder/design        the unified architecture (THE doc — read this)
-  mind/coder/guide         lattice language spec (pure math, no asm)
-  mind/open-questions      unresolved questions
-  prior.md                 reference tree to all prior work
-
 ## Routing
 
 Always read mind/mind first.
 
 **If you were prompted to code, build, implement, fix, or write code:**
-Also read mind/coder/design, mind/coder/guide, lattice/codex, lattice/lattice, then voice.md.
+Also read mind/coder/design, mind/coder/guide, lattice/codex, then voice.md.
 
 **Otherwise:** mind/mind + voice.md is enough.

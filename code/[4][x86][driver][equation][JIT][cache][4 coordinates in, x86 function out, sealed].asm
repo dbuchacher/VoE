@@ -1,20 +1,41 @@
 ; ═══════════════════════════════════════════════════════════════════
-; equation.asm — f(a,b,c,d) = T^a * D^b * M^c * Q^d
+; [4] Equation — the x86 JIT compiler for lattice coordinates. Sealed.
 ;
-; The equation. Pure JIT + walker. Sealed.
+; f(a,b,c,d) = T^a * D^b * M^c * Q^d
 ;
-; Contains:
-;   get_atom(t,d,m,q)  → cached JIT code pointer
-;   emit_function       → generates x86-64 from coordinates
-;   walker_wave(rdi,rsi) → reads wave byte walks, executes via get_atom
-;   lattice_start       → seeds 16 bonds, walks genesis
+; This is the core of the x86 driver. You give it 4 coordinates (T,D,M,Q)
+; and it returns a pointer to executable x86-64 machine code that does
+; what those coordinates describe. The code is generated once and cached
+; forever — lazy materialization.
 ;
-; The equation exists because CPUs are manufactured around an ISA
-; (x86-64). It translates lattice coordinates into machine code.
-; On a chip that natively evaluated T^a*D^b*M^c*Q^d and read wave
-; bytes directly, this file dissolves. The walks stay identical.
+; How it works:
+;   1. get_atom(T, D, M, Q) — the public entry point.
+;      Hashes the 4 coordinates, checks the cache (4096-entry hash table).
+;      Cache hit → return the pointer immediately.
+;      Cache miss → call emit_function to JIT new code, cache it, return.
 ;
-; Everything else is walks (lat/). No system.asm. No third file.
+;   2. emit_function — the JIT compiler.
+;      Classifies the coordinates: all even = atom (math), any odd = bond (control).
+;      Atoms: halves each coordinate to get exponents, emits a mul/div chain.
+;        Example: (-2,+2,+2,0) → D*M/T → imul rsi,rdx / divide by rdi
+;      Bonds: determines which forces are active (odd dimensions), looks up
+;        the bond handler by bitmask (P=1, C=2, R=4, W=8), emits the pattern.
+;        Example: (-1,0,0,+1) → P+W → port_write → out dx,al
+;
+;   3. Bond handlers — 16 patterns indexed by force bitmask (0-15).
+;      Each handler emits a specific x86 instruction sequence.
+;      These are the fundamental operations: read, write, call, loop, test,
+;      and all combinations thereof. 4 forces, 2^4 = 16 patterns, complete.
+;
+; The 256KB code buffer fills lazily as new coordinates are first used.
+; Same coordinates always produce the same code — deterministic.
+;
+; On a balanced ternary processor, this entire file dissolves. The hardware
+; would evaluate T^a*D^b*M^c*Q^d directly — no JIT, no cache, no x86.
+; The walks stay identical because the coordinates don't change.
+;
+; SEALED: don't add bond types. 16 patterns from 4 forces is complete.
+; If something needs a new bond, decompose it into existing coordinates.
 ; ═══════════════════════════════════════════════════════════════════
 
 
@@ -44,291 +65,14 @@ code_base: resb 262144                    ; 256KB code buffer
 
 
 ; ═══════════════════════════════════════════════════════════════════
-; LATTICE START — seeds the ground state, runs first test
-; ═══════════════════════════════════════════════════════════════════
-
-section .text
-bits 64
-
-global lattice_start
-
-lattice_start:
-    ; init code generation buffer
-    lea rax, [code_base]
-    mov [code_cursor], rax
-
-    ; ── seed the 16 bonds (the forces / ground state) ──
-    ; 15 force patterns (bitmask 1-15) with positive signs
-    lea rsi, [bond_seeds]
-    mov ecx, 15
-.seed:
-    push rcx
-    push rsi
-    movsx edi, byte [rsi]
-    movsx esi, byte [rsi+1]
-    movsx edx, byte [rsi+2]
-    movsx ecx, byte [rsi+3]
-    call get_atom
-    pop rsi
-    pop rcx
-    add rsi, 4
-    dec ecx
-    jnz .seed
-
-    ; ── walk genesis (runs once, returns) ──
-    lea rdi, [main_walk]
-    mov esi, [main_len]
-    call walker_wave
-
-    ; ── genesis returned. enter the market. ──
-    ; walk the keyboard poll (first available work)
-    ; TODO: bind drain — find fullest trace instead of hardcoding
-    lea rdi, [kbd_walk]
-    mov esi, [kbd_walk_len]
-    call walker_wave
-
-    ; if walk returns (it shouldn't — loop_back), spin
-.spin:
-    pause
-    jmp .spin
-
-
-; ═══════════════════════════════════════════════════════════════════
-; WALKER — reads wave byte walks, executes via get_atom
-;
-; Format per record:
-;   byte 0: wave byte (2 bits per dim, [7:6]=T [5:4]=D [3:2]=M [1:0]=Q)
-;   byte N: flags ([ind0:1][ind1:1][arg2:2][arg1:2][arg0:2])
-;            00=pipeline  01=u8  10=u32  11=u64
-;            bit 7: dereference arg0 (treat as pointer)
-;            bit 6: dereference arg1 (treat as pointer)
-;   bytes 2+: inline args (variable length per flags)
-;
-; Walker control (wave byte >= 0xFC):
-;   0xFE + u32: skip_z (skip N bytes forward if pipeline == 0)
-;   0xFD + u32: skip_nz (skip N bytes forward if pipeline != 0)
-;   0xFC + u32: loop_back (rewind N bytes if pipeline != 0)
-;
-; Input: rdi = walk data pointer, esi = walk length (bytes)
-; ═══════════════════════════════════════════════════════════════════
-
-global walker_wave
-walker_wave:
-    push rbx
-    push r12
-    push r13
-    push r14
-
-    mov r12, rdi              ; walk data pointer
-    mov r13d, esi             ; length (temp)
-    lea r14, [r12 + r13]      ; end pointer
-    xor r15d, r15d            ; pipeline = 0
-
-.ww_next:
-    cmp r12, r14
-    jge .ww_done
-
-    movzx eax, byte [r12]    ; read wave byte
-
-    ; ── walker control: >= 0xFC ──
-    cmp al, 0xFC
-    jae .ww_control
-
-    ; ── regular bond/atom ──
-    movzx ebx, al             ; wave byte → ebx
-    inc r12                    ; past wave byte
-
-    ; decode wave byte → 4 coords
-    ; 00=0  01=+1  11=-1  10=extended (read signed i8 from walk)
-    lea rax, [decode_2bit]
-
-    ; T = bits [7:6]
-    mov ecx, ebx
-    shr ecx, 6
-    cmp ecx, 2
-    jne .dec_t_lut
-    movsx edi, byte [r12]     ; extended: signed i8
-    inc r12
-    jmp .dec_d
-.dec_t_lut:
-    movsx edi, byte [rax + rcx]
-.dec_d:
-    ; D = bits [5:4]
-    mov ecx, ebx
-    shr ecx, 4
-    and ecx, 3
-    cmp ecx, 2
-    jne .dec_d_lut
-    movsx esi, byte [r12]
-    inc r12
-    jmp .dec_m
-.dec_d_lut:
-    movsx esi, byte [rax + rcx]
-.dec_m:
-    ; M = bits [3:2]
-    mov ecx, ebx
-    shr ecx, 2
-    and ecx, 3
-    cmp ecx, 2
-    jne .dec_m_lut
-    movsx edx, byte [r12]
-    inc r12
-    jmp .dec_q
-.dec_m_lut:
-    movsx edx, byte [rax + rcx]
-.dec_q:
-    ; Q = bits [1:0]
-    mov ecx, ebx
-    and ecx, 3
-    cmp ecx, 2
-    jne .dec_q_lut
-    movsx ecx, byte [r12]
-    inc r12
-    jmp .dec_flags
-.dec_q_lut:
-    movsx ecx, byte [rax + rcx]
-
-.dec_flags:
-    ; flags byte follows wave byte + any extension bytes
-    movzx r13d, byte [r12]
-    inc r12
-
-    ; get_atom(edi=T, esi=D, edx=M, ecx=Q) → rax = function pointer
-    call get_atom
-    mov rbx, rax               ; fn ptr → rbx
-    ; r12, r13, r14, r15 preserved (callee-saved, get_atom saves them)
-
-    ; ── read arg0 → rdi ──
-    mov eax, r13d
-    and eax, 3
-    jz .a0_pipe
-    cmp eax, 1
-    je .a0_u8
-    cmp eax, 2
-    je .a0_u32
-    mov rdi, [r12]             ; u64
-    add r12, 8
-    jmp .a0_done
-.a0_u8:
-    movzx edi, byte [r12]
-    inc r12
-    jmp .a0_done
-.a0_u32:
-    mov edi, [r12]
-    add r12, 4
-    jmp .a0_done
-.a0_pipe:
-    mov rdi, r15
-.a0_done:
-    test r13d, 0x80           ; bit 7: indirect arg0?
-    jz .a0_direct
-    mov rdi, [rdi]            ; dereference pointer
-.a0_direct:
-
-    ; ── read arg1 → rsi ──
-    mov eax, r13d
-    shr eax, 2
-    and eax, 3
-    jz .a1_pipe
-    cmp eax, 1
-    je .a1_u8
-    cmp eax, 2
-    je .a1_u32
-    mov rsi, [r12]             ; u64
-    add r12, 8
-    jmp .a1_done
-.a1_u8:
-    movzx esi, byte [r12]
-    inc r12
-    jmp .a1_done
-.a1_u32:
-    mov esi, [r12]
-    add r12, 4
-    jmp .a1_done
-.a1_pipe:
-    mov rsi, r15
-.a1_done:
-    test r13d, 0x40           ; bit 6: indirect arg1?
-    jz .a1_direct
-    mov rsi, [rsi]            ; dereference pointer
-.a1_direct:
-
-    ; ── read arg2 → rdx ──
-    mov eax, r13d
-    shr eax, 4
-    and eax, 3
-    jz .a2_pipe
-    cmp eax, 1
-    je .a2_u8
-    cmp eax, 2
-    je .a2_u32
-    mov rdx, [r12]             ; u64
-    add r12, 8
-    jmp .a2_done
-.a2_u8:
-    movzx edx, byte [r12]
-    inc r12
-    jmp .a2_done
-.a2_u32:
-    mov edx, [r12]
-    add r12, 4
-    jmp .a2_done
-.a2_pipe:
-    mov rdx, r15
-.a2_done:
-
-    mov rcx, r15               ; arg3 = pipeline always
-
-    call rbx                   ; call JIT'd function
-    mov r15, rax               ; result → pipeline
-    mov [w_acc], rax
-    jmp .ww_next
-
-    ; ── walker control ──
-.ww_control:
-    mov ebx, [r12+1]          ; u32 byte count
-
-    cmp al, 0xFE
-    je .ww_skip_z
-    cmp al, 0xFD
-    je .ww_skip_nz
-
-    ; 0xFC: loop_back — rewind if pipeline != 0
-    test r15, r15
-    jz .ww_ctrl_advance
-    sub r12, rbx               ; rewind by N bytes
-    jmp .ww_next
-
-.ww_skip_z:
-    test r15, r15
-    jnz .ww_ctrl_advance
-    add r12, rbx               ; skip forward N bytes
-    jmp .ww_ctrl_advance
-
-.ww_skip_nz:
-    test r15, r15
-    jz .ww_ctrl_advance
-    add r12, rbx               ; skip forward N bytes
-    ; fall through
-
-.ww_ctrl_advance:
-    add r12, 5                 ; past control byte + u32
-    jmp .ww_next
-
-.ww_done:
-    pop r14
-    pop r13
-    pop r12
-    pop rbx
-    ret
-
-
-; ═══════════════════════════════════════════════════════════════════
 ; get_atom(edi=t, esi=d, edx=m, ecx=q) → rax = code pointer
 ;
 ; Hash lookup. Cache hit = return immediately.
 ; Cache miss = JIT via emit_function, cache, return.
 ; ═══════════════════════════════════════════════════════════════════
+
+section .text
+bits 64
 
 global get_atom
 get_atom:
@@ -1027,8 +771,6 @@ emit_function:
     ; -W BSWAP64: mov rax, rdi; bswap rax; ret
     mov word [rdi],   0x8948       ; mov rax, rdi (48 89 F8)
     mov byte [rdi+2], 0xF8
-    mov word [rdi+3], 0xC80F48     ; bswap rax (48 0F C8)
-    ; wait, 48 0F C8 is 3 bytes
     mov byte [rdi+3], 0x48
     mov byte [rdi+4], 0x0F
     mov byte [rdi+5], 0xC8
@@ -1322,39 +1064,3 @@ bond_table:
     dd emit_function.b_prw                 ; 13 P+R+W
     dd emit_function.b_crw                 ; 14 C+R+W
     dd emit_function.b_pcrw                ; 15 P+C+R+W
-
-
-; ─── bond seed table (15 positive-sign patterns) ──────────────
-
-bond_seeds:
-    db  1,  0,  0,  0                     ; P:     read
-    db  0,  1,  0,  0                     ; C:     apply
-    db  1,  1,  0,  0                     ; P+C:   fold
-    db  0,  0,  1,  0                     ; R:     drain
-    db  1,  0,  1,  0                     ; P+R:   slurp
-    db  0,  1,  1,  0                     ; C+R:   fix
-    db  1,  1,  1,  0                     ; P+C+R: foldl
-    db  0,  0,  0,  1                     ; W:     test
-    db  1,  0,  0,  1                     ; P+W:   filter
-    db  0,  1,  0,  1                     ; C+W:   maybe
-    db  1,  1,  0,  1                     ; P+C+W: map
-    db  0,  0,  1,  1                     ; R+W:   take_while
-    db  1,  0,  1,  1                     ; P+R+W: scan
-    db  0,  1,  1,  1                     ; C+R+W: bind
-    db  1,  1,  1,  1                     ; P+C+R+W: hylo
-
-
-; ─── wave byte decode table (2-bit → signed coordinate) ─────
-
-decode_2bit:
-    db  0                                  ; 00 → 0
-    db  1                                  ; 01 → +1
-    db  0                                  ; 10 → 0 (reserved)
-    db -1                                  ; 11 → -1
-
-
-; ─── externs ──────────────────────────────────────────────────
-
-extern main_walk, main_len
-extern kbd_walk, kbd_walk_len
-
