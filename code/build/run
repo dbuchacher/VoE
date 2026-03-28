@@ -11,7 +11,8 @@ nasm -f elf32 "[3][x86][handoff][lattice start][inits JIT, runs genesis, enters 
 nasm -f elf32 "[4][x86][driver][equation][JIT][cache][4 coordinates in, x86 function out, sealed].asm" -o "$OUT/equation.o"
 nasm -f elf32 "[5][x86][driver][walker][interpreter][wave bytes in, decodes coordinates, calls equation, sealed].asm" -o "$OUT/walker.o"
 nasm -f elf32 "[6][x86][walk][genesis][founding][runs once at boot, inits loops, discovers hardware].asm" -o "$OUT/genesis.o"
-nasm -f elf32 "walks/kbd.asm" -o "$OUT/kbd.o"
+nasm -f elf32 "walks/input.asm" -o "$OUT/input.o"
+nasm -f elf32 "walks/mouse.asm" -o "$OUT/mouse.o"
 
 ld -m elf_i386 -T build/link.ld \
     "$OUT"/x86.o \
@@ -19,7 +20,8 @@ ld -m elf_i386 -T build/link.ld \
     "$OUT"/equation.o \
     "$OUT"/walker.o \
     "$OUT"/genesis.o \
-    "$OUT"/kbd.o \
+    "$OUT"/input.o \
+    "$OUT"/mouse.o \
     -o "$OUT/nomos.elf"
 
 echo "built: $(stat -c%s "$OUT/nomos.elf") bytes"

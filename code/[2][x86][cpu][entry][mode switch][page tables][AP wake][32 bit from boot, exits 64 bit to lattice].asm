@@ -86,6 +86,13 @@ extern lattice_start
 _start:
     cli
 
+    ; mask all PIC IRQs — BIOS leaves them unmasked. Without this,
+    ; KVM's interrupt-window logic during MMIO FB writes (EPT violations)
+    ; can cause subtle corruption with our stale IDTR. We poll, not interrupt.
+    mov al, 0xFF
+    out 0x21, al                               ; mask all master PIC IRQs
+    out 0xA1, al                               ; mask all slave PIC IRQs
+
     ; copy trampoline to 0x8000 (for AP wake later)
     mov esi, trampoline_code
     mov edi, 0x8000

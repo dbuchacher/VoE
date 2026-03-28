@@ -20,26 +20,49 @@ LOOP_MASK  equ (LOOP_DEPTH - 1)  ; = 63 = 0x3F
 
 section .bss
 
+; cursor_x/cursor_y FIRST in BSS, page-aligned, with full page guard.
+; Something corrupts cursor_y during KVM MMIO FB writes. Root cause unknown.
+; Isolating them at a page boundary with 4KB padding makes corruption
+; require a page-crossing write — which should be impossible from any
+; correctly-addressed operation.
+alignb 4096
+global cursor_x, cursor_y
+cursor_x: resd 1
+cursor_y: resd 1
+          resb 4096 - 8   ; full page guard (nothing else on this page)
+
 alignb 64                ; cache-line align the loop header
 global loop_kbd
-loop_kbd:      resb 64              ; keyboard loop header (64 bytes)
-loop_kbd_buf:  resb LOOP_DEPTH * 8 ; keyboard ring buffer (64 slots × 8 bytes)
+loop_kbd:      resb 64
+loop_kbd_buf:  resb LOOP_DEPTH * 8
 
 global stash_a, stash_b
-stash_a: resq 1          ; temp storage for walks (save/restore pipeline values)
+stash_a: resq 1
 stash_b: resq 1
 
 MAX_LOOPS equ 16
 global loop_list, loop_count
-loop_list: resq MAX_LOOPS  ; array of pointers to loop headers
-loop_count: resq 1          ; how many loops exist
-
-global cursor_x, cursor_y
-cursor_x: resd 1         ; text cursor position for bitmap renderer (pixels)
-cursor_y: resd 1
+loop_list: resq MAX_LOOPS
+loop_count: resq 1
 
 global nvme_bar
-nvme_bar: resq 1         ; NVMe controller BAR0 address (0 if not found)
+nvme_bar: resq 1
+
+global render_pending
+render_pending: resq 1
+
+global mouse_pending
+mouse_pending: resq 1
+
+global mouse_x, mouse_y, mouse_pkt, mouse_state, mouse_buttons
+mouse_x:       resd 1
+mouse_y:       resd 1
+mouse_pkt:     resb 4
+mouse_state:   resd 1
+mouse_buttons: resd 1
+global cursor_save, cursor_drawn
+cursor_save:   resd 16*16
+cursor_drawn:  resd 1
 
 ; ─── genesis walk ────────────────────────────────────────────
 ; This is the founding walk. It runs once and returns.
@@ -164,32 +187,40 @@ main_walk:
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 'n'               ;   NVMe not found
 
-; 7. render "nomos" — computed SDF from phonetic coordinates
-;    n: alveolar nasal voiced       = (T=1, D=0, M=-1, Q=1) → square + center dot
-;    o: back vowel rounded          = (T=1, D=-1, M=1, Q=-1) → circle outline + right dot
-;    m: labial nasal voiced         = (T=1, D=1, M=-1, Q=1) → square + left dot
-;    s: alveolar fricative voiceless = (T=1, D=0, M=0, Q=-1) → diamond outline + center dot
-%define PH(t,d,m,q) (((t) & 0xFF) | (((d) & 0xFF) << 8) | (((m) & 0xFF) << 16) | (((q) & 0xFF) << 24))
+; 6b. mouse gene — enable PS/2 AUX port, init mouse, center cursor
+;     apply(mouse_init, 0): inline x86 handles the port I/O sequence.
+;     prints 'M' on success, 'm' on failure.
     w 0,+1,0,0
-    db F(U32,U32,P)
-    dd render_char
-    dd PH(1, 0,-1, 1)                      ; 'n' — square, center dot, filled
+    db F(U32,U8,P)
+    dd mouse_init
+    db 0
+
+; 7. render "nomos" — wave byte coordinates
+;    wave byte: [7:6]=T [5:4]=D [3:2]=M [1:0]=Q  (00=0, 01=+1, 11=-1)
+;    n: (1,0,-1,+1) = 0x4D — square, center dot, filled
+;    o: (1,-1,+1,-1) = 0x77 — circle, right dot, outline
+;    m: (1,+1,-1,+1) = 0x5D — square, left dot, filled
+;    s: (1,0,0,-1) = 0x43 — diamond, center dot, outline
     w 0,+1,0,0
-    db F(U32,U32,P)
+    db F(U32,U8,P)
     dd render_char
-    dd PH(1,-1, 1,-1)                      ; 'o' — circle, right dot, outline
+    db 0x4D                                     ; 'n'
     w 0,+1,0,0
-    db F(U32,U32,P)
+    db F(U32,U8,P)
     dd render_char
-    dd PH(1, 1,-1, 1)                      ; 'm' — square, left dot, filled
+    db 0x77                                     ; 'o'
     w 0,+1,0,0
-    db F(U32,U32,P)
+    db F(U32,U8,P)
     dd render_char
-    dd PH(1,-1, 1,-1)                      ; 'o' — circle, right dot, outline
+    db 0x5D                                     ; 'm'
     w 0,+1,0,0
-    db F(U32,U32,P)
+    db F(U32,U8,P)
     dd render_char
-    dd PH(1, 0, 0,-1)                      ; 's' — diamond, center dot, outline
+    db 0x77                                     ; 'o'
+    w 0,+1,0,0
+    db F(U32,U8,P)
+    dd render_char
+    db 0x43                                     ; 's'
 
 ; 8. done — signal genesis complete
     w -1,0,0,+1                             ; port_write(0xE9, 'T') — 'T' for "loop ready"
@@ -216,52 +247,130 @@ walk_sub:
     call walker_wave
     ret
 
-; ─── render_char — computed SDF from phonetic coordinates ──────
+; ─── render_char — Latin bitmap + SDF fallback ─────────────────
 ;
-; Called via apply: rsi = packed coordinate dword
-;   byte 0 = T, byte 1 = D, byte 2 = M, byte 3 = Q
-; Computes shape from coordinates. No font data.
-; 16×32 cell. Minimal version first — white rectangle with shape cutout.
+; Called via apply: rsi = wave byte
+;   bits [7:6]=T  [5:4]=D  [3:2]=M  [1:0]=Q
+;   00=0  01=+1  11=-1
+;
+; Special wave bytes (non-letter, T ≠ +1):
+;   0x00 = silence (skip)
+;   0x01 = space  +W (advance cursor)
+;   0x04 = enter  +R (newline)
+;   0xC0 = backspace -P (erase backward)
+;
+; Latin path: reads render_pending (raw scancode from kbd walk),
+;   indexes font_by_scancode[scancode × 16] directly. If first
+;   byte != 0, renders 8×16 bitmap font scaled 2× (each bitmap
+;   pixel = 2×2 screen pixels → fills the 16×32 cell). Falls
+;   through to SDF if unmapped (16 zero bytes).
+;
+; SDF path (fallback for non-Latin wave bytes):
+;   M selects body shape:   +1=circle (vowel)  0=diamond (fricative)  -1=square (stop)
+;   D positions marker dot: +1→left(4)  0→center(8)  -1→right(12)
+;   Q controls fill mode:   +1=filled  -1=outline
+;   16×32 cell. center=(8,16), radius=6.
 
 global render_char
 render_char:
     push rbx
     push r12
     push r13
+    push r14
+    push r15
     push rsi
 
-    mov ebx, esi
+    mov ebx, esi                              ; wave byte in ebx
 
+    ; ── special key handling ──
     test ebx, ebx
-    jz .done_advance
-    cmp ebx, 0x0A000000
-    je .newline
-    cmp ebx, 0x08000000
-    je .backspace
+    jz .done                                  ; 0x00 = silence → return (walk filters these)
+    cmp bl, 0x04
+    je .newline                               ; +R = enter
+    cmp bl, 0xC0
+    je .backspace                             ; -P = backspace
+    cmp bl, 0x01
+    je .done_advance                          ; +W = space
 
     mov r12d, [0x9100]
     test r12d, r12d
     jz .done
 
-    ; framebuffer position
+    ; framebuffer position (with bounds clamping — root cause of
+    ; cursor_y corruption still unknown, PIC masking didn't fix it)
     mov r13d, [cursor_y]
+    cmp r13d, 768
+    jb .cy_ok                                 ; unsigned: catches negative corruption too
+    xor r13d, r13d
+    mov [cursor_y], r13d
+.cy_ok:
     imul r13d, r13d, 1024
-    add r13d, [cursor_x]
+    mov eax, [cursor_x]
+    cmp eax, 1024
+    jb .cx_ok                                 ; unsigned: catches negative corruption too
+    xor eax, eax
+    mov [cursor_x], eax
+.cx_ok:
+    add r13d, eax
     shl r13d, 2
     add r13, r12
 
-    ; ── computed SDF: shape from coordinates ──
-    ; M (byte 2) selects body shape:
-    ;   +1 = circle (vowel):   dist = max(dx,dy) + min(dx,dy)/2 - r
-    ;    0 = diamond (fricative): dist = dx + dy - r
-    ;   -1 = square (stop):    dist = max(dx,dy) - r
-    ; D (byte 1) positions marker dot: +1→left(4), 0→center(8), -1→right(12)
-    ; Q (byte 3): +1=filled, -1=outline
+    ; ── Latin bitmap path: scancode → glyph (direct, no ASCII) ──
+    ; render_pending holds the raw PS/2 scancode saved by kbd walk.
+    ; font_by_scancode: 128 entries × 16 bytes, indexed by scancode.
+    ; Unmapped scancodes have 16 zero bytes. Mapped glyphs may have
+    ; zero top rows (lowercase letters start mid-cell). Check bytes 4-11
+    ; where the glyph body lives — any nonzero means glyph exists.
+    mov eax, [render_pending]
+    and eax, 0x7F                             ; mask to 0-127 (safety)
+    shl eax, 4                                ; × 16 bytes per glyph
+    lea r14, [font_by_scancode]
+    add r14, rax                              ; r14 = glyph data pointer
+    lea r14, [font_by_scancode]
+    add r14, rax                              ; r14 = glyph data pointer
+    mov eax, [r14+4]                          ; bytes 4-7
+    or eax, [r14+8]                           ; OR with bytes 8-11
+    test eax, eax                             ; any nonzero = has glyph
+    jz .sdf_path
+
+    mov r15d, 16                              ; 16 bitmap rows
+.bm_row:
+    movzx eax, byte [r14]
+    inc r14
+
+    mov ecx, 8
+.bm_bit1:
+    dec ecx
+    bt eax, ecx
+    jnc .bm_skip1
+    mov edx, 7
+    sub edx, ecx
+    shl edx, 3
+    mov dword [r13 + rdx], 0xFFFFFFFF
+    mov dword [r13 + rdx + 4], 0xFFFFFFFF
+    mov dword [r13 + rdx + 4096], 0xFFFFFFFF
+    mov dword [r13 + rdx + 4100], 0xFFFFFFFF
+.bm_skip1:
+    test ecx, ecx
+    jnz .bm_bit1
+
+    add r13, 1024 * 4 * 2
+    dec r15d
+    jnz .bm_row
+
+    jmp .done_advance
+
+.sdf_path:
+    ; ── computed SDF: shape from wave byte coordinates ──
+    ; ebx = wave byte: [7:6]=T [5:4]=D [3:2]=M [1:0]=Q
+    ; 2-bit decode: shl 30 + sar 30 maps 00→0, 01→+1, 11→-1
+    ; M selects body: +1=circle  0=diamond  -1=square
+    ; D positions marker dot. Q: +1=filled  -1=outline
     ; center=(8,16), radius=6
 
-    mov ecx, 32                           ; row counter (32..1)
+    mov ecx, 32                               ; row counter (32..1)
 .row:
-    mov edx, 16                           ; col counter (16..1)
+    mov edx, 16                               ; col counter (16..1)
 .col:
     dec edx
 
@@ -271,18 +380,18 @@ render_char:
     mov esi, eax
     sar esi, 31
     xor eax, esi
-    sub eax, esi                          ; eax = |col - 8|
-    mov esi, eax                          ; esi = dx
+    sub eax, esi
+    mov esi, eax                              ; esi = dx
 
-    ; dy = |row_from_top - 16|  (row counter counts down, row_from_top = 32 - ecx)
+    ; dy = |row_from_top - 16|
     mov eax, 32
-    sub eax, ecx                          ; row_from_top
-    sub eax, 16                           ; row - center_y
+    sub eax, ecx
+    sub eax, 16
     mov edi, eax
     sar edi, 31
     xor eax, edi
-    sub eax, edi                          ; eax = dy
-    mov edi, eax
+    sub eax, edi
+    mov edi, eax                              ; edi = dy
 
     ; order: esi=dmax, edi=dmin
     cmp esi, edi
@@ -291,52 +400,56 @@ render_char:
 .ordered:
 
     ; ── body distance from M ──
+    ; M = bits [3:2] of wave byte
     mov eax, ebx
-    shr eax, 16
-    movsx eax, al                         ; M = openness
+    shr eax, 2
+    and eax, 3
+    shl eax, 30
+    sar eax, 30                               ; eax = M: -1, 0, or +1
 
-    mov r8d, esi                          ; start with dmax
+    mov r8d, esi                              ; start with dmax
     cmp eax, 0
     jg .circle
     jl .square
-    add r8d, edi                          ; diamond: dmax + dmin
+    add r8d, edi                              ; diamond: dmax + dmin
     jmp .dist_ok
 .circle:
     mov eax, edi
     shr eax, 1
-    add r8d, eax                          ; circle: dmax + dmin/2
+    add r8d, eax                              ; circle: dmax + dmin/2
     jmp .dist_ok
 .square:
 .dist_ok:
-    sub r8d, 6                            ; - radius
-    ; r8d = body distance (signed)
+    sub r8d, 6                                ; - radius
 
-    ; ── marker dot: small square at top of cell ──
-    ; D (byte 1): marker_cx = 8 - D*4
+    ; ── marker dot: D = bits [5:4] ──
+    ; marker_cx = 8 - D*4
     mov eax, ebx
-    shr eax, 8
-    movsx eax, al                         ; D
-    shl eax, 2                            ; D*4
+    shr eax, 4
+    and eax, 3
+    shl eax, 30
+    sar eax, 30                               ; eax = D
+    shl eax, 2                                ; D*4
     mov esi, 8
-    sub esi, eax                          ; marker_cx
+    sub esi, eax                              ; marker_cx
 
     ; |col - marker_cx|
-    mov eax, edx                          ; col
+    mov eax, edx
     sub eax, esi
     mov esi, eax
     sar esi, 31
     xor eax, esi
-    sub eax, esi                          ; |col - marker_cx|
+    sub eax, esi
     mov esi, eax
 
     ; |row_from_top - 4|
     mov eax, 32
-    sub eax, ecx                          ; row_from_top
-    sub eax, 4                            ; - marker_cy
+    sub eax, ecx
+    sub eax, 4
     mov edi, eax
     sar edi, 31
     xor eax, edi
-    sub eax, edi                          ; |row - 4|
+    sub eax, edi
 
     ; marker_dist = max(|dx|, |dy|) - 2
     cmp esi, eax
@@ -351,36 +464,33 @@ render_char:
     mov r8d, esi
 .union_ok:
 
-    ; ── Q: voiceless = outline ──
+    ; ── Q = bits [1:0]: voiceless = outline ──
     mov eax, ebx
-    shr eax, 24
-    movsx eax, al                         ; Q
+    and eax, 3
+    shl eax, 30
+    sar eax, 30                               ; eax = Q
     cmp eax, 0
     jge .no_outline
     mov eax, r8d
     mov esi, eax
     sar esi, 31
     xor eax, esi
-    sub eax, esi                          ; |dist|
+    sub eax, esi                              ; |dist|
     dec eax
     mov r8d, eax
 .no_outline:
 
     ; ── pixel output ──
     cmp r8d, 1
-    jge .skip                             ; outside
-
+    jge .skip                                 ; outside
     cmp r8d, -1
-    jle .solid                            ; fully inside
-
-    ; edge: blend (simplified — just use 50% gray for edge pixels)
-    mov esi, 0x99AABB                     ; light blend color
+    jle .solid                                ; fully inside
+    mov esi, 0x99AABB                         ; edge pixel
     jmp .write
-
 .solid:
-    mov esi, 0xFFFFFFFF                   ; white
+    mov esi, 0xFFFFFFFF                       ; white
 .write:
-    mov eax, edx                          ; col
+    mov eax, edx
     shl eax, 2
     mov [r13 + rax], esi
 
@@ -410,6 +520,8 @@ render_char:
 
 .done:
     pop rax
+    pop r15
+    pop r14
     pop r13
     pop r12
     pop rbx
@@ -433,9 +545,181 @@ render_char:
     xor eax, eax
 .bs_store:
     mov [cursor_x], eax
+
+    ; clear the cell at the new cursor position (fill with blue background)
+    mov r12d, [0x9100]
+    test r12d, r12d
+    jz .done
+    mov r13d, [cursor_y]
+    cmp r13d, 768
+    jl .bs_cy_ok
+    xor r13d, r13d
+.bs_cy_ok:
+    imul r13d, r13d, 1024
+    mov eax, [cursor_x]
+    cmp eax, 1024
+    jl .bs_cx_ok
+    xor eax, eax
+.bs_cx_ok:
+    add r13d, eax
+    shl r13d, 2
+    add r13, r12
+    mov ecx, 32                               ; 32 scanlines
+.bs_clear_row:
+    mov edx, 16                               ; 16 pixels wide
+.bs_clear_col:
+    dec edx
+    mov eax, edx
+    shl eax, 2
+    mov dword [r13 + rax], 0x00336699         ; blue background
+    test edx, edx
+    jnz .bs_clear_col
+    add r13, 1024 * 4
+    dec ecx
+    jnz .bs_clear_row
     jmp .done
+
+; ─── mouse_init — PS/2 AUX port initialization ─────────────────
+;
+; Called via apply: rsi = ignored (0).
+; Enables the PS/2 auxiliary (mouse) port, sends reset + enable.
+; Initializes mouse_x/mouse_y to screen center.
+; Prints 'M' on success, 'm' on failure.
+
+global mouse_init
+mouse_init:
+    push rbx
+    push r12
+
+    mov dword [mouse_x], 512
+    mov dword [mouse_y], 384
+    mov dword [mouse_state], 0
+    mov dword [mouse_buttons], 0
+
+    ; enable AUX port
+    call .wait_ibf
+    mov al, 0xA8
+    out 0x64, al
+
+    ; read controller config
+    call .wait_ibf
+    mov al, 0x20
+    out 0x64, al
+    call .wait_obf
+    in al, 0x60
+    mov bl, al
+
+    ; modify config: set bit 1 (IRQ12 enable), clear bit 5 (AUX clock)
+    or bl, 0x02
+    and bl, ~0x20
+
+    ; write config back
+    call .wait_ibf
+    mov al, 0x60
+    out 0x64, al
+    call .wait_ibf
+    mov al, bl
+    out 0x60, al
+
+    ; reset mouse (0xFF)
+    mov al, 0xFF
+    call .send_mouse_cmd
+    jc .mi_fail
+    call .read_mouse_byte       ; self-test (0xAA)
+    jc .mi_fail
+    cmp al, 0xAA
+    jne .mi_fail
+    call .read_mouse_byte       ; device ID (0x00)
+    jc .mi_fail
+
+    ; set defaults (0xF6)
+    mov al, 0xF6
+    call .send_mouse_cmd
+    jc .mi_fail
+
+    ; enable reporting (0xF4)
+    mov al, 0xF4
+    call .send_mouse_cmd
+    jc .mi_fail
+
+    mov dx, 0xE9
+    mov al, 'M'
+    out dx, al
+    jmp .mi_done
+
+.mi_fail:
+    mov dx, 0xE9
+    mov al, 'm'
+    out dx, al
+
+.mi_done:
+    pop r12
+    pop rbx
+    ret
+
+.wait_ibf:
+    mov r12d, 0x10000
+.ibf_spin:
+    dec r12d
+    jz .ibf_out
+    in al, 0x64
+    test al, 0x02
+    jnz .ibf_spin
+.ibf_out:
+    ret
+
+.wait_obf:
+    mov r12d, 0x10000
+.obf_spin:
+    dec r12d
+    jz .obf_out
+    in al, 0x64
+    test al, 0x01
+    jz .obf_spin
+.obf_out:
+    ret
+
+.send_mouse_cmd:
+    push rax
+    call .wait_ibf
+    mov al, 0xD4
+    out 0x64, al
+    call .wait_ibf
+    pop rax
+    out 0x60, al
+    call .read_mouse_byte
+    jc .smc_fail
+    cmp al, 0xFA
+    jne .smc_fail
+    clc
+    ret
+.smc_fail:
+    stc
+    ret
+
+.read_mouse_byte:
+    mov r12d, 0x100000
+.rmb_spin:
+    dec r12d
+    jz .rmb_timeout
+    in al, 0x64
+    test al, 0x01
+    jz .rmb_spin
+    test al, 0x20
+    jz .rmb_discard
+    in al, 0x60
+    clc
+    ret
+.rmb_discard:
+    in al, 0x60
+    jmp .rmb_spin
+.rmb_timeout:
+    stc
+    ret
+
 
 ; ─── externs ─────────────────────────────────────────────────
 
 extern walker_wave
 extern kbd_walk, kbd_walk_len
+extern font_by_scancode
