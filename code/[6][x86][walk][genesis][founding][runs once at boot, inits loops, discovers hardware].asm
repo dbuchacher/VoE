@@ -21,6 +21,7 @@ LOOP_MASK  equ (LOOP_DEPTH - 1)  ; = 63 = 0x3F
 section .bss
 
 alignb 64                ; cache-line align the loop header
+global loop_kbd
 loop_kbd:      resb 64              ; keyboard loop header (64 bytes)
 loop_kbd_buf:  resb LOOP_DEPTH * 8 ; keyboard ring buffer (64 slots × 8 bytes)
 
@@ -163,30 +164,11 @@ main_walk:
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 'n'               ;   NVMe not found
 
-; 7. render "nomos" — draw text on the framebuffer using the bitmap renderer
-;    apply calls render_char (asm scaffolding) with each character code.
-;    render_char reads the glyph bitmap, plots pixels, advances the cursor.
-;    This is scaffolding — dissolves when SDF rendering replaces it.
-    w 0,+1,0,0                              ; apply(render_char, 'n')
-    db F(U32,U8,P)
+; 7. render test — single call to render_char with packed coord
+    w 0,+1,0,0                              ; apply(render_char, packed_coord)
+    db F(U32,U32,P)
     dd render_char
-    db 'n'
-    w 0,+1,0,0
-    db F(U32,U8,P)
-    dd render_char
-    db 'o'
-    w 0,+1,0,0
-    db F(U32,U8,P)
-    dd render_char
-    db 'm'
-    w 0,+1,0,0
-    db F(U32,U8,P)
-    dd render_char
-    db 'o'
-    w 0,+1,0,0
-    db F(U32,U8,P)
-    dd render_char
-    db 's'
+    dd 0x01000001                           ; simple nonzero value (T=1, D=0, M=0, Q=1)
 
 ; 8. done — signal genesis complete
     w -1,0,0,+1                             ; port_write(0xE9, 'T') — 'T' for "loop ready"
@@ -198,11 +180,6 @@ main_len: dd (main_len - main_walk)
 
 section .rodata
 %include "walks/speaker.asm"
-
-align 16
-global glyph_sdf
-glyph_sdf:
-    incbin "[data][glyph][8x16 bitmap font, scaffolding, dissolves with SDF].ha"
 
 ; ─── scaffolding: walk_sub — bridges apply bond to walker_wave ──
 ;
@@ -218,92 +195,64 @@ walk_sub:
     call walker_wave
     ret
 
-; ─── scaffolding: render_char — bitmap glyph renderer ──────────
+; ─── render_char — computed SDF from phonetic coordinates ──────
 ;
-; Called via apply: rsi = char code
-; Reads cursor_x, cursor_y, glyph_sdf, FB addr from known addresses.
-; Renders 8×16 bitmap glyph in white on current background.
-; Advances cursor. Handles newline (0x0A) and wrapping.
-;
-; Scaffolding — dissolves when SDF rendering (math walks) replaces it.
+; Called via apply: rsi = packed coordinate dword
+;   byte 0 = T, byte 1 = D, byte 2 = M, byte 3 = Q
+; Computes shape from coordinates. No font data.
+; 16×32 cell. Minimal version first — white rectangle with shape cutout.
 
 global render_char
 render_char:
     push rbx
     push r12
     push r13
-    push rsi                              ; save char for return
+    push rsi
 
-    movzx eax, sil
+    mov ebx, esi
 
-    cmp al, 0x0A
+    test ebx, ebx
+    jz .done_advance
+    cmp ebx, 0x0A000000
     je .newline
-    cmp al, 0x08
+    cmp ebx, 0x08000000
     je .backspace
-    cmp al, 0x20
-    jb .done
 
     mov r12d, [0x9100]
     test r12d, r12d
     jz .done
 
-    shl eax, 4
-    lea rbx, [glyph_sdf + rax]
-
+    ; framebuffer position
     mov r13d, [cursor_y]
     imul r13d, r13d, 1024
     add r13d, [cursor_x]
     shl r13d, 2
     add r13, r12
 
-    mov ecx, 16
+    ; simple 16×32 white rectangle for now (proving FB access works)
+    mov ecx, 32                           ; rows
 .row:
-    movzx eax, byte [rbx]
+    mov edx, 16                           ; cols (count down)
+.col:
+    dec edx
+    mov eax, edx
+    shl eax, 2
+    mov dword [r13 + rax], 0xFFFFFFFF
+    test edx, edx
+    jnz .col
 
-    test al, 0x80
-    jz .s7
-    mov dword [r13], 0xFFFFFFFF
-.s7:
-    test al, 0x40
-    jz .s6
-    mov dword [r13+4], 0xFFFFFFFF
-.s6:
-    test al, 0x20
-    jz .s5
-    mov dword [r13+8], 0xFFFFFFFF
-.s5:
-    test al, 0x10
-    jz .s4
-    mov dword [r13+12], 0xFFFFFFFF
-.s4:
-    test al, 0x08
-    jz .s3
-    mov dword [r13+16], 0xFFFFFFFF
-.s3:
-    test al, 0x04
-    jz .s2
-    mov dword [r13+20], 0xFFFFFFFF
-.s2:
-    test al, 0x02
-    jz .s1
-    mov dword [r13+24], 0xFFFFFFFF
-.s1:
-    test al, 0x01
-    jz .s0
-    mov dword [r13+28], 0xFFFFFFFF
-.s0:
-    inc rbx
-    add r13, 1024*4
+    add r13, 1024 * 4
     dec ecx
     jnz .row
 
+.done_advance:
     mov eax, [cursor_x]
-    add eax, 8
+    add eax, 16
     cmp eax, 1024
     jl .store_x
     xor eax, eax
     mov ecx, [cursor_y]
-    add ecx, 16
+    add ecx, 32
     cmp ecx, 768
     jl .store_y
     xor ecx, ecx
@@ -322,7 +271,7 @@ render_char:
 .newline:
     mov dword [cursor_x], 0
     mov eax, [cursor_y]
-    add eax, 16
+    add eax, 32
     cmp eax, 768
     jl .nl_store
     xor eax, eax
@@ -332,7 +281,7 @@ render_char:
 
 .backspace:
     mov eax, [cursor_x]
-    sub eax, 8
+    sub eax, 16
     jns .bs_store
     xor eax, eax
 .bs_store:

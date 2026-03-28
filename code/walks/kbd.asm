@@ -1,15 +1,4 @@
-; kbd.asm — keyboard poll walk
-;
-; Polls the PS/2 keyboard controller forever.
-; Port 0x64 = status register. Bit 0 = "a key was pressed, data ready."
-; Port 0x60 = data register. Read it to get the scancode.
-; Port 0xE9 = QEMU debugcon. Writing a byte here prints it to the host terminal.
-;
-; The walk loops: check status → if key ready, read scancode → write to debugcon → repeat.
-; If no key, skip the read/write and loop back immediately.
-;
-; The add(1,0) at the end forces pipeline nonzero so loop_back always fires.
-; loop_back only rewinds if pipeline != 0. Without this, a zero scancode would stop the loop.
+; kbd.asm — keyboard poll walk (ORIGINAL — debugging GUI crash)
 
 %include "[0][tool][walk.inc][NASM macros to write walks as coordinates instead of hex].inc"
 
