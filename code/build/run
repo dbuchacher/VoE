@@ -65,6 +65,6 @@ else
     KVM=""
     [ -w /dev/kvm ] && KVM="-enable-kvm -cpu host"
     qemu-system-x86_64 -hda $OUT/nomos.img -m 128M -no-reboot \
-        -serial file:/dev/null -debugcon file:/dev/null $QEMU_HW \
+        -serial file:/dev/null -debugcon stdio $QEMU_HW \
         ${KVM:-"-cpu Skylake-Server"} -vga std
 fi

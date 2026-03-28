@@ -748,6 +748,19 @@ Know the gaps before you start writing.
     bash build headless = multiboot (-kernel). Skips MBR. No VESA.
     FB address at 0x9100 = 0. Genesis skips filld. Serial only.
     bash build = MBR path. VESA sets mode. Blue screen.
+    bash build kvm = MBR path, KVM, display none, debugcon to stdout.
+    All three modes show debugcon output (GUI mode too, since session 5).
+
+  Testing:
+    ALWAYS test GUI mode (bash build/run) alongside headless. Headless
+    skips framebuffer rendering. Bugs in FB access only appear in GUI.
+    Build incrementally — one change at a time, test each. Don't
+    rewrite multiple files at once. The session 5 crash was caused
+    by changing kbd.asm + render_char + genesis simultaneously —
+    couldn't isolate which change broke it.
+    Debugcon (-debugcon stdio) is ALWAYS enabled in all build modes.
+    Don't redirect to /dev/null. If you need to suppress it, pipe
+    to /dev/null in the shell, not in QEMU args.
 
   Bind drain:
     DESIGN: bind bond drains loops, cores self-organize

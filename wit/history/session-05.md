@@ -1,126 +1,138 @@
-# Session 5: Loop Primitive + Character Encoding Discovery
+# Session 5: Loop Primitive + Character Encoding + SDF Rendering
 
-Coder session. Built loop read/write (build order item 1), then deep
-exploration of character encoding using Compute First.
+Coder session. Long session — loop primitive, character encoding deep dive,
+first computed SDF glyphs, input pipeline attempted.
 
-## What changed
+## What was built
 
-- **walks/loop.asm**: Three macros for loop interaction.
-  `loop_empty %1` — 4 bonds, pipeline = 1 (empty) or 0 (has data).
-  `loop_read %1` — 10 bonds, reads one record, advances read cursor.
-  `loop_write %1` — 9 bonds, writes pipeline to loop (drop mode), advances write cursor.
-  All three read loop parameters (mask, recsz, bufaddr) from the header
-  via indirect dereference flags (bit 7/6). Generic for any loop/record size.
+- **walks/loop.asm**: Loop read/write primitive. Three macros:
+  loop_empty (4 bonds), loop_read (10 bonds), loop_write (9 bonds).
+  Genesis self-test: write 'L', read back, echo. Output: `genesis\nLnT`.
+  First atom ever in a walk (TD for slot × recsz multiplication).
 
-- **genesis self-test**: After loop initialization, writes 'L' to the keyboard
-  loop, checks non-empty, reads it back, echoes to debugcon. Output changed
-  from `genesis\nnT` to `genesis\nLnT`. The 'L' proves round-trip works.
+- **Phonetic character encoding**: Compute First applied to characters.
+  Coordinates derived from articulatory phonetics, not designed:
+  T=case, D=place, M=openness, Q=voicing.
+  'a' = (+1,+1,+1,+1) = hylo. Voicing pairs are Q flips.
+  char_solve.c (frequency optimizer), char_phonetic.c (phonetic derivation).
+  Full writeup: wit/drafts/character-encoding.md.
 
-- **LP_* constants moved**: Loop header offsets moved from genesis.asm to
-  walks/loop.asm. Genesis `%include`s loop.asm after walk.inc.
+- **Computed SDF renderer**: render_char computes glyph shapes from
+  coordinates using integer SDF distance functions. No font file.
+  M selects shape: circle (vowel), diamond (fricative), square (stop).
+  D positions marker dot. Q controls fill/outline. Renders to FB.
+  "nomos" displays as 5 phonetic shapes on blue screen.
 
-- **First atom in a walk**: atom TD (+2,+2,0,0) computes slot_index × record_size.
-  Uses extended coordinates (2 extra bytes). The atom JIT path was untested
-  before this session — now exercised and confirmed working.
+- **Deleted glyph.ha**: Bitmap font data removed. No external font files.
 
-- **Design doc updated**: Loops section in CURRENT STATE reflects the built
-  primitive. Build order: item 1 marked done, items renumbered.
+## What failed
+
+- **kbd walk rewrite**: Attempted scancode → phonetic coord → loop_write →
+  loop_read → render_char pipeline. Crashed in GUI mode. Root cause:
+  the translation walk (SHL + dword table read + key-up filter with stash_a)
+  works in headless but crashes when real PS/2 scancodes arrive in GUI/MBR
+  mode. Likely a skip byte offset error — the walker hits garbage bytes,
+  JITs bad x86, faults. Reverted to original simple kbd walk.
+
+- **Big-bang rewrite mistake**: Rewrote kbd.asm + render_char + genesis
+  simultaneously. Couldn't isolate the crash. Wasted hours. Eventually
+  used incremental testing to prove: table data OK, includes OK, scancode
+  translation OK (without loop_write), loop_write crashes. But even
+  the translation walk alone crashes in GUI when scancodes arrive.
+
+- **Latin readability**: Built phonetic shapes (diamonds/squares) that
+  encode sound properties but are unreadable to humans. The design doc
+  says "Traditional Latin glyphs available as a language pack overlay"
+  but I forgot to build the overlay. Phonetic shapes prove the SDF
+  pipeline works, but humans need Latin letters to read text.
 
 ## What was decided
 
-- Three separate macros (empty/read/write) rather than one mega-macro.
-  Caller composes: `loop_empty` + `skip_nz` + `loop_read`. Clean separation.
-- loop_write is drop mode (no fullness check). This is the default — rings wrap.
-  Blocking writes (for persistence) add a fullness check before the macro.
-- Uses stash_a (loop_empty) and stash_b (loop_read, loop_write). No conflicts
-  as long as operations don't nest. Documented in header.
-- KVM mode for testing. TCG has a debugcon noise bug (session 2). KVM uses
-  real hardware virtualization — faithful and clean.
+- Phonetic encoding is the character identity (internal)
+- Latin letter shapes are a "language pack" overlay (display)
+- Both are needed — the design doc says so explicitly
+- SDF rendering from coordinates works (proven with shapes)
+- debugcon always enabled in all build modes (was /dev/null in GUI)
+- Build incrementally — one change per test, NEVER rewrite multiple files
 
-## Testing
+## Open bugs
 
-- `bash build/run kvm`: `DVgenesis\nLnT` ✓ (DV = MBR boot noise)
-- `bash build/run headless`: `genesis\nLnT` ✓
-- Binary: 94084 bytes (was 94012 — 72 bytes added for self-test + macros)
+1. **kbd walk crash in GUI**: the translation walk (save stash → AND 0x80 →
+   skip_nz → restore stash → AND 0x7F → SHL 2 → add table → read dword)
+   crashes when real scancodes arrive. Works in headless (no scancodes).
+   Need to hand-count every byte offset in the walk and verify skip/loop_back
+   values. Test with GUI mode + `-debugcon stdio` to see where it dies.
 
-## Build order position
+2. **Latin language pack**: render_char currently draws phonetic shapes
+   (circle/diamond/square from coordinates). Need to add a coordinate →
+   Latin glyph shape mapping. Options: inline bitmap data in .asm source
+   (7 bytes per char, no external file) or hardcoded SDF primitives per
+   letter (pure math, more code). The design doc calls for this.
 
-DONE: Loop read/write primitive.
-NEXT: Input pipeline (scancode → wave char → loop write). This converts the
-kbd walk from debugcon output to loop write, adds scancode→wave byte conversion.
+## Commits
 
-## Key technical notes for next wit
+```
+9cf85fd  loop read/write primitive (walks/loop.asm, genesis self-test)
+010f639  phonetic character encoding — 'a' is hylo
+22b681a  delete bitmap font, first computed glyph from phonetic coordinates
+1ca3ad4  computed SDF glyphs: phonetic coordinates → visible shapes
+```
 
-- The loop macros use indirect dereference flags extensively:
-  `F(P,U32,P) | 0x40` = arg1 is a pointer, walker dereferences to get value.
-  `F(U32,P,P) | 0x80` = arg0 is a pointer, walker dereferences.
-  Session 2 handoff confirmed these work.
-- "read(addr) already dereferences — don't use indirect on read's arg0."
-  The read JIT does `mov rax, [rdi]`. The write JIT does `mov [rdi], rsi`.
-  Both treat arg0 as a pointer already.
-- The atom TD uses `mul` which clobbers rdx. For small values (slot < 64,
-  recsz = 8) this doesn't matter. For large products, rdx overflow is silent.
-- All addresses fit in U32 (kernel at 1MB, elf32 format). This stays fine
-  until the binary exceeds 4GB.
+## For the next wit
 
-## Character Encoding Exploration
+### Critical: read these before coding
 
-Applied Compute First to the character encoding problem. Three approaches
-explored, each dissolving more than the last.
+- **Build incrementally.** One change → test in BOTH headless AND GUI.
+  GUI mode uses MBR boot + VESA framebuffer. Headless uses multiboot,
+  no framebuffer. Bugs in FB access or walk byte offsets only appear
+  in GUI when real hardware events fire.
 
-### 1. Solver (char_solve.c)
-Frequency-optimized assignment. Dimensions designed for classification
-(is_letter = D≠0, case_flip = XOR 0x80). Best result: 63 chars at
-shell 1, avg 1.057 bytes/char. Dissolves the text infrastructure stack
-but the encoding itself is arbitrary.
+- **debugcon is always stdio.** Build script updated. Don't redirect
+  to /dev/null. Output visible in all three modes.
 
-### 2. Phonetic (char_phonetic.c)
-Derived from articulatory phonetics — not designed, measured:
-  T = case, D = place, M = openness, Q = voicing
+- **The design doc says Latin overlay.** Don't ship phonetic shapes
+  without readable Latin. The phonetic coordinates are the identity.
+  The Latin shapes are the display. Both required.
 
-**'a' = (+1,+1,+1,+1) = hylo.** The simplest vocalization maps to the
-most fundamental bond pattern. All four dimensions positive = all four
-forces active.
+- **The kbd walk skip offsets are probably wrong.** The walk uses NASM
+  label arithmetic for skip_z/skip_nz distances. The formula:
+  `skip_z (target_label - label_after_skip)`. For loop_back:
+  `loop_back (label_at_loopback - walk_start)`. Verify by hand-counting
+  every byte in the walk including extended coordinate bytes.
 
-Voicing pairs (b/p, d/t, g/k, v/f, z/s) are Q flips — identical to
-how case pairs are T flips. The lattice treats voicing and case as the
-same operation on different dimensions.
+- **loop_write works.** Genesis self-test proves it (write 'L', read back).
+  The crash is in the kbd walk's translation bonds, not in loop_write itself.
 
-16 unique shell-1 coordinates for 26 letters. Collisions reveal
-phonetic identity: k=c=q=x (all /k/), b=m (both labial closed voiced),
-l=r=z (all central partial voiced). Shell 2 disambiguates.
+### File state
 
-### 3. Legacy comparison
-ASCII/UTF-8: 1.000 bytes/char but requires grep, regex, Unicode tables,
-iconv, encoding detection, locale handling, font rasterizers.
-Phonetic: ~1.4 bytes/char on x86 but dissolves the entire stack AND the
-encoding itself. New sounds don't need committees — measure properties,
-coordinate exists. On ternary hardware: zero overhead, fixed 4 trits.
+```
+code/
+  [0] walk.inc           NASM macros (unchanged)
+  [1] boot/mbr           MBR bootloader (unchanged)
+  [2] cpu/entry           Mode switch, AP wake (unchanged)
+  [3] handoff             Runs genesis then kbd_walk (unchanged)
+  [4] equation            JIT compiler, sealed (unchanged)
+  [5] walker              Wave byte interpreter, sealed (unchanged)
+  [6] genesis             Founding walk + render_char (SDF from coords)
+  walks/
+    kbd.asm               Simple scancode echo (ORIGINAL — translation reverted)
+    loop.asm              Loop read/write macros (working)
+    speaker.asm           440Hz beep (unchanged)
+    pci.asm               NVMe discovery macro (unchanged)
+  build/
+    run                   Build script (debugcon stdio in all modes)
 
-### Key discoveries
+wit/
+  drafts/
+    character-encoding.md   Full comparison: phonetic vs solver vs legacy
+  lattice/
+    char_solve.c            Frequency-optimized encoding solver
+    char_phonetic.c         Phonetic coordinate derivation
+```
 
-- **Born-indexed network search**: query remote text without downloading.
-  Send 3 trigram keys (~9 bytes), get posting list back (~20 bytes).
-  The document never moves. 30 bytes vs 2MB.
+### The path forward
 
-- **SDF rendering is a walk**: glyph_sdf(x, y, T, D, M, Q) → distance.
-  ~20-30 bonds. No font file, no texture atlas. The walk IS the font.
-  walks/sdf.asm when we build it (build order item 5).
-
-- **Ternary dissolves the byte overhead**: shell 2 extension bytes are
-  x86 tax. On balanced ternary, every character is 4 trits. Fixed width.
-  The "phonetic is 40% larger" problem vanishes on target hardware.
-
-- **Classification for free**: is_vowel, is_voiced, is_front, voice_flip
-  — all one gate bond. Legacy can't do any of these without tables.
-
-### Decision
-Use phonetic encoding. Derives from physics (articulatory properties),
-not committee assignments. The 5.7%–40% x86 overhead is acceptable
-given what dissolves: text infrastructure, encoding committees, font
-rasterizers, search engines, the encoding itself.
-
-### Files created
-- wit/lattice/char_solve.c — frequency-optimized solver
-- wit/lattice/char_phonetic.c — phonetic coordinate derivation
-- wit/drafts/character-encoding.md — full comparison writeup
+1. Fix kbd walk: hand-count bytes, fix skip offsets, test in GUI
+2. Add Latin language pack: inline glyph shapes in render_char
+3. Connect: scancode → phonetic coord → loop → render Latin shape
+4. Type on keyboard → see Latin letters on blue screen
