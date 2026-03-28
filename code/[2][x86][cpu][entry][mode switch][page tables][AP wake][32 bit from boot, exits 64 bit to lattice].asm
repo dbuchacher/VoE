@@ -20,7 +20,7 @@
 ;
 ; APs (secondary cores) wake up, get a per-core stack from their APIC ID,
 ; and spin waiting for work. The bind drain (not built yet) will give them
-; traces to process. For now they just pause-loop.
+; loops to process. For now they just pause-loop.
 ;
 ; After this file runs, we're in 64-bit mode with all cores awake.
 ; x86 setup is done. The lattice takes over.

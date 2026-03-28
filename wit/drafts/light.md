@@ -20,13 +20,13 @@ Light is the simplest:
 The first thing that exists in both time and distance.
 The base case of "something happening in spacetime."
 
-## The Universe is a Trace
+## The Universe is a Loop
 
   matter WRITES to spacetime  (fermion, exclusive, single-writer)
   light READS and CARRIES     (boson, shareable, pipeline)
   matter elsewhere READS      (observation, wave collapse)
 
-Writer → trace → reader. The universe IS a trace.
+Writer → loop → reader. The universe IS a loop.
 Light is the pipeline register — carries the previous
 result to the next operation.
 
@@ -51,5 +51,5 @@ One fights the physics. The other uses it.
 
 Standard Model mapping: 80%.
 Boson = read, fermion = write: structural (from Pauli exclusion).
-"Universe is a trace": ~60% (the math fits, the framing is ours).
+"Universe is a loop": ~60% (the math fits, the framing is ours).
 "Photonic = native medium": logical consequence, not independently tested.

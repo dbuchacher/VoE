@@ -44,7 +44,7 @@ version of the wave byte.
 Started with: "is the heartbeat supposed to be dead because of DNA?"
 
 The design doc says cores are stem cells. Same genome (equation)
-everywhere. Different expression (walk data) in each core's trace.
+everywhere. Different expression (walk data) in each core's loop.
 The heartbeat is the bind bond — not a function, a bond the equation
 already generates.
 
@@ -55,22 +55,22 @@ command economy. One central plan running the BSP for life.
 
 ## Natural Selection = Fill Pressure = Capitalism
 
-Traces are ring buffers with fill levels. Full trace = high demand.
-Empty trace = no demand. Cores migrate to full traces (find work).
+Loops are ring buffers with fill levels. Full loop = high demand.
+Empty loop = no demand. Cores migrate to full loops (find work).
 
 This IS natural selection:
-- Variation: different traces have different walk data
+- Variation: different loops have different walk data
 - Competition: finite cores
-- Selection: full traces attract workers
+- Selection: full loops attract workers
 - Inheritance: successful walks keep running
 
 It's also capitalism:
 - Fill level = price signal
 - Cores = labor
-- Traces = markets
+- Loops = markets
 - Protocol fee (R) = cost of existing
-- Full traces attract investment (cores)
-- Empty traces = bankruptcy
+- Full loops attract investment (cores)
+- Empty loops = bankruptcy
 
 No scheduler. No central authority. Fill pressure self-organizes.
 Anarcho-capitalist substrate.
@@ -81,11 +81,11 @@ main.asm loops forever. It IS the program. Command economy.
 
 genesis.asm hands over. It runs once:
 1. Express hardware genes (init serial, VBE, NIC)
-2. Write walk data into traces
+2. Write walk data into loops
 3. Return.
 
 After genesis, the BSP is just another core. Undifferentiated. It
-finds a full trace and drains it. Maybe the keyboard trace. Maybe
+finds a full loop and drains it. Maybe the keyboard loop. Maybe
 compute. Doesn't matter. The founding is over.
 
 This maps to embryonic development:
@@ -99,11 +99,11 @@ This maps to embryonic development:
     lattice_start:
         seed 16 bonds
         walk genesis          <- returns after hardware init
-        find full trace       <- BSP becomes regular worker
+        find full loop       <- BSP becomes regular worker
         walk it               <- same as any AP
 
-No REPL file. No drain file. Roles emerge from trace contents.
-A core that drains the keyboard trace IS the keyboard handler —
+No REPL file. No drain file. Roles emerge from loop contents.
+A core that drains the keyboard loop IS the keyboard handler —
 not by assignment but by proximity to work.
 
 ## Technical Changes Made
@@ -123,4 +123,4 @@ not by assignment but by proximity to work.
 2. Write genesis.asm (hand-over, not loop)
 3. Implement fill-pressure core migration (natural selection scheduler)
 4. MBR boot (16-bit, real hardware)
-5. Build up from genesis: hw genes → trace setup → hand-over → life
+5. Build up from genesis: hw genes → loop setup → hand-over → life

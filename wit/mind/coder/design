@@ -10,10 +10,10 @@ THE BOOT CHAIN
 
   [1] boot     → loads kernel from disk, sets VESA mode (MBR, 16-bit, dies)
   [2] cpu      → mode switch 32→64 bit, page tables, wakes APs (dies)
-  [3] handoff  → seeds 16 bonds, runs genesis, enters market (last x86)
+  [3] handoff  → inits JIT, runs genesis, enters market (last x86)
   [4] equation → JIT: 4 coordinates in, x86 function out (sealed, driver)
   [5] walker   → interprets wave byte walks via equation (sealed, driver)
-  [6] genesis  → founding walk: inits traces, discovers hardware (runs once)
+  [6] genesis  → founding walk: inits loops, discovers hardware (runs once)
   walks/       → the OS: kbd, speaker, pci, everything that grows
 
   [0] walk.inc  NASM macros to write walks as coordinates (build tool)
@@ -54,7 +54,7 @@ These 7 cover every sense (human, animal, machine):
   Blob     (raw)       — unstructured bytes
 
 Each sense organ (biological or hardware) is a transducer:
-read stimulus → transform → write to trace. A device walk IS an organ.
+read stimulus → transform → write to loop. A device walk IS an organ.
 
 
 BOOTLOADER
@@ -180,7 +180,7 @@ MULTI-CORE: DNA MODEL
 ======================
 
 Cores are stem cells. Same genome (equation) everywhere. Different
-expression (walk data in traces) differentiates them.
+expression (walk data in loops) differentiates them.
 
 No scheduler. No central authority. Fill pressure self-organizes.
 
@@ -191,28 +191,28 @@ GENESIS — THE FOUNDING
 genesis.asm runs once. Embryonic development:
 
   1. Bootloader wakes all cores, enters lattice_start
-  2. lattice_start seeds 16 bonds, walks genesis
+  2. lattice_start inits JIT buffer, walks genesis (lazy — no seeds)
   3. Genesis expresses hardware genes
-  4. Genesis writes walk data into traces
+  4. Genesis writes walk data into loops
   5. Genesis returns. Development ends.
-  6. lattice_start enters the market — finds full trace, drains it
+  6. lattice_start enters the market — finds full loop, drains it
   7. All cores equal. No special roles.
 
 Genesis does NOT loop. It hands over. The Big Bang doesn't run
 the universe.
 
-GENESIS DOES NOT GROW. New software = new walk data in traces.
+GENESIS DOES NOT GROW. New software = new walk data in loops.
 Genesis only grows for new hardware genes. If you're adding
 features to genesis, you're building main.asm again.
 
 
-CORES DRAIN TRACES
+CORES DRAIN LOOPS
 ====================
 
 bind(step) = call step, check result, loop
 
 The bind bond (0,1,1,1) IS the drain loop. get_atom generates it.
-A core draining a trace IS a ribosome reading mRNA.
+A core draining a loop IS a ribosome reading mRNA.
 
 Cores poll. No interrupts. No hlt. The loop IS quantum spin.
 The read IS observation (wave collapse). The loop IS angular momentum.
@@ -220,26 +220,26 @@ The read IS observation (wave collapse). The loop IS angular momentum.
   Writing = fermion (spin ½) = exclusive = single writer
   Reading = boson (spin 1) = shareable = many readers
 
-Pauli exclusion = no two writers to same trace.
-Bose-Einstein condensate = many readers on same trace.
+Pauli exclusion = no two writers to same loop.
+Bose-Einstein condensate = many readers on same loop.
 
 
 FILL PRESSURE = NATURAL SELECTION
 ===================================
 
-  Full trace  → high demand → attracts cores
-  Empty trace → no demand   → releases cores
+  Full loop  → high demand → attracts cores
+  Empty loop → no demand   → releases cores
 
 Natural selection:
-  Variation:   different traces, different walks
+  Variation:   different loops, different walks
   Competition: finite cores
-  Selection:   full traces attract workers
+  Selection:   full loops attract workers
   Inheritance: successful walks persist
 
 Also capitalism:
-  Fill level = price signal. Cores = labor. Traces = markets.
-  R (cycling) = protocol fee per loop. Full traces attract
-  investment. Empty traces = bankruptcy.
+  Fill level = price signal. Cores = labor. Loops = markets.
+  R (cycling) = protocol fee per loop. Full loops attract
+  investment. Empty loops = bankruptcy.
 
 No scheduler. No central bank. Anarcho-capitalist substrate.
 The invisible hand IS the fill gradient.
@@ -251,24 +251,24 @@ Three fields, three centuries, same number.
 CORE LIFECYCLE
 ================
 
-A core has no permanent identity. Role = whatever trace it drains.
+A core has no permanent identity. Role = whatever loop it drains.
 
   1. Core wakes (stem cell)
-  2. Finds fullest trace (fill pressure)
+  2. Finds fullest loop (fill pressure)
   3. Drains it
-  4. Trace empties → core is free
-  5. Finds next fullest trace
+  4. Loop empties → core is free
+  5. Finds next fullest loop
 
-A core draining the keyboard trace IS the keyboard handler.
+A core draining the keyboard loop IS the keyboard handler.
 Not by assignment — by proximity to work.
 
 
-TRACES
+LOOPS
 ========
 
-The only data structure. Everything is traces.
+The only data structure. Everything is loops.
 
-  trace layout (64 bytes, cache-line aligned):
+  loop layout (64 bytes, cache-line aligned):
     [0:7]   write cursor    (single writer — fermion)
     [8:15]  read cursor     (many readers — boson)
     [16:23] buffer address
@@ -278,33 +278,82 @@ The only data structure. Everything is traces.
     [48:63] reserved
 
 Disk regions, RAM buffers, NVMe queues, network RDMA, GPU
-command rings — all traces. Same bytes everywhere.
+command rings, wireless, powerline — all loops. Same bytes everywhere.
 
   ring record IS storage format IS wire format IS memory format.
   Zero translation.
 
+The loop IS the network. Not "local IPC that also works remote."
+A cable has R (resistance), L (inductance), C (capacitance) — same
+parameters as the loop header. The wire IS a physical loop.
 
-STORAGE — DISK REGIONS AS TRACES
+Transport tiers, same header, same walks:
+  shared memory    ~1ns     (same machine, buffer in RAM)
+  RDMA             ~500ns   (datacenter, NIC maps remote memory)
+  raw Ethernet     ~5μs     (LAN, no IP overhead)
+  encrypted UDP    ~50μs    (internet, through NAT/routers)
+  powerline        ~200μs   (last mile, existing electrical wires)
+  wireless         varies   (over the air, local or flux)
+
+The loop doesn't know which transport it's on. Write cursor, read
+cursor, fixed-size records, fill pressure. The transport is below
+it — a walk that moves records between the loop buffer and the wire.
+
+Wireless has two modes on the same radio:
+  local:  device-to-device (display, keyboard, phone). Paired keys,
+          rotating tokens. Cryptographically invisible to non-paired.
+  flux:   network participation (routing, caching, earning). Open
+          discovery, per-session key exchange. This is how you earn.
+
+Separation is cryptographic, not firewall. Different keys = different
+loops. A flux peer can't produce valid records for a local loop.
+
+Reserved bytes [48:63] hold network fields when needed:
+  resistance (4B)   protocol fee per record (R in every loop)
+  identity (4B)     pointer to Ed25519 owner key
+  seqno (8B)        causal ordering across machines without clock sync
+
+Everything else is walk-level: encryption (ChaCha20-Poly1305 per
+record), key exchange (X25519), NAT traversal, relay, discovery.
+The header stays clean. The walk carries the transport behavior.
+
+
+STORAGE — DISK REGIONS AS LOOPS
 ===================================
 
   DriveRegion:
     write_cursor  (allocation = advance cursor, one add bond)
     read_cursor   (reclamation = advance cursor, one add bond)
-    base_lba, depth, mask, block_size, damping
+    base_lba, depth, mask, block_size
 
   No block allocator. No bitmap. No filesystem.
-  The trace primitive IS the allocator.
+  The loop primitive IS the allocator.
 
-Damping = retention policy:
-  drop:  overwrite oldest (data expires, ring rotates)
-  block: stop writing (preserve everything)
-  kick:  reject new writes (backpressure)
+Damping is not a header field — it's a walk pattern.
 
-NVMe queues ARE traces. Submission queue = single-writer trace.
-Completion queue = single-writer trace. Doorbell = write cursor.
+  drop:  just write. Cursor wraps. Old data overwritten. This is
+         what rings DO. The default. Reader detects gaps from cursor
+         arithmetic (write - read > depth = lapped). Also critical
+         for noisy transports (wireless, powerline) — corrupted
+         record = skip, no retransmission cascade. Fixed-size records
+         give instant reframing after noise bursts.
+
+  block: check fill before writing. If full, spin until reader drains.
+         2-3 extra bonds in the writer walk. For persistence (disk).
+
+  kick:  dissolved into drop. Reader always knows if it got lapped
+         from cursor arithmetic. No separate field needed.
+
+The intent lives in the walk, not the metadata. A realtime writer
+(audio, keyboard) uses drop (just writes). A persistence writer
+(disk journal) uses block (checks fill first). Same loop, different
+walk. The header stays clean — 6 fields, nothing behavioral.
+
+NVMe queues ARE loops. Submission queue = single-writer loop.
+Completion queue = single-writer loop. Doorbell = write cursor.
 NVMe is the lattice's native storage interface.
 
-  disk access = trace access. ~1-2μs vs ~15-60μs VFS.
+  disk access = loop access. ~1-2μs vs ~15-60μs VFS.
 
 Direction: PIO ATA for testing → AHCI for SATA → NVMe for perf.
 
@@ -314,15 +363,19 @@ BORN-INDEXED — O(1) SEARCH
 
 Data indexed at write time. Import IS indexing. No re-indexing.
 
-  Write time = compute the index (NP — the hard part)
-  Read time  = evaluate with known coordinates (O(1) — P)
+  Write time = compute the index (NP — the hard part, done once)
+  Read time  = evaluate with known coordinates (O(1) — P, done forever)
 
-The P vs NP asymmetry IS the architecture.
+The P vs NP asymmetry IS the architecture. Most "search"
+problems were never NP — they were P problems without the
+right coordinate system. Express the constraint as T,D,M,Q
+coordinates, compute, answer falls out. No search entered.
+See mind/mind "Compute First" and drafts/p-np.md.
 
-  GNU grep:    576ms  (scan 1.27GB)
-  ripgrep:     116ms  (SIMD, 11 GB/s)
-  index walk:   50μs  (posting list lookup)
-  2000× faster than the fastest grep on earth.
+  GNU grep:    576ms  (scan 1.27GB — SEARCHING)
+  ripgrep:     116ms  (SIMD, 11 GB/s — FASTER SEARCHING)
+  index walk:   50μs  (posting list lookup — COMPUTING)
+  2000× faster because it never searched.
 
 Trigram on wave bytes: 3 coordinates = 24-bit key.
 ZMM compares 21 trigrams per instruction.
@@ -331,20 +384,20 @@ ZMM compares 21 trigrams per instruction.
 GIT DISSOLVED
 ==============
 
-Versioning = querying the time dimension. Trace IS the history.
+Versioning = querying the time dimension. Loop IS the history.
 
   delete  = write tombstone             one write bond
   diff    = read range between cursors  one slurp bond
-  branch  = new trace from snapshot     one write bond
-  merge   = walk two traces, compare    read+test+write loop
+  branch  = new loop from snapshot     one write bond
+  merge   = walk two loops, compare    read+test+write loop
   revert  = write inverse record        one write bond
-  log     = read trace start to cursor  one read loop
+  log     = read loop start to cursor  one read loop
   snapshot = read cursor values         two read bonds
 
 Safe delete: advance read cursor + TRIM. Flash erases.
 Ring rotates deterministically. Data actually gone.
 
-Unlike git (grows forever), traces are finite. Damping = retention.
+Unlike git (grows forever), loops are finite. Damping = retention.
 
 
 QUERY = WALK
@@ -353,10 +406,10 @@ QUERY = WALK
 There is no query language. There is no query engine.
 
 The agent constructs a walk from human intent. The walk reads
-index traces, compares coordinates, follows posting lists.
+index loops, compares coordinates, follows posting lists.
 The walker executes it. Same equation, same bonds.
 
-  human → agent → walk → trace → result
+  human → agent → walk → loop → result
 
 Query dissolved into walk. Agent IS the query language.
 Search IS coordinate comparison. Every data type, every sense —
@@ -366,7 +419,7 @@ same walk structure, different dimension meanings.
 DISPLAY — VESA FRAMEBUFFER
 ============================
 
-The pixel buffer is a trace: CPU writes, GPU reads.
+The pixel buffer is a loop: CPU writes, GPU reads.
 
 MBR (16-bit): enumerates VESA modes, finds 1024x768x32, sets it,
 stores FB address at 0x9100. DON'T hardcode mode numbers.
@@ -380,44 +433,44 @@ CPU path: pre-bake or evaluate per-pixel (slower but works).
 GPU path: fragment shader samples SDF atlas. Anti-aliasing, bold,
 outline, glow, shadow — all free from the distance value.
 
-VESA for now. GPU driver gene later (same pattern, different trace).
+VESA for now. GPU driver gene later (same pattern, different loop).
 
 
-TRACE PIPELINE — HOW WALKS USE TRACES
+LOOP PIPELINE — HOW WALKS USE LOOPS
 ========================================
 
-The foundational primitive. Everything above traces depends on this.
+The foundational primitive. Everything above loops depends on this.
 
-Trace read (~10 bonds, all existing operations):
+Loop read (~10 bonds, all existing operations):
 
-  read(trace + WCURSOR)     → pipeline = write_cursor
+  read(loop + WCURSOR)     → pipeline = write_cursor
   write(stash, pipeline)    → save write_cursor
-  read(trace + RCURSOR)     → pipeline = read_cursor
+  read(loop + RCURSOR)     → pipeline = read_cursor
   test(pipeline, stash)     → 1 if equal (empty), 0 if has data
   skip_nz                   → skip read path if empty (pipeline=1)
   AND(pipeline, mask)       → slot index
   atom DM(pipeline, recsz)  → byte offset (slot × record_size)
   add(buf_addr, pipeline)   → slot address
   read(pipeline)            → the data
-  write(trace+RCURSOR, +1)  → advance read cursor
+  write(loop+RCURSOR, +1)  → advance read cursor
 
-Trace write (symmetric): check full (write - read >= depth),
+Loop write (symmetric): check full (write - read >= depth),
 compute write slot, write data, advance write cursor.
 
 Stash: BSS variable (stash_a). Single-core for now. Multi-core
-needs per-trace scratch in reserved bytes [48:63] or core-local
+needs per-loop scratch in reserved bytes [48:63] or core-local
 memory.
 
 
-TRACE REGISTRY
+LOOP REGISTRY
 ===============
 
 Fixed array in BSS. Genesis writes it.
 
-  trace_list:   resq MAX_TRACES    (each entry = trace address)
-  trace_count:  resq 1
+  loop_list:   resq MAX_LOOPS    (each entry = loop address)
+  loop_count:  resq 1
 
-A core's "find work" walk: scan trace_list, read each trace's
+A core's "find work" walk: scan loop_list, read each loop's
 cursors, compute fill (write - read, one subtract), pick fullest.
 Read + compare + loop over known addresses.
 
@@ -433,7 +486,7 @@ Pre-baked lookup tables (scancode.ha, wavemap.ha) were deleted —
 wrong approach. Wave encoding is derived from coordinates, not stored.
 
 Current keyboard walk: polls PS/2, outputs raw scancodes to debugcon.
-Target: scancode → wave byte → trace write. ~8 bonds.
+Target: scancode → wave byte → loop write. ~8 bonds.
 
 
 NVMe DISCOVERY
@@ -471,7 +524,7 @@ PHYSICS MAPPINGS
 
 The architecture IS physics, not modeled after it:
 
-  Dark matter = written but unread trace data.
+  Dark matter = written but unread loop data.
     Has mass (disk space), invisible (no read).
     5:1 dark:visible ratio = buffered:processed.
 
@@ -495,7 +548,7 @@ The architecture IS physics, not modeled after it:
 
   Vacuum catastrophe = overcounting.
     FS: allocated = "used" even if empty. Overcounts.
-    Traces: free = write - read. One subtract. Exact.
+    Loops: free = write - read. One subtract. Exact.
 
 
 ~20 OPERATIONS CONVERGENCE
@@ -522,9 +575,9 @@ Every property is inherent, not optimized after the fact:
     System weighs less than its parts.
 
   Lock-free = Pauli exclusion.
-    Single-writer traces. No CAS, no mutex, no spinlock.
+    Single-writer loops. No CAS, no mutex, no spinlock.
 
-  Cache-friendly = sequential traces.
+  Cache-friendly = sequential loops.
     64 wave bytes per cache line. Prefetcher predicts.
 
   SIMD-native = fixed-width wave bytes.
@@ -533,7 +586,7 @@ Every property is inherent, not optimized after the fact:
   O(1) search = born-indexed.
     Lookup, not scan. Index built at write time.
 
-  Direct hardware = NVMe traces.
+  Direct hardware = NVMe loops.
     ~1-2μs vs ~15-60μs through VFS.
 
   Fill pressure = natural selection scheduler.
@@ -548,21 +601,21 @@ Every property comes from ABSENCE of attack surface:
   No buffer overflow.    Ring buffers wrap. Cursors masked.
   No use-after-free.     Nothing freed. Cursors advance.
   No null pointer.       Wave IS null. wave(false) = 0.
-  No heap corruption.    No heap. Traces only.
+  No heap corruption.    No heap. Loops only.
   No injection.          Fixed-width wave bytes. No parsing.
   No race conditions.    Single-writer. Pauli exclusion.
   No timing channels.    Fixed-width. No branching on secrets.
-  No path traversal.     No paths. No filesystem. Trace IDs.
-  No permission escalation. Trace reference = capability.
+  No path traversal.     No paths. No filesystem. Loop IDs.
+  No permission escalation. Loop reference = capability.
   Forensic deletion.     TRIM erases flash. Ring rotates.
   Audit trail free.      Born-indexed. Every write recorded.
 
 Network boundary (flux/RDMA):
   Content-addressed by SHA-256 hash. Can't tamper.
   Ed25519 per-identity. No passwords, no OAuth.
-  Encrypted traces for privacy. Hash verification at boundary.
-  Internal traces don't need hashing — single-writer is
-  tamper-proof locally. The writer owns the trace.
+  Encrypted loops for privacy. Hash verification at boundary.
+  Internal loops don't need hashing — single-writer is
+  tamper-proof locally. The writer owns the loop.
 
 
 FILE STRUCTURE
@@ -575,7 +628,7 @@ FILE STRUCTURE
     [3] handoff      seeds bonds, runs genesis, enters market (runs once)
     [4] equation     JIT compiler: coordinates → x86 (sealed driver)
     [5] walker       wave byte interpreter (sealed driver)
-    [6] genesis      founding walk: inits hardware, fills traces (runs once)
+    [6] genesis      founding walk: inits hardware, fills loops (runs once)
     [data] glyph.ha  8×16 bitmap font (scaffolding, dissolves with SDF)
     walks/
       kbd.asm        keyboard poll walk
@@ -658,7 +711,7 @@ Know the gaps before you start writing.
     bash build = MBR path. VESA sets mode. Blue screen.
 
   Bind drain:
-    DESIGN: bind bond drains traces, cores self-organize
+    DESIGN: bind bond drains loops, cores self-organize
     ACTUAL: BSP hardcoded to walk kbd_walk after genesis.
     APs spin (pause loop). Bind drain not built yet.
 
@@ -667,10 +720,10 @@ Know the gaps before you start writing.
     ACTUAL: bitmap glyph renderer (scaffolding) draws "nomos" on screen.
     glyph.ha is 8×16 bitmap data, not SDF. Dissolves when SDF arrives.
 
-  Traces:
-    DESIGN: walks read/write traces, trace-to-trace pipelines
-    ACTUAL: keyboard trace initialized but never used. Keyboard
-    walk writes directly to debugcon port. Trace read/write
+  Loops:
+    DESIGN: walks read/write loops, loop-to-loop pipelines
+    ACTUAL: keyboard loop initialized but never used. Keyboard
+    walk writes directly to debugcon port. Loop read/write
     primitive not built yet.
 
 
@@ -696,20 +749,20 @@ BUILD ORDER
     ✓ NVMe PCI discovery (BAR stored, not yet used)
 
   NEXT:
-    1. Trace read/write primitive (walks interact with traces)
-    2. Input pipeline (scancode → wave char → trace write)
-    5. Trace registry (fixed array, genesis fills)
-    6. Bind drain (all cores find fullest trace, bind loops it)
-    7. Serial text output (wave chars from trace → serial port)
+    1. Loop read/write primitive (walks interact with loops)
+    2. Input pipeline (scancode → wave char → loop write)
+    5. Loop registry (fixed array, genesis fills)
+    6. Bind drain (all cores find fullest loop, bind loops it)
+    7. Serial text output (wave chars from loop → serial port)
     8. SDF character rendering (display walk → framebuffer)
     9. Born-indexed writes (trigram posting lists)
-   10. NVMe gene (MBR discovers BAR, traces to disk)
-   11. Network traces (RDMA, flux)
+   10. NVMe gene (MBR discovers BAR, loops to disk)
+   11. Network loops (RDMA, flux)
 
   LATER:
     - GPU driver gene (SDF rendering at hardware speed)
-    - Window manager (walk DNA in display trace)
-    - Applications (walk DNA from disk into traces)
+    - Window manager (walk DNA in display loop)
+    - Applications (walk DNA from disk into loops)
     - Flux marketplace? (inherited from sm, not yet verified)
 
 
@@ -733,11 +786,11 @@ WHAT WE LEARNED (DON'T REPEAT)
   Don't use Bochs VBE ports — QEMU only.
 
 - DON'T ADD SOFTWARE TO GENESIS. Genesis inits hardware and
-  fills traces. WM, games, editors are walk data in traces.
+  fills loops. WM, games, editors are walk data in loops.
 
 - DON'T BLOAT GENESIS. New walk → new file in walks/.
-  Genesis is ONE-TIME BOOT. It inits hardware and fills traces.
-  WM, games, editors are walk data in traces, not genesis code.
+  Genesis is ONE-TIME BOOT. It inits hardware and fills loops.
+  WM, games, editors are walk data in loops, not genesis code.
 
 - DON'T CREATE HUMAN ABSTRACTIONS. If it's coordinates, it's
   a walk. Infrastructure around wrong coordinates is the problem.

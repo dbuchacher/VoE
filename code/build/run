@@ -7,10 +7,10 @@ OUT=.build
 mkdir -p "$OUT"
 
 nasm -f elf32 "[2][x86][cpu][entry][mode switch][page tables][AP wake][32 bit from boot, exits 64 bit to lattice].asm" -o "$OUT/x86.o"
-nasm -f elf32 "[3][x86][handoff][lattice start][inits JIT, seeds 16 bonds, runs genesis, never returns].asm" -o "$OUT/handoff.o"
+nasm -f elf32 "[3][x86][handoff][lattice start][inits JIT, runs genesis, enters market, never returns].asm" -o "$OUT/handoff.o"
 nasm -f elf32 "[4][x86][driver][equation][JIT][cache][4 coordinates in, x86 function out, sealed].asm" -o "$OUT/equation.o"
 nasm -f elf32 "[5][x86][driver][walker][interpreter][wave bytes in, decodes coordinates, calls equation, sealed].asm" -o "$OUT/walker.o"
-nasm -f elf32 "[6][x86][walk][genesis][founding][runs once at boot, inits traces, discovers hardware].asm" -o "$OUT/genesis.o"
+nasm -f elf32 "[6][x86][walk][genesis][founding][runs once at boot, inits loops, discovers hardware].asm" -o "$OUT/genesis.o"
 nasm -f elf32 "walks/kbd.asm" -o "$OUT/kbd.o"
 
 ld -m elf_i386 -T build/link.ld \

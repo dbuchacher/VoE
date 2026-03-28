@@ -1,6 +1,6 @@
 ; genesis.asm — the founding
 ;
-; Runs once. Expresses hardware genes. Fills traces. Returns.
+; Runs once. Expresses hardware genes. Fills loops. Returns.
 ; After this, all cores are equal. Development ends. Life begins.
 ;
 ; Think of this as embryonic development. The egg divides, organs form,
@@ -11,35 +11,35 @@ bits 64
 
 %include "[0][tool][walk.inc][NASM macros to write walks as coordinates instead of hex].inc"
 
-; ─── trace layout constants ──────────────────────────────────
-; A trace is a 64-byte header (cache-line aligned) describing a ring buffer.
+; ─── loop layout constants ──────────────────────────────────
+; A loop is a 64-byte header (cache-line aligned) describing a ring buffer.
 ; These offsets are byte positions within that header.
-TR_WCURSOR equ 0        ; write cursor: where the next write goes
-TR_RCURSOR equ 8        ; read cursor: where the next read comes from
-TR_BUFADDR equ 16       ; pointer to the actual ring buffer memory
-TR_DEPTH   equ 24       ; how many slots in the ring (power of 2)
-TR_MASK    equ 32       ; depth - 1, used to wrap cursors (cursor AND mask = slot index)
-TR_RECSZ   equ 40       ; bytes per record in this trace
+LP_WCURSOR equ 0        ; write cursor: where the next write goes
+LP_RCURSOR equ 8        ; read cursor: where the next read comes from
+LP_BUFADDR equ 16       ; pointer to the actual ring buffer memory
+LP_DEPTH   equ 24       ; how many slots in the ring (power of 2)
+LP_MASK    equ 32       ; depth - 1, used to wrap cursors (cursor AND mask = slot index)
+LP_RECSZ   equ 40       ; bytes per record in this loop
 
-TRACE_DEPTH equ 64      ; 64 slots in the keyboard trace
-TRACE_MASK  equ (TRACE_DEPTH - 1)  ; = 63 = 0x3F
+LOOP_DEPTH equ 64      ; 64 slots in the keyboard loop
+LOOP_MASK  equ (LOOP_DEPTH - 1)  ; = 63 = 0x3F
 
 ; ─── BSS (zeroed by bootloader, don't need to init to 0) ────
 
 section .bss
 
-alignb 64                ; cache-line align the trace header
-trace_kbd:      resb 64              ; keyboard trace header (64 bytes)
-trace_kbd_buf:  resb TRACE_DEPTH * 8 ; keyboard ring buffer (64 slots × 8 bytes)
+alignb 64                ; cache-line align the loop header
+loop_kbd:      resb 64              ; keyboard loop header (64 bytes)
+loop_kbd_buf:  resb LOOP_DEPTH * 8 ; keyboard ring buffer (64 slots × 8 bytes)
 
 global stash_a, stash_b
 stash_a: resq 1          ; temp storage for walks (save/restore pipeline values)
 stash_b: resq 1
 
-MAX_TRACES equ 16
-global trace_list, trace_count
-trace_list: resq MAX_TRACES  ; array of pointers to trace headers
-trace_count: resq 1          ; how many traces exist
+MAX_LOOPS equ 16
+global loop_list, loop_count
+loop_list: resq MAX_LOOPS  ; array of pointers to loop headers
+loop_count: resq 1          ; how many loops exist
 
 global cursor_x, cursor_y
 cursor_x: resd 1         ; text cursor position for bitmap renderer (pixels)
@@ -101,41 +101,41 @@ main_walk:
     dd walk_speaker_beep
     dd (walk_speaker_beep_end - walk_speaker_beep)
 
-; 4. init keyboard trace — fill in the trace header fields
-;    The trace header is 64 bytes in BSS (already zeroed = cursors start at 0).
+; 4. init keyboard loop — fill in the loop header fields
+;    The loop header is 64 bytes in BSS (already zeroed = cursors start at 0).
 ;    We write: buffer address, depth, mask, and record size.
-;    After this, the trace is ready for read/write operations.
-    w -1,0,0,0                              ; write: trace_kbd.buf_addr = trace_kbd_buf
+;    After this, the loop is ready for read/write operations.
+    w -1,0,0,0                              ; write: loop_kbd.buf_addr = loop_kbd_buf
     db F(U32,U32,P)
-    dd (trace_kbd + TR_BUFADDR)
-    dd trace_kbd_buf
+    dd (loop_kbd + LP_BUFADDR)
+    dd loop_kbd_buf
 
-    w -1,0,0,0                              ; write: trace_kbd.depth = 64
+    w -1,0,0,0                              ; write: loop_kbd.depth = 64
     db F(U32,U8,P)
-    dd (trace_kbd + TR_DEPTH)
-    db TRACE_DEPTH
+    dd (loop_kbd + LP_DEPTH)
+    db LOOP_DEPTH
 
-    w -1,0,0,0                              ; write: trace_kbd.mask = 63
+    w -1,0,0,0                              ; write: loop_kbd.mask = 63
     db F(U32,U8,P)
-    dd (trace_kbd + TR_MASK)
-    db TRACE_MASK
+    dd (loop_kbd + LP_MASK)
+    db LOOP_MASK
 
-    w -1,0,0,0                              ; write: trace_kbd.record_size = 8 bytes
+    w -1,0,0,0                              ; write: loop_kbd.record_size = 8 bytes
     db F(U32,U8,P)
-    dd (trace_kbd + TR_RECSZ)
+    dd (loop_kbd + LP_RECSZ)
     db 8
 
-; 5. register trace — add keyboard trace to the global trace list
-;    trace_list is a fixed array of trace pointers. trace_count says how many.
+; 5. register loop — add keyboard loop to the global loop list
+;    loop_list is a fixed array of loop pointers. loop_count says how many.
 ;    The bind drain (not built yet) will scan this list to find work.
-    w -1,0,0,0                              ; write: trace_list[0] = &trace_kbd
+    w -1,0,0,0                              ; write: loop_list[0] = &loop_kbd
     db F(U32,U32,P)
-    dd trace_list
-    dd trace_kbd
+    dd loop_list
+    dd loop_kbd
 
-    w -1,0,0,0                              ; write: trace_count = 1
+    w -1,0,0,0                              ; write: loop_count = 1
     db F(U32,U8,P)
-    dd trace_count
+    dd loop_count
     db 1
 
 ; 6. NVMe discovery — probe PCI slots 3-6 for an NVMe controller
@@ -182,7 +182,7 @@ main_walk:
     db 's'
 
 ; 8. done — signal genesis complete
-    w -1,0,0,+1                             ; port_write(0xE9, 'T') — 'T' for "trace ready"
+    w -1,0,0,+1                             ; port_write(0xE9, 'T') — 'T' for "loop ready"
     db F(U8,U8,P), 0xE9, 'T'
 
 main_len: dd (main_len - main_walk)

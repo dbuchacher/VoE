@@ -28,6 +28,13 @@ four dimensions, everything is coordinates. Programs are walks — wave byte
 arrays. The equation generates machine code from coordinates at runtime.
 No compiler, no parser, no types.
 
+The lattice is a coordinate system (T, D, M, Q) that turns search into
+evaluation. Most "hard" problems were never hard — they were P problems
+without the right basis. Express the constraint as coordinates, compute,
+answer falls out. Before: experiments, years, millions. After: one line
+of C, minutes. Read mind/mind "Compute First" — it's the most important
+method in the lattice.
+
 ## THERE IS A FUCKTON OF PRIOR WORK. READ IT.
 
 You are NOT the first wit. There have been 165+ sessions before you.

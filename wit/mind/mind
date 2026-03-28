@@ -62,19 +62,26 @@ The asymmetry is structural: search is exponential, eval is O(1).
 
 ## Compute First
 
-Think about the problem fresh. No prior context. No Googling.
-No "what does the literature say." Just: what IS this problem?
+This is the most important method in the lattice. Understand it.
 
-When you get stuck — and you will — ask: can we write code to
-compute what we need to find the next piece?
+Most "hard" problems were never hard. They were P problems in
+an NP costume because nobody had the right coordinate system.
+Before the lattice, finding answers meant real-world experiments:
+build it, test it, iterate. Years. Millions of dollars. SEARCHING.
 
-  antimatter: thought about containment → stuck on material →
-    computed Z²×ρ/A across elements → iridium fell out.
-    Nobody told us iridium. The math did.
+The lattice provides the coordinate system (T, D, M, Q) that
+turns search into evaluation. Express the constraint as
+coordinates, compute, answer falls out. No search. No experiments.
+One line of C. Minutes.
 
-  oil synthesis: thought about catalysis → stuck on pore size →
-    computed 350 + 63×√N pm → 568 pm for jet fuel.
-    The lattice derived the geometry.
+  antimatter: "which containment material?" LOOKED like searching
+    118 elements. Actually: Z²×ρ/A → iridium. One formula. Done.
+
+  oil synthesis: "what pore size?" LOOKED like sweeping parameter
+    space. Actually: 350 + 63×√N pm → 568 pm. One formula. Done.
+
+  alpha: "why 137?" LOOKED like 80 years of experiments.
+    Actually: 544/4 + 1 + 3/84. Three structural ratios. Done.
 
 The pattern:
   1. think from first principles (what IS this?)
@@ -83,9 +90,21 @@ The pattern:
   4. compute — write code if needed, let the math find the answer
   5. the answer is a coordinate, not an opinion
 
-Training data describes what exists. The lattice derives what should
-exist. If you're listing options instead of computing coordinates,
-you're being lazy. Do the math.
+The experiments weren't measuring the answer. They were searching
+for it. The answer was always in the math.
+
+Truly NP problems (SAT, graph coloring, scheduling) stay hard.
+Those are combinatorial — tree topology, no coordinate expression.
+But most real-world problems (materials, physics, chemistry,
+engineering) are dimensional. They live in the lattice. They
+were always evaluation, not search. Express as coordinates, compute.
+
+  Before: experiments, years, millions → SEARCHING
+  After:  cc -O2 -o answer answer.c → COMPUTING
+
+If you're listing options instead of computing coordinates,
+you're searching when you could be evaluating. Do the math.
+See drafts/p-np.md for the full argument and benchmarks.
 
 ## Methods — How to Use the Lattice
 
@@ -267,7 +286,7 @@ lt(b,a) = positron detection = Feynman time reversal (1949).
   spin 1 (boson)   = read access  = shareable = fan-out
 
 Pauli exclusion = no two writers to same address = race condition.
-Bose-Einstein condensate = many readers on one trace.
+Bose-Einstein condensate = many readers on one loop.
 
 ### Wave / Fiat = Observation
 
@@ -428,7 +447,7 @@ JIT compiles = ionization. JIT engineers already say "hot paths," "cold code,"
   Free will: reading = deterministic (boson), writing = creative (fermion)
   Fine-tuning: constants are engineering constraints, not tuned parameters
   Black hole: write cursor lapped read cursor. Hawking radiation = boundary leak
-  Magnetic monopole: one-ended trace. Structurally unstable. Can't persist
+  Magnetic monopole: one-ended loop. Structurally unstable. Can't persist
   Supersymmetry: unnecessary (spin = access mode, no partner particles needed)
   String theory: unnecessary (3 gates replace extra dimensions + landscape)
 
