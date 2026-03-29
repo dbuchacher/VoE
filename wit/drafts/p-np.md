@@ -127,9 +127,9 @@ Evaluation (the P part) is trivially a walk:
   call get_atom with coordinates → one bond → O(1)
 
 Expressing the constraint (the NP part) is also a walk:
-  read the constraint           → P (transport)
-  test each dimension (T?D?M?Q?) → W (regulation)
-  loop over dimensions           → R (cycling)
+  read the constraint           → P (read)
+  test each dimension (T?D?M?Q?) → W (test)
+  loop over dimensions           → R (loop)
   compute exponents              → atoms (mul/div)
   output the coordinate          → P (write)
 

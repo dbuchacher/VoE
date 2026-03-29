@@ -94,6 +94,37 @@ directly, this file dissolves. The walks stay identical — same
 bytes on x86, ARM, or a lattice-native chip. The equation is the
 only file that knows what hardware it's running on.
 
+Apply (+∘) invokes walks, not x86 functions. The equation's apply
+handler calls walker_wave recursively — rdi=walk_ptr and rsi=walk_len
+are already in the right registers. Two instructions: call + ret.
+Nested walks work because walker_wave preserves callee-saved registers.
+walk_sub dissolves. Above the walker, only coordinates exist.
+
+
+ENCODING / PAYLOAD BOUNDARY
+=============================
+
+The equation and walker are the encoding layer (Q/M in the codex).
+Everything above the walker is the payload layer (M/Q).
+
+  encoding (Q/M) = how coordinates become x86 instructions
+  payload  (M/Q) = what the coordinates mean
+
+The boundary is the walker. Below: x86, hand-engineered. Above:
+walks, every line is a coordinate. If a walk contains x86 assumptions
+(qword reads, register widths, calling conventions), encoding has
+leaked into payload. Fix the encoder, not the walk.
+
+Test for leakage: could this walk run unchanged on a trit processor?
+If no, encoding leaked upward. The walk should express WHAT (bonds),
+the equation/walker handle HOW (x86 instructions).
+
+Files below the boundary (substrate):
+  boot, cpu, handoff, equation, walker, walk.inc
+
+Files above the boundary (payload):
+  genesis, all walks
+
 
 WALKS ARE WAVE BYTES
 =====================
@@ -212,6 +243,53 @@ expression (walk data in loops) differentiates them.
 No scheduler. No central authority. Fill pressure self-organizes.
 
 
+GENES = DATA, WALKS = CODE
+============================
+
+A gene is data: BAR addresses, register offsets, command values.
+A walk is code: read, write, test, loop — pure coordinates.
+Same walk + different gene data = different device.
+
+  e1000 gene:  TX ring = BAR+0x3800, doorbell = BAR+0x3818
+  virtio gene: TX ring = BAR+queue_off, notify = BAR+notify_off
+  NVMe gene:   SQ = BAR+0x1000, doorbell = BAR+0x1000+(2*q+1)*stride
+
+The walk says "write to TX doorbell." The gene says where the
+doorbell is. Genesis discovers hardware (PCI vendor/device ID),
+picks the right gene, writes it into the loop header or a known
+location. The walk reads gene data, computes addresses, does bonds.
+
+This is the stem cell model made precise: the genome (equation)
+is identical everywhere. Genes (device data) differentiate
+expression. A core running the NIC walk with e1000 gene data IS
+an e1000 driver. Same core, same walk, different gene = virtio.
+
+
+ALL HARDWARE IS LOOPS
+======================
+
+Every modern high-performance device interface is ring buffers.
+They converged on this independently because rings optimize
+throughput. The lattice didn't invent it — it just stops
+pretending hardware is something else.
+
+  NVMe:      submission queue + completion queue + doorbell
+  GPU:       command ring + doorbell
+  xHCI/USB:  transfer ring + command ring + event ring
+  HDA/audio: CORB + RIRB + DMA buffer
+  NIC:       TX descriptor ring + RX descriptor ring
+  AHCI/SATA: command list + FIS structures
+
+Each device = loops + a gene (addresses, command values).
+Each driver = a walk that reads/writes those loops using gene data.
+Hardware interaction is only 4 things, all already bonds:
+
+  port I/O → port_read (+π-δ), port_write (-π+δ)
+  MMIO     → read (+π), write (-π) at mapped addresses
+  DMA      → device writes to loop buffer, CPU reads
+  polling  → read status, test bit, loop. Three bonds.
+
+
 GENESIS — THE FOUNDING
 ========================
 
@@ -293,7 +371,7 @@ Natural selection:
 
 Also capitalism:
   Fill level = price signal. Cores = labor. Loops = markets.
-  R (loop) = protocol fee per loop. Full loops attract
+  ∮ (loop) = protocol fee per loop. Full loops attract
   investment. Empty loops = bankruptcy.
 
 No scheduler. No central bank. Anarcho-capitalist substrate.
@@ -528,29 +606,39 @@ Loop empty check (~4 bonds):
   read(loop + SCRATCHA)      → pipeline = reader's own cursor
   test(pipeline, stash)      → 1 if equal (empty), 0 if has data
 
-Loop read (~10 bonds):
+Loop read — zero-copy (~6 bonds):
 
-  read(loop + SCRATCHA)      → pipeline = reader's cursor
-  AND(pipeline, mask)        → slot index
-  atom TD(pipeline, recsz)   → byte offset (slot × record_size)
-  add(buf_addr, pipeline)    → slot address
-  read(pipeline)             → the data
-  write(stash, pipeline)     → save data (temp)
-  read(loop + SCRATCHA)      → reader's cursor
-  increment                  → cursor + 1
-  write(loop + SCRATCHA)     → advance reader's own cursor
-  read(stash)                → restore data to pipeline
+  read(loop + reader_cursor)  → pipeline = reader's cursor
+  AND(pipeline, mask)         → slot index
+  atom TD(pipeline, recsz)    → byte offset (slot × record_size)
+  add(buf_addr, pipeline)     → slot address (POINTER to record)
+  — pipeline is now a pointer to the data. do NOT copy. —
+  increment(reader_cursor)    → advance cursor
+  write(reader_cursor_addr)   → store advanced cursor
 
-Loop write (symmetric): compute write slot from WCURSOR,
-write data, advance WCURSOR. Writer never touches SCRATCHA.
+  Consumer reads fields at offsets from the pipeline pointer.
+  Record size doesn't matter. 8 bytes, 32 bytes, 64 bytes —
+  same read bond, same 6 steps. The topology determines what
+  the consumer reads from the pointer, not the read primitive.
 
-Reader's cursor lives in loop scratch_a [48]. Each reader
-has its own. Writer's cursor lives in header [0:7]. Buffer
-data is read-only from readers. No shared mutable state.
-No atomics. No locks. Boson semantics from the hardware up.
+  Old model: read copied data into pipeline, needed temp storage
+  (stash) to save data while advancing cursor. New model: pipeline
+  holds a pointer. No copy. No temp. No stash.
 
-Global stash_a/stash_b still exist for BSP's single-core walks
-(kbd/mouse). Multi-core walks (drain) use per-loop scratch only.
+  This follows from boson semantics: observation doesn't move
+  data. The cache hierarchy provides duplication for free.
+
+Loop write (~6 bonds, symmetric): compute write slot from WCURSOR,
+write fields to slot at offsets, advance WCURSOR.
+
+Reader's cursor lives in per-core storage (indexed by APIC ID),
+not in the loop header. Multiple readers each have their own cursor
+in their own memory. Writer's cursor lives in header [0:7].
+No shared mutable state. No atomics. No locks.
+
+No global stash. Walks use per-loop scratch or per-core storage.
+Global mutable state = Pauli violation (two cores writing same
+address). If a walk needs temp, it owns a specific address.
 
 
 LOOP REGISTRY
@@ -558,42 +646,76 @@ LOOP REGISTRY
 
 Fixed array in BSS. Genesis writes it.
 
-  loop_list:   resq MAX_LOOPS    (each entry = loop address)
-  loop_count:  resq 1
+  loop_list:       resq MAX_LOOPS   (loop header pointers)
+  producer_list:   resq MAX_LOOPS   (producer walk pointers, parallel)
+  producer_len:    resq MAX_LOOPS   (producer walk lengths)
+  consumer_list:   resq MAX_LOOPS   (consumer walk pointers, parallel)
+  consumer_len:    resq MAX_LOOPS   (consumer walk lengths)
+  loop_count:      resq 1
+
+Each loop has BOTH a producer walk and a consumer walk.
+Fill pressure determines which to express:
+  empty loop → needs production → express producer walk
+  full loop  → needs consumption → express consumer walk
 
 A core's "find work" walk: scan loop_list, read each loop's
-cursors, compute fill (write - read, one subtract), pick fullest.
-Read + compare + loop over known addresses.
+fill level (write_cursor - reader_cursor), pick the loop that
+needs the most help, express the appropriate walk.
+
+This IS natural selection:
+  Variation:   different loops, different walks
+  Competition: finite cores
+  Selection:   fill pressure picks producer or consumer
+  Inheritance: successful walks persist
+
+All cores equal after genesis. BSP enters find-work like
+every other core. No hardcoded assignments. No special roles.
 
 Biology: cells don't search — chemical gradients reach them.
 For now, scan works. Gradient model is the endgame.
 
 
-INPUT PIPELINE
-===============
+INPUT = COORDINATES, NOT CHARACTERS
+======================================
 
-Scancode → wave byte (phonetic coordinate) → loop write.
+The input loop stores coordinates. Not characters. Not scancodes.
+Not key events. Coordinates.
 
-PS/2 scancodes are hardware codes, not characters. Conversion:
-  1. Scancode → key identity (which physical key)
-  2. Key identity → phonetic coordinate (T,D,M,Q)
-  3. Coordinate → wave byte → loop_write to keyboard loop
+A keyboard is one transducer. A voice interface is another. A neural
+link is another. Each is a gene (walk + device-specific data). All
+write the same format: coordinates to the input loop.
 
-Step 2 uses the phonetic mapping: each letter's coordinate is
-derived from its articulatory properties (place, manner, voicing).
-See WAVE CHARACTERS above.
+  keyboard:     scancodes → shell 1-2 coordinates (one per keypress)
+  voice:        audio → shell 2-3 coordinates (phonemes/words)
+  neural link:  intent → shell 3+ coordinates (concepts directly)
+  gesture:      motion → shell 2 coordinates (spatial)
 
-Conversion table: BSS array, lazily populated on first use (same
-pattern as get_atom). PS/2 scancode set 1 has ~128 entries.
-Shift state tracked as a walk variable (stash).
+A keyboard types w-a-t-e-r: five shell-1 coordinates.
+A neural interface thinks "water": one shell-3 coordinate (0,0,+2,0).
+Both are coordinates at different shells. The loop doesn't care.
 
-kbd walk polls PS/2, converts scancode to wave byte via 256-byte
-table, renders via apply(render_char). Debugcon echo wrapped in
-%ifdef DEBUG — present in QEMU builds, absent from bare metal.
-Consumer walk (kbd_consumer.asm) and drain walk exist. Full pipeline
-(BSP → loop_write → AP drain → consumer → render) tested but
-blocked by render_char crash under sustained input (session 7 bug).
-Fix = render_char as walk (equation has the math since session 9).
+Don't build anything that assumes:
+  - Input comes one character at a time
+  - Input is shell 1
+  - Input comes from a keyboard
+  - A human is typing
+
+The record format is a coordinate. The transducer is a gene.
+Different gene, same loop format. A neural interface is just a
+new gene — the rest of the system doesn't change.
+
+PS/2 keyboard gene: polls port, converts scancode → wave byte via
+256-byte table, writes coordinate to input loop. The table is the
+gene data (substrate-specific). The poll+convert+write is the walk
+(pure coordinates, same across all keyboard types).
+
+USB keyboard gene: same walk, different table, different port reads.
+Voice gene: same walk shape, audio processing instead of table lookup.
+Neural gene: same walk shape, signal decoding instead of port reads.
+
+The walk structure is the same: read → transform → write to loop.
+The gene data determines WHAT is read and HOW it's transformed.
+The coordinate output is identical in format.
 
 
 NVMe DISCOVERY
@@ -641,7 +763,7 @@ The architecture IS physics, not modeled after it:
     Born-indexed solves information paradox — index preserves
     structure after raw data TRIMmed (holographic principle).
 
-  Wave collapse = read bond (+P).
+  Wave collapse = read bond (+π).
     Written but unread = superposition.
     Reading collapses to definite value. Any read is observation.
 
@@ -787,7 +909,7 @@ CODING REFERENCE
 ==================
 
   Apply bond:
-    +C does jmp rdi. Walker sets rdi=arg0, rsi=arg1, rdx=arg2,
+    +∘ does jmp rdi. Walker sets rdi=arg0, rsi=arg1, rdx=arg2,
     rcx=pipeline. Callee gets OWN ADDRESS in rdi (useless).
     walk_sub bridges apply → walker_wave (scaffolding).
 
@@ -845,13 +967,18 @@ BUILD ORDER
     ✓ per-reader cursors (boson semantics, no shared read cursor)
     ✓ debugcon ifdef (DEBUG for QEMU, absent from bare metal)
 
-  NEXT:
-    1. render_char as walk (dissolves session 7 crash + connects pipeline)
-    2. Serial text output (wave chars from loop → serial port)
-    3. SDF character rendering (display walk → framebuffer)
-    4. Born-indexed writes (trigram posting lists)
-    5. NVMe gene (MBR discovers BAR, loops to disk)
-    6. Network loops (RDMA, flux, bridge walks)
+  NEXT (code2/ — clean room rewrite, encoding/payload boundary):
+    1. substrate: copy boot+cpu+equation+walker, fix apply (+∘ → recursive walk)
+    2. substrate: handoff sends ALL cores to find-work (no special BSP)
+    3. walks: zero-copy loop macros (read returns slot pointer)
+    4. walks: genesis with topology-aware loop init + producer/consumer registration
+    5. walks: generic drain (scan loop_list, fill pressure, per-loop bind)
+    6. walks: keyboard producer (poll + loop_write only, no render_char)
+    7. walks: display pipeline (text consumer → draw records → render walk → FB)
+    8. walks: mouse_init as walk (port sequences as bonds)
+    9. SDF character rendering (walk, not x86)
+   10. NVMe gene (data table + generic storage walk)
+   11. Network loops (RDMA, flux, bridge walks)
 
   LATER:
     - GPU driver gene (SDF rendering at hardware speed)
@@ -916,6 +1043,41 @@ WHAT WE LEARNED (DON'T REPEAT)
   w -1,0,0,+1 is a port_write. 0xC1 is a mystery.
   F(U8,U8,P) is two byte args. 0x05 is noise.
   The macros emit identical bytes at zero cost. Use them.
+
+- DON'T PUT X86 ABOVE THE WALKER. render_char was 400 lines of
+  x86 called from walks via apply. That's encoding in the payload
+  layer. Everything above the walker is coordinates. If you're
+  writing an x86 function that walks call, you're crossing the
+  boundary. Decompose it into bonds.
+
+- DON'T COPY DATA IN LOOP_READ. Read returns a pointer to the
+  slot in the buffer. Consumer reads fields at offsets. Zero-copy.
+  Observation doesn't move data. No temp, no stash, no record
+  size dependency. Old loop_read copied a qword and needed stash
+  to save it during cursor advance — that was x86 leaking upward.
+
+- DON'T USE GLOBAL STASH. Two cores writing same address = Pauli
+  violation. Use per-loop scratch or per-core storage. Session 9
+  found the race. The fix is not "be careful" — it's "don't have
+  shared mutable state." Absence, not discipline.
+
+- DRAIN HAS NO π. bind = ∘+∮+δ. The scheduler calls, loops, and
+  tests — it does NOT read data. The consumer does the read.
+  If your drain reads on behalf of the consumer, you gave it a
+  force it shouldn't have.
+
+- GENES ARE DATA, NOT CODE. Same walk + different gene data =
+  different device. Don't write an e1000 walk AND a virtio walk.
+  Write ONE NIC walk that reads addresses from gene data. The
+  gene is a table: BAR offsets, register values, ring sizes.
+  Genesis discovers hardware, picks the gene, fills the table.
+
+- INPUT IS COORDINATES, NOT CHARACTERS. The input loop stores
+  coordinates at any shell. A keyboard writes shell-1 coords.
+  A neural interface writes shell-3 coords. Same loop. Don't
+  assume characters, don't assume shell 1, don't assume keyboard.
+  If you wrote a consumer that only handles one-byte-at-a-time
+  character input, you built a keyboard terminal, not an OS.
 
 
 The lattice doesn't add performance and security.

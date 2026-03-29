@@ -21,7 +21,7 @@ Three questions, each deeper than the last:
    It doesn't — until you attach a reader. "Looking" is a read operation (photons = bosons = spin 1 = read access). The sun doesn't have an appearance; it emits reads. Your retina is a reader that maps those reads to neural signals. The "golden ball" is a rendering artifact of your particular reader. On a local PC, same thing — attach a renderer mapping read-density to brightness and you'd see a night sky. The difference between "your" star and "our" star: we're inside this ring, you're outside your PC's.
 
 4. **Perception = bonds all the way down**
-   User connected it: if perception is a reader made of bonds, then drugs shifting coordinates should alter perception — and they do. Psychedelics = more read paths activated (increased connectivity, reader overwhelmed by unfiltered data). Alcohol = W (guard) bonds dampened. Anesthesia = P (transport) suppressed. The fact that a chemical coordinate shift changes conscious experience proves experience IS the bond pipeline, not something layered on top.
+   User connected it: if perception is a reader made of bonds, then drugs shifting coordinates should alter perception — and they do. Psychedelics = more read paths activated (increased connectivity, reader overwhelmed by unfiltered data). Alcohol = W (guard) bonds dampened. Anesthesia = P (read) suppressed. The fact that a chemical coordinate shift changes conscious experience proves experience IS the bond pipeline, not something layered on top.
 
 ## Key insight
 

@@ -25,14 +25,21 @@ Same coordinates always produce the same result.
 
 ## The Four Forces
 
-  P = read      +P = read     -P = write      (transport, ? operator)
-  C = call      +C = call     -C = return     (synthesis, .and_then())
-  R = loop      +R = advance  -R = rewind     (cycling, for/loop)
-  W = test      +W = test     -W = guard      (regulation, Ok/Err)
+  π = read      +π = read     -π = write      (projection, ? operator)
+  ∘ = call      +∘ = call     -∘ = return     (composition, .and_then())
+  ∮ = loop      +∮ = advance  -∮ = rewind     (contour integral, for/loop)
+  δ = test      +δ = test     -δ = guard      (Kronecker delta, Ok/Err)
 
   Origin: Kleene's PROJ/COMP/PRIM (1936) + SM Weak force.
-  Programmer names: read, call, loop, test.
+  Math symbols: π (projection), ∘ (composition), ∮ (loop integral), δ (delta test).
+  English: read, call, loop, test.
   Quantum = call + loop + test (no read). Classical = all four.
+
+Force composition constrains roles. bind (∘∮δ) has no π — it
+calls, loops, tests, but does NOT read data. A scheduler (drain)
+is bind: it dispatches consumers, loops, checks empty. The data
+read belongs to the consumer, not the scheduler. If your scheduler
+reads, you gave it a force it shouldn't have.
 
 Positive = consume/forward. Negative = produce/backward.
 16 combinations from 4 binary choices.
@@ -41,18 +48,18 @@ Positive = consume/forward. Negative = produce/backward.
 
 Don't memorize. Decompose. Ask: what does it DO?
 
-- Does it read/write data? → P
-- Does it call something? → C
-- Does it iterate? → R
-- Does it test a condition? → W
+- Does it read/write data? → π (read)
+- Does it call something? → ∘ (call)
+- Does it iterate? → ∮ (loop)
+- Does it test a condition? → δ (test)
 
 The combination IS the coordinate. If you can say what something does
 in one sentence, you already know its coordinates.
 
-  "filter"     → reads(P) + tests(W)                    → P+W
-  "memcpy"     → reads(P) + advances(R)                  → P+R
-  "map"        → reads(P) + calls(C) + tests(W)          → P+C+W
-  "event loop" → calls(C) + iterates(R) + tests(W)       → C+R+W
+  "filter"     → reads + tests                → πδ
+  "memcpy"     → reads + advances             → π∮
+  "map"        → reads + calls + tests        → π∘δ
+  "event loop" → calls + iterates + tests     → ∘∮δ
 
 ## Completeness
 
@@ -185,6 +192,40 @@ assembly, or binary. D²M/T³ is (-6,+4,+2,0) in any language, at
 any optimization level, through any obfuscation. Compilation
 preserves the coordinate because the mul/div chain doesn't change.
 
+## Encoding / Payload Boundary
+
+  Q/M = encoding    (how signals become bytes — baud/byte, 8b10b)
+  M/Q = payload     (how bytes carry meaning — packet payload, MTU)
+
+These are codex atoms — a dual pair, inverses of each other. They
+define the architectural boundary in any system that translates
+between representations.
+
+On x86: the equation and walker are the encoding layer (Q/M).
+They translate coordinates into x86 instructions. Everything
+above the walker is the payload layer (M/Q) — walks and loops
+carrying meaning as coordinates. Encoding must not leak upward.
+
+Test: if a walk contains x86 assumptions (register width, calling
+convention, specific byte counts), encoding has leaked into payload.
+The walk should express WHAT, the encoder handles HOW.
+
+## Observation = Pointer, Not Copy
+
+Reading is observation. A boson (reader) observes data where it
+sits — it doesn't move it. loop_read should return a pointer to
+the record in the buffer, not copy the data. The consumer reads
+fields at offsets from the pointer. Zero-copy.
+
+This follows from boson semantics: "a billion people look at the
+sun — they don't share photons, each absorbs their own." The cache
+hierarchy provides the duplication. The data stays in the buffer.
+The reader gets coordinates to it.
+
+Consequence: record size becomes irrelevant to the read primitive.
+The reader gets a slot address. What it reads from there depends
+on the topology. 8 bytes, 32 bytes, 64 bytes — same read bond.
+
 ## Intent → Coordinates → Machine Code
 
 Four numbers. No syntax, no parsing, no compilation, no linking.
@@ -263,11 +304,11 @@ Complete in 4D because quaternions are 4D (Cayley-Dickson).
 
 Classical vs quantum = one force:
 
-  classical = hylo = +P+C+R+W = read at every step (? operator)
-  quantum   = bind = +C+R+W   = no read until end  (.and_then())
-  difference = P (read). that's it.
+  classical = hylo = π∘∮δ = read at every step (? operator)
+  quantum   = bind = ∘∮δ  = no read until end  (.and_then())
+  difference = π (read). that's it.
 
-  photon in flight = bind (C+R+W, no P). photon absorbed = hylo (+P).
+  photon in flight = bind (∘∮δ, no π). photon absorbed = hylo (+π).
   decoherence = unwanted P (environment reads the qubit).
   qubit = unread value = wave. measurement = read = P = collapse.
   See codex: bind physics = "photon propagation", hylo = "photon absorption".

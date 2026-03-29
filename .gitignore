@@ -1,3 +1,6 @@
 .build/
 wit/lattice/gen
 prior/
+side-quest/data/
+*.bin
+.claude/

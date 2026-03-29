@@ -1,0 +1,84 @@
+#!/bin/bash
+# build + run — assemble, link, boot
+#
+# Usage:
+#   bash build/run              GUI (MBR boot, VESA framebuffer, KVM if available)
+#   bash build/run headless     multiboot, no display, debugcon to stdout
+#   bash build/run kvm          MBR boot, KVM, no display window
+#   bash build/run img          bare metal USB image (no DEBUG)
+set -e
+cd "$(dirname "$0")/.."
+
+OUT=.build
+mkdir -p "$OUT"
+
+DBGFLAG="-DDEBUG"
+[ "$1" = "img" ] && DBGFLAG=""
+
+# ── assemble kernel ──────────────────────────────────────────
+
+nasm $DBGFLAG -f elf32 "[2] cpu.asm"      -o "$OUT/cpu.o"
+nasm $DBGFLAG -f elf32 "[3] handoff.asm"  -o "$OUT/handoff.o"
+nasm $DBGFLAG -f elf32 "[4] equation.asm" -o "$OUT/equation.o"
+nasm $DBGFLAG -f elf32 "[5] walker.asm"   -o "$OUT/walker.o"
+nasm $DBGFLAG -f elf32 "[6] genesis.asm"  -o "$OUT/genesis.o"
+
+ld -m elf_i386 -T build/link.ld \
+    "$OUT"/cpu.o \
+    "$OUT"/handoff.o \
+    "$OUT"/equation.o \
+    "$OUT"/walker.o \
+    "$OUT"/genesis.o \
+    -o "$OUT/nomos.elf"
+
+echo "built: $(stat -c%s "$OUT/nomos.elf") bytes"
+
+# ── headless: multiboot, no MBR needed ───────────────────────
+
+if [ "$1" = "headless" ]; then
+    qemu-system-x86_64 -kernel "$OUT/nomos.elf" -m 128M -no-reboot \
+        -debugcon stdio -serial file:/dev/stderr -smp ${2:-4} \
+        -cpu Skylake-Server -display none
+    exit 0
+fi
+
+# ── MBR disk image (all other modes) ─────────────────────────
+
+objcopy -O binary "$OUT/nomos.elf" "$OUT/nomos.bin"
+KSIZE=$(stat -c%s "$OUT/nomos.bin")
+KSECTORS=$(( (KSIZE + 511) / 512 ))
+if [ $KSECTORS -le 127 ]; then
+    S1=$KSECTORS; S2=0
+else
+    S1=127; S2=$(( KSECTORS - 127 ))
+fi
+
+nasm $DBGFLAG -DSEC1=$S1 -DSEC2=$S2 "[1] boot.asm" -o "$OUT/mbr.bin"
+
+IMGSECTORS=$(( 1 + KSECTORS + 64 ))
+dd if=/dev/zero of="$OUT/nomos.img" bs=512 count=$IMGSECTORS 2>/dev/null
+dd if="$OUT/mbr.bin"  of="$OUT/nomos.img" conv=notrunc 2>/dev/null
+dd if="$OUT/nomos.bin" of="$OUT/nomos.img" bs=512 seek=1 conv=notrunc 2>/dev/null
+
+if [ "$1" = "img" ]; then
+    echo "image: $KSIZE bytes kernel, $KSECTORS sectors ($S1+$S2)"
+    echo "  dd if=$OUT/nomos.img of=/dev/sdX bs=512"
+    exit 0
+fi
+
+# ── QEMU with MBR boot ──────────────────────────────────────
+
+QEMU_HW="-smp ${2:-4}"
+
+if [ "$1" = "kvm" ]; then
+    qemu-system-x86_64 -hda "$OUT/nomos.img" -m 128M -no-reboot \
+        -debugcon stdio -serial file:/dev/stderr $QEMU_HW \
+        -enable-kvm -cpu host -display none
+else
+    # GUI mode — default
+    KVM=""
+    [ -w /dev/kvm ] && KVM="-enable-kvm -cpu host"
+    qemu-system-x86_64 -hda "$OUT/nomos.img" -m 128M -no-reboot \
+        -serial file:/dev/null -debugcon stdio $QEMU_HW \
+        ${KVM:-"-cpu Skylake-Server"} -vga std
+fi
