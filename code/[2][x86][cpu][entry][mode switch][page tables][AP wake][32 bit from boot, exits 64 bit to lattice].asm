@@ -71,9 +71,11 @@ gdt_end:
 gdtr:           dw gdt_end - gdt - 1
                 dd gdt
 
-global ap_count, trampoline_ready
+global ap_count, trampoline_ready, ap_drain_ready
 ap_count:         dd 0
 trampoline_ready: db 0
+ap_drain_ready:   dd 0                         ; set to 1 by BSP after genesis completes
+ap_drain_taken:   dd 0                         ; CAS: only one AP enters drain (stash not core-safe)
 
 ; ─── 32-bit entry ──────────────────────────────────────────────
 
@@ -82,6 +84,8 @@ bits 32
 
 global _start
 extern lattice_start
+extern walker_wave
+extern drain_walk, drain_walk_len
 
 _start:
     cli
@@ -255,7 +259,22 @@ ap_entry_64:
 
     lock inc dword [ap_count]
 
-    ; spin until DNA is assigned (TODO: bind drain)
+    ; wait for BSP to finish genesis and signal readiness
+.ap_wait:
+    pause
+    cmp dword [ap_drain_ready], 0
+    je .ap_wait
+
+    ; one AP enters drain walk
+    mov eax, 1
+    lock cmpxchg [ap_drain_taken], eax
+    jnz .ap_spin
+
+    lea rdi, [drain_walk]
+    mov esi, [drain_walk_len]
+    call walker_wave
+
+    ; safety net (drain_walk has loop_back, should never reach here)
 .ap_spin:
     pause
     jmp .ap_spin

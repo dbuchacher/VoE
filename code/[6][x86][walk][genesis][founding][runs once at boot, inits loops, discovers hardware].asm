@@ -42,8 +42,11 @@ stash_b: resq 1
 
 MAX_LOOPS equ 16
 global loop_list, loop_count
-loop_list: resq MAX_LOOPS
-loop_count: resq 1
+global consumer_list, consumer_len_list
+loop_list:         resq MAX_LOOPS             ; loop header pointers
+consumer_list:     resq MAX_LOOPS             ; consumer walk data pointers (parallel to loop_list)
+consumer_len_list: resq MAX_LOOPS             ; consumer walk lengths (parallel to loop_list)
+loop_count:        resq 1
 
 global nvme_bar
 nvme_bar: resq 1
@@ -60,8 +63,11 @@ mouse_y:       resd 1
 mouse_pkt:     resb 4
 mouse_state:   resd 1
 mouse_buttons: resd 1
-global cursor_save, cursor_drawn
-cursor_save:   resd 16*16
+
+global cursor_save, cursor_drawn, cursor_ox, cursor_oy
+cursor_ox:     resd 1
+cursor_oy:     resd 1
+cursor_save:   resd 21*21
 cursor_drawn:  resd 1
 
 ; ─── genesis walk ────────────────────────────────────────────
@@ -143,7 +149,6 @@ main_walk:
 
 ; 5. register loop — add keyboard loop to the global loop list
 ;    loop_list is a fixed array of loop pointers. loop_count says how many.
-;    The bind drain (not built yet) will scan this list to find work.
     w -1,0,0,0                              ; write: loop_list[0] = &loop_kbd
     db F(U32,U32,P)
     dd loop_list
@@ -153,6 +158,18 @@ main_walk:
     db F(U32,U8,P)
     dd loop_count
     db 1
+
+; 5a. register consumer — parallel arrays indexed same as loop_list
+;     consumer_list[0] = kbd_consumer walk data pointer
+;     consumer_len_list[0] = pointer to kbd_consumer_len (drain dereferences)
+    w -1,0,0,0                              ; write: consumer_list[0] = &kbd_consumer
+    db F(U32,U32,P)
+    dd consumer_list
+    dd kbd_consumer
+    w -1,0,0,0                              ; write: consumer_len_list[0] = &kbd_consumer_len
+    db F(U32,U32,P)
+    dd consumer_len_list
+    dd kbd_consumer_len
 
 ; 5b. loop self-test — write 'L' to loop, read back, echo to debugcon
 ;     If the loop primitive works: prints 'L'. If broken: silence or garbage.
@@ -222,7 +239,63 @@ main_walk:
     dd render_char
     db 0x43                                     ; 's'
 
-; 8. done — signal genesis complete
+; 8. equation self-test — verify new magnitude variants
+;    Each test computes a result and prints a single char to debugcon.
+;    Expected output: "=-<>NA" (subtract, negate, abs, less-than, max)
+;    If a bond fails, the wrong char (or nothing) appears.
+
+; 8a. subtract: 10 - 3 = 7. chr(7+48) = '7'. But let's use '=' marker.
+;     Use add to load 10, then subtract 3, check result is 7.
+    w -1,0,0,-1                             ; add(10, 0) → pipeline = 10
+    db F(U8,U8,P), 10, 0
+    w -1,0,0,-3                             ; subtract(pipeline, 3) → pipeline = 7
+    db F(P,U8,P), 3
+    w 0,0,0,+1                              ; test(pipeline, 7) → 1 if correct
+    db F(P,U8,P), 7
+    skip_z 4                                ; if test failed (pipeline=0), skip '='
+    w -1,0,0,+1                             ; port_write(0xE9, '=')
+    db F(U8,U8,P), 0xE9, '='
+
+; 8b. negate: negate(42) should give -42. Add it back: -42 + 42 = 0.
+;     test(0, 0) = 1 → print '-'
+    w 0,0,0,+13                             ; negate(42) → pipeline = -42
+    db F(U8,P,P), 42
+    w -1,0,0,-1                             ; add(pipeline, 42) → pipeline = 0
+    db F(P,U8,P), 42
+    w 0,0,0,+1                              ; test(pipeline, 0) → 1 if correct
+    db F(P,U8,P), 0
+    skip_z 4                                ; if test failed, skip '-'
+    w -1,0,0,+1
+    db F(U8,U8,P), 0xE9, '-'
+
+; 8c. abs: abs(-5) = 5. test(5, 5) = 1 → print '<'
+    w 0,0,0,+13                             ; negate(5) → pipeline = -5
+    db F(U8,P,P), 5
+    w 0,0,0,-13                             ; abs(pipeline) → pipeline = 5
+    db F(P,P,P)
+    w 0,0,0,+1                              ; test(pipeline, 5) → 1 if correct
+    db F(P,U8,P), 5
+    skip_z 4
+    w -1,0,0,+1
+    db F(U8,U8,P), 0xE9, '>'
+
+; 8d. compare less-than: 3 < 10 → 1 → print 'N'
+    w 0,0,0,+11                             ; less_than(3, 10) → pipeline = 1
+    db F(U8,U8,P), 3, 10
+    skip_z 4                                ; pipeline=0 means 3 >= 10 — broken
+    w -1,0,0,+1
+    db F(U8,U8,P), 0xE9, 'A'
+
+; 8e. max: max(3, 10) = 10. test(10, 10) = 1 → print '!'
+    w +1,0,0,+3                             ; max(3, 10) → pipeline = 10
+    db F(U8,U8,P), 3, 10
+    w 0,0,0,+1                              ; test(pipeline, 10) → 1 if correct
+    db F(P,U8,P), 10
+    skip_z 4
+    w -1,0,0,+1
+    db F(U8,U8,P), 0xE9, '!'
+
+; 9. done — signal genesis complete
     w -1,0,0,+1                             ; port_write(0xE9, 'T') — 'T' for "loop ready"
     db F(U8,U8,P), 0xE9, 'T'
 
@@ -722,4 +795,5 @@ mouse_init:
 
 extern walker_wave
 extern kbd_walk, kbd_walk_len
+extern kbd_consumer, kbd_consumer_len
 extern font_by_scancode

@@ -4,6 +4,7 @@
 # grep formula here → grep lattice.txt for coordinates.
 # conf: 99%=proven 80%=strong 60%=plausible 40%=speculative
 # T = time/ticks  D = distance/slots  M = mass/bytes  Q = charge/signals
+# P = read (?)  C = call (.and_then)  R = loop (for)  W = test (Ok/Err)
 # even coord ÷ 2 = exponent.  odd coord = force active.
 # type: A=atom(math) B=bond(control flow)
 #
@@ -33,6 +34,10 @@ B     +R            cycling              countdown loop       drain         — 
 B     -R            cycling              add 1 to counter     increment     —        —                     —                  quark     —          —      -R         4        add 1                  arg0=value                  inc rax           Peano 1889          95%
 B     +W            regulation           equality compare     test          —        comparator            —                  quark     —          —      +W         8        compare eq             arg0=a arg1=b               cmp+sete          Boole 1854          99%
 B     -W            regulation           conditional select   guard         —        multiplexer           —                  quark     —          —      -W         8        if cond return val     arg0=val arg1=cond          cmovnz            Dijkstra 1975       85%
+B     +W|11         regulation           signed less-than     less          —        comparator            —                  hadron    —          —      +W         8        a < b (signed)         arg0=a arg1=b               cmp+setl          session 9           99%
+B     -W|11         regulation           signed greater-than  greater       —        comparator            —                  hadron    —          —      -W         8        a > b (signed)         arg0=a arg1=b               cmp+setg          session 9           99%
+B     +W|13         regulation           arithmetic negate    negate        —        inverter              —                  hadron    —          —      +W         8        -a                     arg0=a                      neg rax           session 9           99%
+B     -W|13         regulation           absolute value       abs           —        rectifier             —                  hadron    —          —      -W         8        |a|                    arg0=a                      neg+cmovs         session 9           99%
 A     D/T           velocity             speed                speed         Ag(47)   prop vel              link speed         hadron    —          x¹     —          —        —                      arg0=T arg1=D               —                 Galileo 1638        99%
 A     T/D           slowness             latency              latency       Cu(29)   Elmore delay          RTT                hadron    —          x¹     —          —        —                      arg0=T arg1=D               —                 Elmore 1948         92%
 A     M/T           mass flow            bandwidth            bandwidth     Fe(26)   data rate             data rate          hadron    —          x¹     —          —        —                      arg0=T arg2=M               —                 Nyquist 1928        99%
@@ -54,8 +59,11 @@ B     +P+R          wave propagation     bulk copy            slurp         — 
 B     -P-R          diffusion            bulk fill            fill          —        —                     —                  hadron    —          —      -P-R       5        memset                 arg0=dest arg1=byte arg2=n  rep stosb          Turing 1936         99%
 B     +C+R          oscillation          call fn N times      fix           —        —                     —                  hadron    —          —      +C+R       6        fn N times             arg0=fn arg1=init arg2=n    call+dec+jnz      Curry 1930          85%
 B     +P+W          selective transmit   conditional clamp    filter        —        clamp circuit         BPF pkt filter     hadron    —          —      +P+W       9        min(a,b)               arg0=a arg1=b               cmovg             McCanne 1993        80%
+B     +P+W|3        selective transmit   conditional clamp    max           —        peak detector         —                  hadron    —          —      +P+W       9        max(a,b)               arg0=a arg1=b               cmovl             session 9           99%
 B     +P-W          rectification        hw port read         port_read     —        input buffer          —                  hadron    —          —      +P-W       9        read hw port           arg0=port                   in al dx          —                   99%
+B     -P+W          —                    hw port write        port_write    —        output buffer         —                  hadron    —          —      -P+W       9        write hw port          arg0=port arg1=val          out dx al         —                   99%
 B     -P-W          superposition        integer addition     add           —        summing amplifier     —                  hadron    —          —      -P-W       9        a + b                  arg0=a arg1=b               lea [rdi+rsi]     —                   99%
+B     -P-W|3        —                    integer subtraction  subtract      —        difference amplifier  —                  hadron    —          —      -P-W       9        a - b                  arg0=a arg1=b               sub rax rsi       session 9           99%
 B     -C-W          diffraction          jump table dispatch  branch        —        —                     —                  hadron    —          —      -C-W       10       dispatch table         arg0=table arg1=index       jmp [tbl+rax*8]   Shannon 1938        75%
 B     +R+W          resonant gating      scan while true      take_while    —        —                     —                  hadron    —          —      +R+W       12       scan til null          arg0=ptr                    scan+jz           Kleene 1938         90%
 B     -R-W          —                    bounded range iter   until         —        —                     frame delimiter    hadron    —          —      -R-W       12       range [start..n]       arg0=start arg1=count       —                 Turing 1936         70%
@@ -74,7 +82,7 @@ B     +P+C+R        cascaded emission    left fold reduce     foldl         — 
 B     -P-C-R        —                    ring buf gen         coiter        —        —                     —                  atom      —          —      -P-C-R     7        ring buf generate      —                           —                 Mendler 1987        60%
 B     +P+R+W        integrating propag   running prefix acc   scan          —        integrator            —                  atom      —          —      +P+R+W     13       running accumulate     arg0=ptr                    sum+advance       Iverson 1962        75%
 B     -P-R+W        —                    split by predicate   partition     —        demultiplexer         pkt demux/ECMP     atom      —          —      -P-R+W     13       split by predicate     —                           —                 Hoare 1961          65%
-B     +C+R+W        —                    monadic chain        bind          —        —                     —                  atom      —          —      +C+R+W     14       chain til zero         arg0=fn arg1=init           call+test+loop    Moggi 1991          70%
+B     +C+R+W        photon propagation   monadic chain        bind          —        —                     —                  atom      —          —      +C+R+W     14       chain til zero         arg0=fn arg1=init           call+test+loop    Moggi 1991          70%
 B     -C-R-W        —                    comonadic extend     extend        —        —                     —                  atom      —          —      -C-R-W     14       comonadic extend       —                           —                 Uustalu 2005        55%
 A     D/T²          acceleration         accel                acceleration  Ca(20)   slew rate             CWND growth        atom      —          x²     —          —        —                      arg0=T arg1=D               —                 Newton 1687         99%
 A     D²/T          diffusion coeff      diffusion            diffusion     He(2)    thermal diffusivity   congestion spread  atom      —          x²     —          —        —                      arg0=T arg1=D               —                 Fick 1855           80%
@@ -83,7 +91,7 @@ A     D²/T²         v² (KE/mass)         —                    —          
 A     D²M/T²        energy               capacity             energy        Cu(29)   switching energy CV²  BDP                atom      oct(×8)    x²     —          —        —                      arg0=T arg1=D arg2=M        —                 Joule 1845          90%
 A     M²/T          —                    inertial bw          inertial_bw   Os(76)   inductance×current²   —                  atom      —          x²     —          —        —                      arg0=T arg2=M               —                 —                   70%
 A     M/T²          spring constant      stiffness            stiffness     Fe(26)   PLL loop stiffness    pkt pacing         atom      —          x²     —          —        —                      arg0=T arg2=M               —                 Hooke 1660          70%
-B     +P+C+R+W      —                    full pipeline        hylo          —        —                     —                  molecule  —          —      +P+C+R+W   15       unfold+xform+fold      arg0=fn arg1=src arg2=n     full pipeline     Meijer 1991         65%
+B     +P+C+R+W      photon absorption    full pipeline        hylo          —        —                     —                  molecule  —          —      +P+C+R+W   15       unfold+xform+fold      arg0=fn arg1=src arg2=n     full pipeline     Meijer 1991         65%
 B     -P-C-R-W      —                    all backward         meta          —        —                     —                  molecule  —          —      -P-C-R-W   15       all backward           —                           —                 McCarthy 1960       50%
 A     D/T³          jerk                 jerk                 jerk          —        current ramp rate     —                  molecule  —          x³     —          —        —                      arg0=T arg1=D               —                 Schot 1978          95%
 A     D³/T²         grav param           —                    grav_param    Ti(22)   field flux capacity   —                  molecule  —          x³     —          —        —                      arg0=T arg1=D               —                 Newton 1687         85%
@@ -96,6 +104,9 @@ A     T⁴D⁴          geodesic             spacetime curv       geodesic      
 A     D²M²/T⁴       —                    force²               thru_power2   —        —                     —                  DNA       —          x⁴     —          —        —                      arg0=T arg1=D arg2=M        —                 —                   65%
 A     M⁴/Q⁴         charged BH           —                    reissner      —        —                     —                  DNA       —          x⁴     —          —        —                      arg2=M arg3=Q               —                 Reissner 1916       60%
 A     degree 5+     perturbation         Taylor terms         —             —        —                     —                  DNA       —          xⁿ     —          —        —                      —                           —                 —                   85%
+A     T^(½i)        delay line           phase rotation       phase         —        PLL/DLL               —                  —         complex    —      —          —        —                      arg0=T                      —                 session 8           75%
+A     T^(½i)D^(½i)  plane wave           light                photon        —        waveguide             fiber optic        —         complex    —      —          —        —                      arg0=T arg1=D               —                 Maxwell 1865        90%
+A     T^(½+½i)      chirp                freq sweep           chirp         —        radar/sonar           OFDM               —         complex    —      —          —        —                      arg0=T                      —                 session 8           75%
 A     T²D           absity               double-integrated    absity        Sn(50)   charge-displacement p —                  hadron    —          x²      —          —        —                      arg0=T arg1=D               —                 Mann 2006           60%
 A     TD²           areal absement       BDP×distance         areal         Cu(29)   volt-second-meter     bandwidth-delay-di hadron    —          x²      —          —        —                      arg0=T arg1=D               —                 Kepler 1609         60%
 A     MQ/T          mass-current         bw×signal            chan_rate     Co(27)   —                     —                  hadron    —          x²      —          —        —                      arg0=T arg2=M arg3=Q        —                 Faraday 1834        70%
@@ -146,6 +157,13 @@ C(6) reuse         per_byte(1/M) and efficiency(D²/T²) — dimensionless famil
 D²M²/T⁴ mislabel  was "power²" — corrected to "force²" (DM/T²)²
 
 ## Notes
+
+photon = T^(½i)×D^(½i) = purely imaginary exponents = naturally bind (+C+R+W, no P).
+photon in flight: C (carries EM force) + R (cycles through space) + W (Maxwell self-regulation).
+photon absorbed: +P added = hylo = measurement = wave collapses.
+classical computer = hylo = reads (P) at every step.
+quantum computer = bind = no read (no P) until measurement.
+the difference between classical and quantum = presence of P.
 
 GR lives in (T,D) dimensions — geodesic at T⁴D⁴, velocity D/T, acceleration D/T².
 QM lives in (M,Q) dimensions — complex exponents produce wave mechanics.

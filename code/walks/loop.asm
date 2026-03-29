@@ -34,19 +34,21 @@
 ; TCG bug, not ours. Use KVM or real hardware.
 
 ; ── loop header offsets ───────────────────────────────────────
-LP_WCURSOR equ 0
-LP_RCURSOR equ 8
-LP_BUFADDR equ 16
-LP_DEPTH   equ 24
-LP_MASK    equ 32
-LP_RECSZ   equ 40
+LP_WCURSOR  equ 0
+LP_RCURSOR  equ 8
+LP_BUFADDR  equ 16
+LP_DEPTH    equ 24
+LP_MASK     equ 32
+LP_RECSZ    equ 40
+LP_SCRATCHA equ 48                          ; per-loop scratch (replaces global stash_a)
+LP_SCRATCHB equ 56                          ; per-loop scratch (replaces global stash_b)
 
 
 ; ══════════════════════════════════════════════════════════════
 ; loop_empty — check if loop has data
 ;
 ; pipeline = 1 if empty (read == write), 0 if has data.
-; Uses stash_a to hold write cursor for comparison.
+; Uses stash_a for temp (consumer side — separated from producer).
 ; ══════════════════════════════════════════════════════════════
 
 %macro loop_empty 1
@@ -66,8 +68,6 @@ LP_RECSZ   equ 40
     dd (%1 + LP_RCURSOR)
 
     ;; compare: read_cursor == write_cursor?
-    ;; test(pipeline, *stash_a) → 1 if equal (empty), 0 if not
-    ;; arg1 deref'd: walker reads stash_a address, dereferences to get value
     w 0,0,0,+1                              ; +W test
     db F(P,U32,P) | 0x40                    ;   arg1 = deref stash_a → write cursor value
     dd stash_a
@@ -81,7 +81,7 @@ LP_RECSZ   equ 40
 ; CALLER MUST VERIFY NON-EMPTY FIRST (loop_empty + skip_nz).
 ; pipeline = data value from the next unread slot.
 ; Advances read cursor by 1.
-; Uses stash_b to hold data while advancing cursor.
+; Uses stash_b for temp (consumer side — separated from producer).
 ;
 ; How it works:
 ;   1. read_cursor → AND mask → slot index
@@ -99,30 +99,25 @@ LP_RECSZ   equ 40
     dd (%1 + LP_RCURSOR)
 
     ;; 2. slot_index = read_cursor AND mask
-    ;;    mask lives in the header — deref to get the value
     w 0,0,0,+3                              ; AND(pipeline, *mask)
     db F(P,U32,P) | 0x40                    ;   arg1 = deref [loop + MASK]
     dd (%1 + LP_MASK)
 
     ;; 3. byte_offset = slot_index × record_size
-    ;;    atom T*D: exponents T=+1, D=+1 → arg0 × arg1
-    ;;    extended coords: +2 means exponent +1 (even ÷ 2)
     w +2,+2,0,0                             ; atom TD(pipeline, *recsz)
     db F(P,U32,P) | 0x40                    ;   arg1 = deref [loop + RECSZ]
     dd (%1 + LP_RECSZ)
 
     ;; 4. slot_address = buffer_address + byte_offset
-    ;;    add = -P-W bond. deref arg0 to get buf pointer value.
     w -1,0,0,-1                             ; add(*bufaddr, pipeline)
     db F(U32,P,P) | 0x80                    ;   arg0 = deref [loop + BUFADDR]
     dd (%1 + LP_BUFADDR)
 
     ;; 5. read data from slot
-    ;;    read bond dereferences arg0 — pipeline IS the pointer
     w +1,0,0,0                              ; read qword [pipeline] → data
     db F(P,P,P)
 
-    ;; 6. save data (cursor advance clobbers pipeline)
+    ;; 6. save data to stash_b (cursor advance clobbers pipeline)
     w -1,0,0,0                              ; write: stash_b = data
     db F(U32,P,P)
     dd stash_b
@@ -139,7 +134,7 @@ LP_RECSZ   equ 40
     db F(U32,P,P)
     dd (%1 + LP_RCURSOR)
 
-    ;; 8. restore data to pipeline
+    ;; 8. restore data to pipeline from stash_b
     w +1,0,0,0                              ; read stash_b → pipeline = data
     db F(U32,P,P)
     dd stash_b
@@ -157,7 +152,7 @@ LP_RECSZ   equ 40
 ; Input: pipeline = value to write.
 ; Advances write cursor by 1.
 ; Pipeline after macro = undefined (last cursor value).
-; Uses stash_b to hold data during slot computation.
+; Uses stash_b for temp (same as consumer — safe when single-writer).
 ; ══════════════════════════════════════════════════════════════
 
 %macro loop_write 1
@@ -188,8 +183,6 @@ LP_RECSZ   equ 40
     dd (%1 + LP_BUFADDR)
 
     ;; 6. write data to slot: [slot_addr] = *stash_b
-    ;;    arg0 = pipeline (slot address, used as pointer by write JIT)
-    ;;    arg1 = stash_b address, deref'd by walker to get data value
     w -1,0,0,0                              ; write: [pipeline] = *stash_b
     db F(P,U32,P) | 0x40                    ;   arg1 = deref stash_b → data
     dd stash_b

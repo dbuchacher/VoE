@@ -12,12 +12,27 @@ Even coordinates / 2 = exponent. Odd coordinates = force active.
 Positive exponent = multiply. Negative = divide.
 Same coordinates always produce the same result.
 
+## The Pythagorean Identity
+
+  3² + 4² = 5²    →    gates² + dims² = fill%
+  9  + 16 = 25     →    gates² + bonds  = fill%
+
+  3 = gates (AND, OR, NOT). 4 = dimensions (T, D, M, Q).
+  5² = 25 = fill% (Michaelis-Menten + Nyquist + Shannon).
+  dims² = bonds because n² = 2ⁿ at n=4. Specific to d=4.
+  The first Pythagorean triple IS the lattice identity.
+  3-4-5 is the ONLY triple from consecutive integers.
+
 ## The Four Forces
 
-  P = transport   +P = read     -P = write
-  C = synthesis   +C = call     -C = return
-  R = cycling     +R = advance  -R = rewind
-  W = regulation  +W = test     -W = guard
+  P = read      +P = read     -P = write      (transport, ? operator)
+  C = call      +C = call     -C = return     (synthesis, .and_then())
+  R = loop      +R = advance  -R = rewind     (cycling, for/loop)
+  W = test      +W = test     -W = guard      (regulation, Ok/Err)
+
+  Origin: Kleene's PROJ/COMP/PRIM (1936) + SM Weak force.
+  Programmer names: read, call, loop, test.
+  Quantum = call + loop + test (no read). Classical = all four.
 
 Positive = consume/forward. Negative = produce/backward.
 16 combinations from 4 binary choices.
@@ -26,7 +41,7 @@ Positive = consume/forward. Negative = produce/backward.
 
 Don't memorize. Decompose. Ask: what does it DO?
 
-- Does it move data? → P
+- Does it read/write data? → P
 - Does it call something? → C
 - Does it iterate? → R
 - Does it test a condition? → W
@@ -146,6 +161,19 @@ tools, not results. Use them.
     Semantic matches validate the duality. Circuit theory on the
     projected values gives free predictions.
 
+  Containment decomposition
+    When "A contains B" and "B contains A" both seem true, ask what
+    each containment DOES. The verb tells you the force. If the
+    forces differ, both are true (orthogonal containment). If the
+    forces match, one is wrong. "Mind contains matter" = W (models).
+    "Matter contains mind" = P (hosts). Different forces, no paradox.
+
+  Host inversion
+    When a pattern appears designed, invert the ownership. Don't ask
+    "who put this here?" — ask "what is expressing itself through
+    this host?" Same pattern in unrelated hosts (stone, sky, DNA, CPU)
+    = the pattern is primary, not the hosts. Ideas have people (Pirsig).
+
   Backlog triage
     Periodically audit prior work: answered / forgotten / wrong / open.
     The value is surfacing forgotten items and confirming no contradictions.
@@ -178,6 +206,9 @@ What would break the framework:
 
 Computation IS physics. Not metaphor — structural identity.
 72 confirmed correspondences, 0 contradictions. See evidence below.
+Independent convergence: Pirsig's Metaphysics of Quality (1991) —
+4 static levels with moral hierarchy, same structure derived from
+philosophy. See drafts/pirsig.md.
 What holds, what doesn't, and what's open — be honest about all three.
 
 ## Hurwitz-Post
@@ -229,6 +260,18 @@ Complex exponents span both regimes:
 
 Real exponents = classical. Imaginary = quantum. Complex = both.
 Complete in 4D because quaternions are 4D (Cayley-Dickson).
+
+Classical vs quantum = one force:
+
+  classical = hylo = +P+C+R+W = read at every step (? operator)
+  quantum   = bind = +C+R+W   = no read until end  (.and_then())
+  difference = P (read). that's it.
+
+  photon in flight = bind (C+R+W, no P). photon absorbed = hylo (+P).
+  decoherence = unwanted P (environment reads the qubit).
+  qubit = unread value = wave. measurement = read = P = collapse.
+  See codex: bind physics = "photon propagation", hylo = "photon absorption".
+  See drafts/bind.md for the programmer explanation.
 
 Bell's theorem: quaternion correlations give CHSH |S| = 2.674. Beats
 the classical bound of 2.0 — the lattice is NOT a local hidden variable

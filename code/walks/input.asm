@@ -21,13 +21,15 @@
 ; only the gene (hardware reader) and table change. The walk stays.
 
 %include "[0][tool][walk.inc][NASM macros to write walks as coordinates instead of hex].inc"
+%include "walks/loop.asm"
 
 extern render_char
 extern render_pending
+extern loop_kbd
 extern mouse_pending, mouse_pkt, mouse_state
 extern walk_sub
 extern mouse_update
-extern stash_a
+extern stash_a, stash_b
 
 ; ═════════════════════════════════════════════════════════════════
 ; SCANCODE → WAVE BYTE TABLE

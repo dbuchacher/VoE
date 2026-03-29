@@ -106,10 +106,10 @@ Division by zero returns 0. Multiplications happen before divisions (precision).
 Bonds have odd coordinates. Which dimensions are odd selects the force pattern.
 Sign selects direction: + = consume/forward, - = produce/backward.
 
-  T odd → P (transport)   +P = memory read    -P = memory write
-  D odd → C (synthesis)   +C = call function   -C = return/curry
-  M odd → R (cycling)     +R = loop/advance    -R = rewind/increment
-  Q odd → W (regulation)  +W = test/compare    -W = guard/select
+  T odd → P (read)   +P = memory read    -P = memory write
+  D odd → C (call)   +C = call function   -C = return/curry
+  M odd → R (loop)     +R = loop/advance    -R = rewind/increment
+  Q odd → W (test)  +W = test/compare    -W = guard/select
 
 The 16 patterns (bitmask P=1 C=2 R=4 W=8):
 
@@ -130,11 +130,22 @@ The 16 patterns (bitmask P=1 C=2 R=4 W=8):
   14    C+R+W    bind        monadic chain — THE event loop       (0, +1, +1, +1)
   15    P+C+R+W  hylo        full pipeline: unfold+xform+fold     (+1, +1, +1, +1)
 
-Pattern 9 (P+W) has sign variants:
+Pattern 8 (W) has magnitude variants on |Q|:
+  |Q|=1   +W test (== compare)       -W guard (conditional select)
+  |Q|=3   +W AND                     -W OR
+  |Q|=5   +W XOR                     -W NOT
+  |Q|=7   +W SHL                     -W SHR
+  |Q|=9   +W BSWAP32                 -W BSWAP64
+  |Q|=11  +W less-than (signed)      -W greater-than (signed)
+  |Q|=13  +W negate (-a)             -W absolute value (|a|)
+
+Pattern 9 (P+W) has sign variants, each with magnitude extensions:
   +P +W  (+1, 0, 0, +1)  filter     min(a, b)
+  +P +W  (+1, 0, 0, +3)  filter     max(a, b)        [|Q|=3]
   +P -W  (+1, 0, 0, -1)  port_read  read hardware port
   -P +W  (-1, 0, 0, +1)  port_write write hardware port
   -P -W  (-1, 0, 0, -1)  add        a + b
+  -P -W  (-1, 0, 0, -3)  subtract   a - b             [|Q|=3]
 
 Pattern 5 (P+R) has width variants based on |R| magnitude:
   |R|=1  byte width

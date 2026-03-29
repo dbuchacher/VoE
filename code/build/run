@@ -13,6 +13,8 @@ nasm -f elf32 "[5][x86][driver][walker][interpreter][wave bytes in, decodes coor
 nasm -f elf32 "[6][x86][walk][genesis][founding][runs once at boot, inits loops, discovers hardware].asm" -o "$OUT/genesis.o"
 nasm -f elf32 "walks/input.asm" -o "$OUT/input.o"
 nasm -f elf32 "walks/mouse.asm" -o "$OUT/mouse.o"
+nasm -f elf32 "walks/drain.asm" -o "$OUT/drain.o"
+nasm -f elf32 "walks/kbd_consumer.asm" -o "$OUT/kbd_consumer.o"
 
 ld -m elf_i386 -T build/link.ld \
     "$OUT"/x86.o \
@@ -22,6 +24,8 @@ ld -m elf_i386 -T build/link.ld \
     "$OUT"/genesis.o \
     "$OUT"/input.o \
     "$OUT"/mouse.o \
+    "$OUT"/drain.o \
+    "$OUT"/kbd_consumer.o \
     -o "$OUT/nomos.elf"
 
 echo "built: $(stat -c%s "$OUT/nomos.elf") bytes"

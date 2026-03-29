@@ -52,6 +52,8 @@ ht_key: times HTSIZE dq 0
 global code_cursor
 code_cursor: dq 0
 
+jit_lock: dd 0                                 ; spinlock for thread-safe JIT emission
+
 ; walker accumulator — last result, readable by walks
 global w_acc
 w_acc: dq 0
@@ -119,9 +121,27 @@ get_atom:
     jnz .out
 
 .miss:
+    ; acquire JIT spinlock (protects code_cursor and hash table writes)
+.jit_spin:
+    mov eax, 1
+    xchg [jit_lock], eax
+    test eax, eax
+    jnz .jit_spin
+
+    ; double-check: another core may have JIT'd this while we waited
+    cmp [ht_key + rbx*8], r8
+    jne .jit_emit
+    mov rax, [ht_ptr + rbx*8]
+    test rax, rax
+    jnz .jit_done
+
+.jit_emit:
     call emit_function
     mov [ht_key + rbx*8], r8
     mov [ht_ptr + rbx*8], rax
+
+.jit_done:
+    mov dword [jit_lock], 0
 
 .out:
     pop r15
@@ -658,16 +678,22 @@ emit_function:
     jmp .fin
 
 .b_w:   ; 8: W — gates by |Q| magnitude
-    ;   |Q|=1: test/guard (shell 1)
-    ;   |Q|=3: AND/OR    (shell 2 — boolean gates)
-    ;   |Q|=5: XOR/NOT   (shell 3 — boolean gates)
-    ;   |Q|=7: SHL/SHR   (shell 4 — shift gates)
-    ;   |Q|=9: BSWAP32/64 (shell 5 — endian conversion)
+    ;   |Q|=1:  test/guard      (shell 1 — comparison)
+    ;   |Q|=3:  AND/OR          (shell 2 — boolean gates)
+    ;   |Q|=5:  XOR/NOT         (shell 3 — boolean gates)
+    ;   |Q|=7:  SHL/SHR         (shell 4 — shift gates)
+    ;   |Q|=9:  BSWAP32/64      (shell 5 — endian conversion)
+    ;   |Q|=11: less/greater     (shell 6 — signed comparison)
+    ;   |Q|=13: negate/abs       (shell 7 — arithmetic sign)
     mov eax, r15d              ; Q coordinate
     test eax, eax
     jns .w_qpos
     neg eax
 .w_qpos:
+    cmp eax, 13
+    jge .w_neg_abs
+    cmp eax, 11
+    jge .w_cmp_lt
     cmp eax, 9
     jge .w_bswap
     cmp eax, 7
@@ -778,16 +804,87 @@ emit_function:
     add rdi, 7
     jmp .fin
 
+    ; ── |Q|=11: signed less-than / greater-than ──
+.w_cmp_lt:
+    test ecx, 8
+    jz .w_cmp_gt
+    ; +W signed less-than: cmp edi,esi; setl al; movzx eax,al; ret
+    mov word [rdi],   0xF739               ; cmp edi, esi
+    mov dword [rdi+2], 0xC09C0F            ; setl al (0F 9C C0)
+    mov byte [rdi+5], 0x0F                 ; movzx eax, al
+    mov byte [rdi+6], 0xB6
+    mov byte [rdi+7], 0xC0
+    mov byte [rdi+8], 0xC3
+    add rdi, 9
+    jmp .fin
+.w_cmp_gt:
+    ; -W signed greater-than: cmp edi,esi; setg al; movzx eax,al; ret
+    mov word [rdi],   0xF739               ; cmp edi, esi
+    mov dword [rdi+2], 0xC09F0F            ; setg al (0F 9F C0)
+    mov byte [rdi+5], 0x0F                 ; movzx eax, al
+    mov byte [rdi+6], 0xB6
+    mov byte [rdi+7], 0xC0
+    mov byte [rdi+8], 0xC3
+    add rdi, 9
+    jmp .fin
+    ; ── |Q|=13: negate / absolute value ──
+.w_neg_abs:
+    test ecx, 8
+    jz .w_abs
+    ; +W negate: mov rax, rdi; neg rax; ret
+    mov word [rdi],   0x8948               ; 48 89 F8 = mov rax, rdi
+    mov byte [rdi+2], 0xF8
+    mov word [rdi+3], 0xF748               ; 48 F7 D8 = neg rax
+    mov byte [rdi+5], 0xD8
+    mov byte [rdi+6], 0xC3
+    add rdi, 7
+    jmp .fin
+.w_abs:
+    ; -W absolute value: mov rax, rdi; neg rax; cmovs rax, rdi; ret
+    ;   if x >= 0: neg gives negative, SF=1 → cmovs restores original
+    ;   if x < 0:  neg gives positive, SF=0 → keeps negated value
+    mov word [rdi],    0x8948              ; 48 89 F8 = mov rax, rdi
+    mov byte [rdi+2],  0xF8
+    mov word [rdi+3],  0xF748              ; 48 F7 D8 = neg rax
+    mov byte [rdi+5],  0xD8
+    mov byte [rdi+6],  0x48                ; 48 0F 48 C7 = cmovs rax, rdi
+    mov byte [rdi+7],  0x0F
+    mov byte [rdi+8],  0x48
+    mov byte [rdi+9],  0xC7
+    mov byte [rdi+10], 0xC3
+    add rdi, 11
+    jmp .fin
+
 .b_pw:  ; 9: P+W — filter / port read / port write / add
     test ecx, 1
     jz .pw_p_neg
     test ecx, 8
     jz .pw_port_read
-    ; +P +W filter: cmp edi,esi; mov eax,edi; cmovg eax,esi; ret
-    mov word [rdi],   0xF739
-    mov word [rdi+2], 0xF889
-    mov byte [rdi+4], 0x0F
+    ; +P +W filter: |Q|=1 → min(a,b), |Q|=3 → max(a,b)
+    mov eax, r15d              ; Q magnitude
+    test eax, eax
+    jns .pw_filt_qpos
+    neg eax
+.pw_filt_qpos:
+    cmp eax, 3
+    jge .pw_max
+    ; +P +W min: cmp edi,esi; mov eax,edi; cmovg eax,esi; ret
+    ;   edi > esi → cmovg → eax=esi (smaller). edi <= esi → eax=edi (smaller).
+    mov word [rdi],   0xF739               ; cmp edi, esi
+    mov word [rdi+2], 0xF889               ; mov eax, edi
+    mov byte [rdi+4], 0x0F                 ; cmovg eax, esi
     mov byte [rdi+5], 0x4F
+    mov byte [rdi+6], 0xC6
+    mov byte [rdi+7], 0xC3
+    add rdi, 8
+    jmp .fin
+.pw_max:
+    ; +P +W max: cmp edi,esi; mov eax,edi; cmovl eax,esi; ret
+    ;   edi < esi → cmovl → eax=esi (larger). edi >= esi → eax=edi (larger).
+    mov word [rdi],   0xF739               ; cmp edi, esi
+    mov word [rdi+2], 0xF889               ; mov eax, edi
+    mov byte [rdi+4], 0x0F                 ; cmovl eax, esi
+    mov byte [rdi+5], 0x4C
     mov byte [rdi+6], 0xC6
     mov byte [rdi+7], 0xC3
     add rdi, 8
@@ -870,6 +967,14 @@ emit_function:
     add rdi, 6
     jmp .fin
 .pw_add:
+    ; -P -W arithmetic: |Q|=1 → add, |Q|=3 → subtract
+    mov eax, r15d              ; Q magnitude
+    test eax, eax
+    jns .pw_add_qpos
+    neg eax
+.pw_add_qpos:
+    cmp eax, 3
+    jge .pw_subtract
     ; -P -W add: lea rax, [rdi+rsi]; ret
     mov byte [rdi],   0x48
     mov byte [rdi+1], 0x8D
@@ -877,6 +982,16 @@ emit_function:
     mov byte [rdi+3], 0x37
     mov byte [rdi+4], 0xC3
     add rdi, 5
+    jmp .fin
+.pw_subtract:
+    ; -P -W subtract: mov rax, rdi; sub rax, rsi; ret
+    ;   result = arg0 - arg1
+    mov word [rdi],   0x8948               ; 48 89 F8 = mov rax, rdi
+    mov byte [rdi+2], 0xF8
+    mov word [rdi+3], 0x2948               ; 48 29 F0 = sub rax, rsi
+    mov byte [rdi+5], 0xF0
+    mov byte [rdi+6], 0xC3
+    add rdi, 7
     jmp .fin
 
 .b_cw:  ; 10: C+W — maybe (conditional call)

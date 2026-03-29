@@ -18,7 +18,7 @@ bits 64
 
 extern mouse_x, mouse_y, mouse_pkt, mouse_state, mouse_buttons
 extern mouse_pending
-extern cursor_save, cursor_drawn
+extern cursor_save, cursor_drawn, cursor_ox, cursor_oy
 extern stash_a
 
 ; Mouse walk data is in kbd.asm (same file = compile-time length constant).
@@ -34,6 +34,9 @@ extern stash_a
 ; ═════════════════════════════════════════════════════════════════
 
 section .text
+
+CURSOR_W equ 21
+CURSOR_H equ 21
 
 global mouse_update
 mouse_update:
@@ -94,7 +97,7 @@ mouse_update:
 
 
 ; ═════════════════════════════════════════════════════════════════
-; CURSOR DRAWING — x86 scaffolding (computed arrow, no bitmask)
+; CURSOR DRAWING — 21×21 triangle, white fill, black outline
 ; ═════════════════════════════════════════════════════════════════
 
 global erase_cursor
@@ -110,29 +113,30 @@ erase_cursor:
     test r12d, r12d
     jz .er_ret
 
-    mov r13d, [mouse_y]
+    ; erase at the position where cursor was DRAWN
+    mov r13d, [cursor_oy]
     cmp r13d, 768
-    jae .er_ret
+    jae .er_done
     imul r13d, r13d, 1024
-    mov eax, [mouse_x]
+    mov eax, [cursor_ox]
     cmp eax, 1024
-    jae .er_ret
+    jae .er_done
     add r13d, eax
     shl r13d, 2
     add r13, r12
 
     lea rdi, [cursor_save]
-    mov r15d, 14
+    mov r15d, CURSOR_H
 .er_row:
-    mov ebx, 14
+    mov ebx, CURSOR_H
     sub ebx, r15d
-    add ebx, [mouse_y]
+    add ebx, [cursor_oy]
     cmp ebx, 768
     jae .er_done
-    mov r14d, 12
+    mov r14d, CURSOR_W
 .er_col:
     dec r14d
-    mov ebx, [mouse_x]
+    mov ebx, [cursor_ox]
     add ebx, r14d
     cmp ebx, 1024
     jge .er_skip
@@ -176,18 +180,27 @@ draw_cursor:
     shl r13d, 2
     add r13, r12
 
+    ; save drawn position so erase uses the RIGHT place
+    mov eax, [mouse_x]
+    mov [cursor_ox], eax
+    mov eax, [mouse_y]
+    mov [cursor_oy], eax
+
+    ; mark drawn before loop — fixes bottom-edge trail bug
+    mov dword [cursor_drawn], 1
+
     lea rdi, [cursor_save]
-    mov r15d, 14
+    mov r15d, CURSOR_H
 .dr_row:
-    mov ebx, 14
-    sub ebx, r15d
+    mov ebx, CURSOR_H
+    sub ebx, r15d                              ; ebx = row (0..20)
     push rbx
     add ebx, [mouse_y]
     cmp ebx, 768
     pop rbx
     jge .dr_row_skip
 
-    mov r14d, 12
+    mov r14d, CURSOR_W
 .dr_col:
     dec r14d
     mov eax, [mouse_x]
@@ -199,65 +212,24 @@ draw_cursor:
     mov eax, [r13 + rax]
     mov [rdi], eax
 
-    ; compute pixel: triangle + notch + tail
-    cmp ebx, 11
-    jge .dr_notch
-
+    ; shape: 21×21 triangle. col <= row = inside.
     cmp r14d, ebx
     jg .dr_transparent
     test r14d, r14d
     jz .dr_outline
     cmp r14d, ebx
     je .dr_outline
-    jmp .dr_fill
-
-.dr_notch:
-    cmp ebx, 11
-    jne .dr_tail
-    cmp r14d, 5
-    jg .dr_transparent
-    test r14d, r14d
-    jz .dr_outline
-    cmp r14d, 5
-    je .dr_outline
-    jmp .dr_fill
-
-.dr_tail:
-    cmp r14d, 1
-    jle .dr_tail_left
-    mov eax, ebx
-    sub eax, 8
-    cmp r14d, eax
-    jl .dr_transparent
-    add eax, 2
-    cmp r14d, eax
-    jg .dr_transparent
-    mov eax, ebx
-    sub eax, 8
-    cmp r14d, eax
-    je .dr_outline
-    add eax, 2
-    cmp r14d, eax
-    je .dr_outline
-    jmp .dr_fill
-
-.dr_tail_left:
-    test r14d, r14d
-    jz .dr_outline
-    cmp r14d, 1
-    je .dr_outline
-    jmp .dr_fill
-
-.dr_outline:
-    mov eax, r14d
-    shl eax, 2
-    mov dword [r13 + rax], 0x00000000
-    jmp .dr_next
 
 .dr_fill:
     mov eax, r14d
     shl eax, 2
-    mov dword [r13 + rax], 0x0000CC00
+    mov dword [r13 + rax], 0x00FFFFFF          ; white fill
+    jmp .dr_next
+
+.dr_outline:
+    mov eax, r14d
+    shl eax, 2
+    mov dword [r13 + rax], 0x00000000          ; black outline
     jmp .dr_next
 
 .dr_transparent:
@@ -277,14 +249,13 @@ draw_cursor:
     dec r15d
     jnz .dr_row
 
-    mov dword [cursor_drawn], 1
     pop r15
     pop r14
     pop rbx
     ret
 
 .dr_row_skip:
-    add rdi, 12 * 4
+    add rdi, CURSOR_W * 4
     add r13, 1024 * 4
     dec r15d
     jnz .dr_row

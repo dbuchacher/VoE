@@ -265,7 +265,7 @@ Natural selection:
 
 Also capitalism:
   Fill level = price signal. Cores = labor. Loops = markets.
-  R (cycling) = protocol fee per loop. Full loops attract
+  R (loop) = protocol fee per loop. Full loops attract
   investment. Empty loops = bankruptcy.
 
 No scheduler. No central bank. Anarcho-capitalist substrate.
@@ -767,18 +767,50 @@ Know the gaps before you start writing.
     ACTUAL: BSP hardcoded to walk kbd_walk after genesis.
     APs spin (pause loop). Bind drain not built yet.
 
+  Equation magnitude coverage:
+    DESIGN: any 4 coordinates in, x86 function out. Lazy.
+    ACTUAL: atoms fully generative (mul/div chain for any even coords).
+    Bonds use 16-pattern dispatch (one per force bitmask). Within each
+    pattern, magnitude variants select operation type. Session 9 added:
+      W |Q|=11: signed less-than / greater-than
+      W |Q|=13: negate / absolute value
+      P+W +P+W |Q|=3: max(a,b)
+      P+W -P-W |Q|=3: subtract (a-b)
+    Rendering math (subtract, compare, abs, max, negate) now available
+    as bonds. render_char CAN be rewritten as a walk.
+    The dispatch table is still a dispatch table, not a compositor.
+    But the magnitude space is now covered for the operations walks need.
+
   Characters:
     DESIGN: wave bytes in 4D space, SDF rendering
-    ACTUAL: bitmap glyph renderer (scaffolding) draws "nomos" on screen.
-    glyph.ha is 8×16 bitmap data, not SDF. Dissolves when SDF arrives.
+    ACTUAL: SDF renderer (render_char) draws phonetic shapes from
+    coordinates. No font file. Genesis renders "nomos" on screen.
+    Shapes: circle (vowel), diamond (fricative), square (stop).
+    render_char is x86 scaffolding — CAN now dissolve into a walk
+    since the equation has subtract, abs, compare-lt, max, negate.
+
+  Input pipeline:
+    DESIGN: scancode → phonetic coordinate → loop → consumer → render
+    ACTUAL: Producer walk built. Translates PS/2 scancodes to phonetic
+    coordinates via 128-entry table. Key-up filtering, unmapped-key
+    filtering all working. Coordinates echoed to debugcon.
+    BLOCKER: render_char crashes when called from kbd walk after PS/2
+    processing in KVM+GUI mode. Works from genesis, works from walk
+    start, crashes from after-key-processing position. Triple fault.
+    Root cause: render_char is x86 scaffolding called via apply bond.
+    x86 scaffolding doesn't play by walker state rules. Fix: rewrite
+    render_char as a walk (now possible with session 9 equation).
+    Current state: coordinates stored in render_pending BSS var but
+    NOT rendered. Rendering disabled pending rewrite as walk.
 
   Loops:
     DESIGN: walks read/write loops, loop-to-loop pipelines
     ACTUAL: loop read/write primitive built (walks/loop.asm).
     Three macros: loop_empty, loop_read, loop_write.
     Genesis self-test: write 'L', read back, echo to debugcon.
-    Keyboard walk still writes directly to debugcon — not yet
-    converted to use loops (that's the input pipeline, item 2).
+    loop_empty has a separate bug: returns "has data" after ~4400
+    idle iterations. Cause unknown. The kbd walk bypasses loop_empty
+    by rendering inline instead of via loop consumer.
     Loop macros read header fields (mask, recsz, bufaddr) via
     indirect dereference flags. Generic for any loop/record size.
     Uses atom TD (+2,+2,0,0) for slot_index × record_size —
