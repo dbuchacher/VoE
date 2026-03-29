@@ -94,10 +94,10 @@ bytes on x86, ARM, or a lattice-native chip. The equation is the
 only file that knows what hardware it's running on.
 
 Apply (+∘) invokes walks, not x86 functions. The equation's apply
-handler calls walker_wave recursively — rdi=walk_ptr and rsi=walk_len
+handler calls ψ recursively — rdi=walk_ptr and rsi=walk_len
 are already in the right registers. Two instructions: call + ret.
-Nested walks work because walker_wave preserves callee-saved registers.
-walk_sub dissolves. Above the walker, only coordinates exist.
+Nested walks work because ψ preserves callee-saved registers.
+Above the walker, only coordinates exist.
 
 
 ENCODING / PAYLOAD BOUNDARY
@@ -292,7 +292,7 @@ Hardware interaction is only 4 things, all already bonds:
 GENESIS — THE FOUNDING
 ========================
 
-genesis.asm runs once. Embryonic development:
+genesis runs once. Embryonic development:
 
   1. Bootloader wakes all cores, enters lattice_start
   2. lattice_start inits JIT buffer, walks genesis (lazy — no seeds)
@@ -315,7 +315,7 @@ CORES DRAIN LOOPS
 
 bind(step) = call step, check result, loop
 
-The bind bond (0,1,1,1) IS the drain loop. get_atom generates it.
+The bind bond (0,1,1,1) IS the drain loop. ƒ generates it.
 A core draining a loop IS a ribosome reading mRNA.
 
 Cores poll. No interrupts. No hlt. The loop IS quantum spin.
@@ -896,7 +896,7 @@ LAZY EVERYTHING
 
 Nothing exists until something walks there.
 
-  get_atom → cache miss → JIT → cache → return
+  ƒ → cache miss → JIT → cache → return
            → cache hit  → return
 
 The lattice is infinite. Walks collapse it to the finite
@@ -909,7 +909,7 @@ CODING REFERENCE
   Apply bond:
     +∘ does jmp rdi. Walker sets rdi=arg0, rsi=arg1, rdx=arg2,
     rcx=pipeline. Callee gets OWN ADDRESS in rdi (useless).
-    walk_sub bridges apply → walker_wave (scaffolding).
+    apply (+∘) invokes ψ recursively (walk_sub dissolved).
 
   Pipeline: flags 00 = use pipeline. Literal 0 = use U8 + 0x00.
 
@@ -931,7 +931,7 @@ CODING REFERENCE
   Multi-core:
     Global stash_a/stash_b: BSP walks only (kbd, mouse).
     Multi-core walks: per-loop scratch [48:63]. Never global stash.
-    JIT spinlock in get_atom for concurrent code emission.
+    JIT spinlock in ƒ for concurrent code emission.
     One drainer per loop (Pauli exclusion on consumers).
 
   For current status: see wit/history/session-13.md.
@@ -978,10 +978,9 @@ WHAT WE LEARNED (DON'T REPEAT)
 - Don't write asm after the equation. If you're reaching for
   asm, you haven't found the right coordinates yet.
 
-- DON'T WRITE A SYSTEM.ASM. The x86 files are fixed (boot,
-  cpu, handoff, equation, walker, genesis). One agent wrote an
-  asm heartbeat. 1389 lines of system.asm existed because the
-  foundation was wrong.
+- DON'T WRITE MORE ASM. The substrate is two files
+  (legacy/x86.asm + legacy/boot.asm), sealed. Everything
+  new is a .w walk assembled by hodos.
 
 - DON'T WRITE AN ASM DRAIN LOOP. It's the bind bond (0,1,1,1).
 
