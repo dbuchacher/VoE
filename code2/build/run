@@ -15,18 +15,22 @@ mkdir -p "$OUT"
 DBGFLAG="-DDEBUG"
 [ "$1" = "img" ] && DBGFLAG=""
 
-# ── assemble kernel ──────────────────────────────────────────
+# ── build hodos (walk assembler) ─────────────────────────────
 
-# x86 substrate (dissolves on trit processor)
-nasm $DBGFLAG -f elf32 "legacy/x86.asm"          -o "$OUT/x86.o"
+[ ! -f "$OUT/hodos" ] || [ build/hodos.c -nt "$OUT/hodos" ] && \
+    cc -O2 -o "$OUT/hodos" build/hodos.c
 
-# walks (stay forever)
-nasm $DBGFLAG -f elf32 "[6] genesis.asm"       -o "$OUT/genesis.o"
+# ── assemble walks (hodos → raw bytes) ───────────────────────
 
-ld -m elf_i386 -T build/link.ld \
-    "$OUT"/x86.o \
-    "$OUT"/genesis.o \
-    -o "$OUT/nomos.elf"
+"$OUT/hodos" genesis.w -o "$OUT/genesis.bin"
+
+# ── assemble substrate (NASM → ELF) ─────────────────────────
+
+nasm $DBGFLAG -f elf32 "legacy/x86.asm" -o "$OUT/x86.o"
+
+# ── link ─────────────────────────────────────────────────────
+
+ld -m elf_i386 -T build/link.ld "$OUT"/x86.o -o "$OUT/nomos.elf"
 
 echo "built: $(stat -c%s "$OUT/nomos.elf") bytes"
 
@@ -72,7 +76,6 @@ if [ "$1" = "kvm" ]; then
         -debugcon stdio -serial file:/dev/stderr $QEMU_HW \
         -enable-kvm -cpu host -display none
 else
-    # GUI mode — default
     KVM=""
     [ -w /dev/kvm ] && KVM="-enable-kvm -cpu host"
     qemu-system-x86_64 -hda "$OUT/nomos.img" -m 128M -no-reboot \

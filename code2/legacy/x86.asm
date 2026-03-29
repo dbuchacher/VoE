@@ -289,12 +289,14 @@ trampoline_end:
 section .text
 bits 64
 
-extern γ, γ_len
-
 Λ:
     ; init JIT code buffer
     lea rax, [code_base]
     mov [code_cursor], rax
+
+    ; store loop memory base at 0x9200 (known convention, like FB at 0x9100)
+    lea rax, [loop_region]
+    mov [0x9200], rax
 
     ; walk genesis
     lea rdi, [γ]
@@ -339,6 +341,9 @@ section .bss
 global code_base
 align 4096
 code_base: resb 262144                    ; 256KB JIT code buffer
+
+align 64
+loop_region: resb 8192                    ; 8KB for loop headers + buffers
 
 
 ; ── text ──────────────────────────────────────────────────────
@@ -1628,7 +1633,7 @@ global ψ
     mov r12, rdi                   ; walk pointer
     mov r13d, esi                  ; walk length
     lea r14, [r12 + r13]           ; end
-    xor r15d, r15d                 ; pipeline = 0 (vacuum state)
+    xor r15d, r15d                 ; pipeline = 0
 
 ; ── next term in the polynomial ──────────────────────────────
 ;   physics:    observe the next quantum state
@@ -1873,3 +1878,13 @@ decode_table:
     db  1
     db  0
     db -1
+
+
+; ═══════════════════════════════════════════════════════════════
+; GENESIS WALK DATA — assembled by hodos, included as raw bytes
+; ═══════════════════════════════════════════════════════════════
+
+section .rodata
+global γ, γ_len
+γ:      incbin ".build/genesis.bin"
+γ_len:  dd (γ_len - γ)
