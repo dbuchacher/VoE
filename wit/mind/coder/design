@@ -89,7 +89,7 @@ you're thinking in human abstractions. Decompose: what's the math?
 
 The equation exists because CPUs are manufactured around an ISA
 (x86-64). It translates coordinates into machine code. On a chip
-that natively evaluated τ^a*χ^b*μ^c*φ^d and read wave bytes
+that natively evaluated τᵃ·χᵇ·μᶜ·φᵈ and read wave bytes
 directly, this file dissolves. The walks stay identical — same
 bytes on x86, ARM, or a lattice-native chip. The equation is the
 only file that knows what hardware it's running on.
