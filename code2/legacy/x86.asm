@@ -155,7 +155,12 @@ _start:
 
 bits 64
 
+global long_mode
 long_mode:
+%ifdef DEBUG
+    mov al, 'L'
+    out 0xE9, al
+%endif
     mov ax, 0x10
     mov ds, ax
     mov es, ax

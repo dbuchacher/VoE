@@ -1,9 +1,15 @@
-# Session 15: Full NVIDIA GSP Boot Pipeline
+# Session 15: Full NVIDIA GSP Boot Pipeline + UEFI Boot + FIRST BARE METAL BOOT
 
 Coder session. Continued GPU firmware pipeline from session 14.
-Went from "SEC2 PIO loader skeleton" to "complete GSP boot pipeline
-ready for real hardware testing" in one session. 7 new walk files,
-13KB of walk code, matching nouveau's ~2000-line C implementation.
+Went from "SEC2 PIO loader skeleton" to "complete GSP boot pipeline"
+to "UEFI bootloader" to "FIRST BOOT ON REAL HARDWARE" in one session.
+
+Teal screen on bare metal. TU102 RTX 2080 Ti. Physical pixels.
+
+7 new walk files (13KB), matching nouveau's ~2000-line GSP boot.
+UEFI PE32+ stub with GOP framebuffer query. Single-section PE fix
+that took 4 iterations to diagnose (cross-section [rel] displacement
+error — NASM file offsets vs PE virtual addresses).
 
 
 ## What We Built
@@ -228,6 +234,50 @@ After processing, advance rptr modulo 63, write to cmdq rx.readPtr.
 - "GSPok" = INIT_DONE received
 
 
+### 8. UEFI bootloader (uefi.asm, NEW)
+MBR boot failed on real hardware: BIOS jumped to 07C0:0000 instead of
+0000:7C00 (fixed with far jump normalization from GRUB), then the
+32-bit protected mode transition crashed. Switched to UEFI.
+
+UEFI gives us 64-bit mode, GOP framebuffer, and proper memory mapping.
+The stub:
+1. Queries GOP via LocateProtocol → gets framebuffer base, resolution, pitch
+2. Stores FB info at 0x9100 (same format as MBR path — genesis doesn't care)
+3. Gets memory map → ExitBootServices (with retry loop for stale MapKey)
+4. Copies embedded kernel ELF LOAD segments to physical addresses (0x100000+)
+5. Sets up 1GB huge page tables (0-4GB identity mapped — covers ALL BAR0 ranges)
+6. Masks PIC IRQs, copies AP trampoline, builds GDT
+7. Jumps directly to long_mode (skipping x86.asm's 32-bit _start)
+
+**Critical fix: single-section PE.** The original two-section PE (.text + .data)
+had broken [rel] addressing. NASM computes RIP-relative displacements using
+file offsets, but UEFI maps PE sections to virtual addresses (RVAs). When
+sections have different file-to-RVA offsets, every cross-section [rel] reference
+points to the wrong address. QEMU's OVMF hid this by loading the file linearly.
+Real hardware exposed it immediately (black screen, hang).
+
+Fix: put ALL code, data, and the embedded kernel in ONE .text section.
+No cross-section references = no displacement error. Works on both
+QEMU OVMF and real hardware.
+
+**Build: `bash build/run uefi`** (QEMU with OVMF) or **`bash build/run uefi-img`**
+(FAT32 ESP image for USB). Kernel symbols extracted via `nm` at build time
+(LONG_MODE_ADDR, TRAMP_CODE, TRAMP_END, GDTR_ADDR).
+
+### 9. FIRST BOOT ON REAL HARDWARE
+
+Teal screen. RTX 2080 Ti. Physical pixels on a physical monitor.
+
+Boot chain: UEFI firmware → BOOTX64.EFI → GOP framebuffer →
+ExitBootServices → ELF copy → page tables → long_mode → BSS zero →
+AP wake → lattice_start → JIT init → walker runs genesis → teal fill.
+
+4 cores awake. 1GB huge pages covering 0-4GB. BAR0 at 0xFA000000 mapped.
+No GPU firmware on ESP yet, so NVIDIA GSP walks skip. But PCI scan
+finds the TU102 (vendor 0x10DE). The full pipeline is ready — just
+needs firmware files on the ESP.
+
+
 ## Bugs Found
 
 ### 1. Phase 3d reads clobbered scratch
@@ -302,7 +352,12 @@ CORE_*. If a REG_MODIFY is sent and we skip it, GSP may hang.
 MODIFIED:
   firmware/pack_gpu.sh         rewritten — per-file index with tags
   walks/gpu_nvidia.w           +65 lines — PART 3 firmware index parsing
-                               @include path: gsp_boot.w → gsp/gsp_boot.w
+  legacy/x86.asm               global long_mode, debug marker
+  legacy/boot.asm              GRUB-style fixes (far jmp, LBA check, INT 10h)
+  build/run                    +uefi/uefi-img modes, nm symbol extraction
+
+NEW:
+  legacy/uefi.asm              UEFI PE32+ stub — GOP + ExitBS + ELF copy + long_mode jump
 
 NEW (walks/gsp/):
   gsp_boot.w                   orchestrator — skip guards + 6 @includes
@@ -314,6 +369,7 @@ NEW (walks/gsp/):
 
 SIZES:
   genesis.w walk output:       13053 bytes (was ~6KB in session 14)
+  BOOTX64.EFI:                ~106KB (kernel embedded)
   gpu_firmware.bin:             28841377 bytes (same files, new index format)
 ```
 

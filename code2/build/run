@@ -125,6 +125,62 @@ if [ "$1" = "img" ]; then
     exit 0
 fi
 
+# ── UEFI build: BOOTX64.EFI + FAT32 ESP ─────────────────────
+
+if [ "$1" = "uefi" ] || [ "$1" = "uefi-img" ]; then
+    # extract kernel symbol addresses for UEFI 64-bit entry
+    LONG_MODE=$(nm "$OUT/nomos.elf" | awk '/ long_mode$/ {print "0x"$1}')
+    TRAMP_CODE=$(nm "$OUT/nomos.elf" | awk '/ trampoline_code$/ {print "0x"$1}')
+    TRAMP_END=$(nm "$OUT/nomos.elf" | awk '/ trampoline_end$/ {print "0x"$1}')
+    GDTR=$(nm "$OUT/nomos.elf" | awk '/ gdtr$/ {print "0x"$1}')
+    [ -z "$LONG_MODE" ] && { echo "ERROR: long_mode symbol not found"; exit 1; }
+    nasm -f bin -DLONG_MODE_ADDR=$LONG_MODE \
+        -DTRAMP_CODE=${TRAMP_CODE:-0} -DTRAMP_END=${TRAMP_END:-0} \
+        -DGDTR_ADDR=${GDTR:-0x105020} \
+        "legacy/uefi.asm" -o "$OUT/BOOTX64.EFI"
+    echo "uefi: $(stat -c%s "$OUT/BOOTX64.EFI") bytes (BOOTX64.EFI)"
+
+    # create FAT32 ESP image
+    ESP="$OUT/esp.img"
+    dd if=/dev/zero of="$ESP" bs=1M count=48 2>/dev/null
+    mkfs.fat -F 32 "$ESP" >/dev/null 2>&1 || mkfs.vfat -F 32 "$ESP" >/dev/null 2>&1
+    MDIR=$(mktemp -d)
+    doas mount -o loop "$ESP" "$MDIR"
+    doas mkdir -p "$MDIR/EFI/BOOT"
+    doas cp "$OUT/BOOTX64.EFI" "$MDIR/EFI/BOOT/"
+    doas umount "$MDIR"
+    rmdir "$MDIR"
+
+    if [ "$1" = "uefi-img" ]; then
+        echo "uefi image: $ESP"
+        echo "  dd if=$ESP of=/dev/sdX bs=1M"
+        exit 0
+    fi
+
+    # run with OVMF
+    OVMF="/usr/share/edk2-ovmf/OVMF_CODE.fd"
+    [ ! -f "$OVMF" ] && OVMF="/usr/share/OVMF/OVMF_CODE.fd"
+    [ ! -f "$OVMF" ] && OVMF="/usr/share/ovmf/x64/OVMF_CODE.fd"
+    if [ ! -f "$OVMF" ]; then
+        echo "ERROR: OVMF not found. Install edk2-ovmf." >&2
+        exit 1
+    fi
+    VARS="$OUT/OVMF_VARS.fd"
+    OVMF_VARS_TMPL="${OVMF%CODE*}VARS.fd"
+    [ ! -f "$VARS" ] && cp "$OVMF_VARS_TMPL" "$VARS" 2>/dev/null
+    [ ! -f "$VARS" ] && dd if=/dev/zero of="$VARS" bs=1K count=256 2>/dev/null
+
+    KVM=""
+    [ -w /dev/kvm ] && KVM="-enable-kvm -cpu host"
+    timeout ${3:-10} qemu-system-x86_64 \
+        -drive if=pflash,format=raw,unit=0,file="$OVMF",readonly=on \
+        -drive if=pflash,format=raw,unit=1,file="$VARS" \
+        -drive format=raw,file="$ESP" \
+        -m 256M -no-reboot -debugcon stdio -serial file:/dev/null \
+        -smp ${2:-4} ${KVM:-"-cpu Skylake-Server"}
+    exit 0
+fi
+
 # ── QEMU with MBR boot ──────────────────────────────────────
 
 QEMU_HW="-smp ${2:-4}"
