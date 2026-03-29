@@ -171,7 +171,7 @@ static void tokenize(char *line) {
     char *p = line;
     while (*p) {
         while (*p == ' ' || *p == '\t') p++;
-        if (!*p || *p == '#' || *p == '\n') break;
+        if (!*p || *p == ';' || *p == '\n') break;
         tokens[ntokens] = p;
         if (*p == '\'') {
             /* character literal */

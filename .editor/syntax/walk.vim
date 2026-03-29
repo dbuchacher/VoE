@@ -5,7 +5,7 @@ if exists("b:current_syntax")
 endif
 
 " comments
-syn match walkComment '#.*$'
+syn match walkComment ';.*$'
 
 " labels
 syn match walkLabel '^:\s*\w\+'

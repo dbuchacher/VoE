@@ -1,9 +1,9 @@
-# γ — genesis
-#
-# display init + boot confirmation
-# loop operations come back when hodos has include support
+; γ — genesis
+;
+; display init + boot confirmation
+; loop operations come back when hodos has include support
 
-# ── display ──────────────────────────────────────────────────
+; ── display ──────────────────────────────────────────────────
 
 π₇    θ²ρρ  0x9100
 skip_z fill_end
@@ -12,7 +12,7 @@ skip_z fill_end
 π̄∮̄₃   θρ²²  0x00008080  786432
 : fill_end
 
-# ── boot confirmation ────────────────────────────────────────
+; ── boot confirmation ────────────────────────────────────────
 
 π̄δ    θ¹¹ρ  0xE9  0x56
 π̄δ    θ¹¹ρ  0xE9  0x6F
