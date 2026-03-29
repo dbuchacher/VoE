@@ -39,4 +39,13 @@ wit/lattice/sky
 
 # data
 side-quest/data/
+wit/src/data/
 *.bin
+!code2/firmware/**/*.bin
+
+# wit/src build artifacts
+wit/src/wit
+wit/src/check_bins
+wit/src/test_spread
+wit/src/wit.field
+*.pdf

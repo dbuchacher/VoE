@@ -289,6 +289,20 @@ trampoline_end:
 section .text
 bits 64
 
+; firmware location — injected by build script
+%ifndef FWSECTORS
+FWSECTORS equ 0
+%endif
+%ifndef FWSTART
+FWSTART equ 0
+%endif
+%ifndef GPUSECTORS
+GPUSECTORS equ 0
+%endif
+%ifndef GPUSTART
+GPUSTART equ 0
+%endif
+
 Λ:
     ; init JIT code buffer
     lea rax, [code_base]
@@ -297,6 +311,14 @@ bits 64
     ; store loop memory base at 0x9200 (known convention, like FB at 0x9100)
     lea rax, [loop_region]
     mov [0x9200], rax
+
+    ; firmware disk locations (read by ATA walks)
+    ; CPU: 0x9300 = LBA start, 0x9304 = sector count
+    ; GPU: 0x9318 = LBA start, 0x931C = sector count
+    mov dword [0x9300], FWSTART
+    mov dword [0x9304], FWSECTORS
+    mov dword [0x9318], GPUSTART
+    mov dword [0x931C], GPUSECTORS
 
     ; walk genesis
     lea rdi, [γ]
@@ -722,7 +744,7 @@ section .text
 ; ── π read/write ────────────────────────────────
 ;
 ;  π = read from [arg0].  π̄ = write arg1 to [arg0].
-;  Width from |T|: 1=qword, 3=byte, 7=dword.
+;  Width from |T|: 1=qword, 3=byte, 5=word, 7=dword.
 
 ε_read:
     test r12d, r12d
@@ -732,6 +754,8 @@ section .text
     mov eax, r12d                          ; τ magnitude
     cmp eax, 3
     je .read_byte
+    cmp eax, 5
+    je .read_word
     cmp eax, 7
     je .read_dword
 
@@ -750,6 +774,14 @@ section .text
     add rbx, 3
     ret
 
+.read_word:
+    ; movzx eax, word [rdi]  (0F B7 07)
+    mov byte [rbx], 0x0F
+    mov byte [rbx+1], 0xB7
+    mov byte [rbx+2], 0x07
+    add rbx, 3
+    ret
+
 .read_dword:
     ; mov eax, [rdi]  (8B 07)
     mov byte [rbx], 0x8B
@@ -763,6 +795,8 @@ section .text
     neg eax                                ; |T|
     cmp eax, 3
     je .write_byte
+    cmp eax, 5
+    je .write_word
     cmp eax, 7
     je .write_dword
 
@@ -777,6 +811,14 @@ section .text
     ; mov [rdi], sil  (40 88 37)
     mov byte [rbx], 0x40
     mov byte [rbx+1], 0x88
+    mov byte [rbx+2], 0x37
+    add rbx, 3
+    jmp .write_ret
+
+.write_word:
+    ; mov [rdi], si   (66 89 37)
+    mov byte [rbx], 0x66
+    mov byte [rbx+1], 0x89
     mov byte [rbx+2], 0x37
     add rbx, 3
     jmp .write_ret
@@ -1165,7 +1207,10 @@ section .text
 ; ── πδ filter / port / add ─────────────────
 ;
 ;  πδ: filter (min)          +P +W|3: max
-;  πδ̄: port_read             π̄δ: port_write
+;  πδ̄: port_read (byte)      π̄δ: port_write (byte)
+;  π₇δ̄: port_read (dword)   π̄₇δ: port_write (dword)    — |T|≥7 selects width
+;  πδ̄₃: MSR read             π̄δ₃: MSR write              — |Q|=3 selects register file
+;  πδ̄₅: CPUID read                                        — |Q|=5 selects CPU identity
 ;  π̄δ̄: add                   π̄δ̄|3: subtract
 
 ε_filter:
@@ -1218,8 +1263,18 @@ section .text
     ret
 
 .port_read:
-    ; +P -W: port_read
-    ;   movzx edx, di (0F B7 D7) + in al, dx (EC) + movzx eax, al (0F B6 C0)
+    ; +P -W: port_read, dword port_read, MSR read, or CPUID
+    ; eax = |Q|, r12d = signed T (positive)
+
+    cmp eax, 3
+    je .msr_read
+    cmp eax, 5
+    je .cpuid_read
+
+    cmp r12d, 7
+    jge .port_read_dword
+
+    ; byte: movzx edx, di (0F B7 D7) + in al, dx (EC) + movzx eax, al (0F B6 C0)
     mov byte [rbx], 0x0F
     mov byte [rbx+1], 0xB7
     mov byte [rbx+2], 0xD7
@@ -1230,14 +1285,77 @@ section .text
     add rbx, 7
     ret
 
+.port_read_dword:
+    ; dword: movzx edx, di (0F B7 D7) + in eax, dx (ED)
+    mov byte [rbx], 0x0F
+    mov byte [rbx+1], 0xB7
+    mov byte [rbx+2], 0xD7
+    mov byte [rbx+3], 0xED
+    add rbx, 4
+    ret
+
+.msr_read:
+    ; rdmsr: mov ecx, edi (89 F9) + rdmsr (0F 32)
+    ;         + shl rdx, 32 (48 C1 E2 20) + or rax, rdx (48 09 D0)
+    mov byte [rbx], 0x89
+    mov byte [rbx+1], 0xF9
+    mov byte [rbx+2], 0x0F
+    mov byte [rbx+3], 0x32
+    mov byte [rbx+4], 0x48
+    mov byte [rbx+5], 0xC1
+    mov byte [rbx+6], 0xE2
+    mov byte [rbx+7], 0x20
+    mov byte [rbx+8], 0x48
+    mov byte [rbx+9], 0x09
+    mov byte [rbx+10], 0xD0
+    add rbx, 11
+    ret
+
+.cpuid_read:
+    ; cpuid: arg0 = leaf (EAX input), returns EAX
+    ; Also packs: vendor string check into result high bits
+    ; For leaf 0: EAX=max leaf, EBX/ECX/EDX=vendor string
+    ; For leaf 1: EAX=family/model/stepping
+    ;
+    ; emit: push rbx (53) + mov eax, edi (89 F8) + cpuid (0F A2)
+    ;       + pop rbx (5B)
+    ; cpuid clobbers EBX which we use as emit pointer — must save.
+    ; But this runs at CALL time, not emit time. The JIT'd function
+    ; is called later. At call time, rbx is free (not emit pointer).
+    ; Actually: the walker calls the JIT'd function with rdi=arg0, etc.
+    ; The JIT'd function runs, returns rax. rbx is caller-saved by our
+    ; convention (walker saves it). But cpuid clobbers rbx/rcx/rdx.
+    ; We only need EAX back. So: mov eax,edi + cpuid is enough.
+    ; But we must preserve rbx if callee-saved. Let's push/pop to be safe.
+    ;
+    ; emit: push rbx (53) + mov eax, edi (89 F8) + cpuid (0F A2) + pop rbx (5B)
+    mov byte [rbx], 0x53                   ; push rbx
+    mov byte [rbx+1], 0x89                 ; mov eax, edi
+    mov byte [rbx+2], 0xF8
+    mov byte [rbx+3], 0x0F                 ; cpuid
+    mov byte [rbx+4], 0xA2
+    mov byte [rbx+5], 0x5B                 ; pop rbx
+    add rbx, 6
+    ret
+
 .write_side:
     ; ── -P (write side) ──
     test ecx, ecx
     js .add
 
-    ; π̄δ: port_write
-    ;   movzx edx, di (0F B7 D7) + mov al, sil (40 8A C6) + out dx, al (EE)
-    ;   + xor eax, eax (31 C0)
+    ; -P +W: port_write, dword port_write, or MSR write
+    ; eax = |Q|, r12d = signed T (negative)
+
+    cmp eax, 3
+    je .msr_write
+
+    mov edx, r12d
+    neg edx                                    ; |T|
+    cmp edx, 7
+    jge .port_write_dword
+
+    ; byte: movzx edx, di (0F B7 D7) + mov al, sil (40 8A C6) + out dx, al (EE)
+    ;       + xor eax, eax (31 C0)
     mov byte [rbx], 0x0F
     mov byte [rbx+1], 0xB7
     mov byte [rbx+2], 0xD7
@@ -1248,6 +1366,43 @@ section .text
     mov byte [rbx+7], 0x31
     mov byte [rbx+8], 0xC0
     add rbx, 9
+    ret
+
+.port_write_dword:
+    ; dword: movzx edx, di (0F B7 D7) + mov eax, esi (89 F0) + out dx, eax (EF)
+    ;        + xor eax, eax (31 C0)
+    mov byte [rbx], 0x0F
+    mov byte [rbx+1], 0xB7
+    mov byte [rbx+2], 0xD7
+    mov byte [rbx+3], 0x89
+    mov byte [rbx+4], 0xF0
+    mov byte [rbx+5], 0xEF
+    mov byte [rbx+6], 0x31
+    mov byte [rbx+7], 0xC0
+    add rbx, 8
+    ret
+
+.msr_write:
+    ; wrmsr: mov ecx, edi (89 F9) + mov rax, rsi (48 89 F0)
+    ;        + mov rdx, rsi (48 89 F2) + shr rdx, 32 (48 C1 EA 20)
+    ;        + wrmsr (0F 30) + xor eax, eax (31 C0)
+    mov byte [rbx], 0x89
+    mov byte [rbx+1], 0xF9
+    mov byte [rbx+2], 0x48
+    mov byte [rbx+3], 0x89
+    mov byte [rbx+4], 0xF0
+    mov byte [rbx+5], 0x48
+    mov byte [rbx+6], 0x89
+    mov byte [rbx+7], 0xF2
+    mov byte [rbx+8], 0x48
+    mov byte [rbx+9], 0xC1
+    mov byte [rbx+10], 0xEA
+    mov byte [rbx+11], 0x20
+    mov byte [rbx+12], 0x0F
+    mov byte [rbx+13], 0x30
+    mov byte [rbx+14], 0x31
+    mov byte [rbx+15], 0xC0
+    add rbx, 16
     ret
 
 .add:
@@ -1500,6 +1655,12 @@ section .text
 ;  Returns the accumulated sum.
 
 ε_scan:
+    ; π∮δ = scan (accumulate).  π∮δ̄ = port bulk read (rep insd).
+    ; dispatch on φ sign: positive = scan, negative = port bulk
+    test r15d, r15d
+    js .port_bulk
+
+    ; ── scan (prefix sum) ──
     mov byte [rbx], 0xB8                   ; mov eax, Σ
     mov eax, Σ
     mov dword [rbx+1], eax
@@ -1507,6 +1668,27 @@ section .text
     mov byte [rbx], 0xFF                   ; call rax
     mov byte [rbx+1], 0xD0
     add rbx, 2
+    ret
+
+.port_bulk:
+    ; ── port bulk read: rep insd ──
+    ; rdi = dest address, esi = port number, edx = dword count
+    ; emit: xchg edx, ecx (87 D1) — count to ecx
+    ;        movzx edx, si (0F B7 D6) — port to dx
+    ;        cld (FC)
+    ;        rep insd (F3 6D) — read count dwords from port to [rdi]
+    ;        xor eax, eax (31 C0)
+    mov byte [rbx], 0x87                   ; xchg edx, ecx
+    mov byte [rbx+1], 0xD1
+    mov byte [rbx+2], 0x0F                 ; movzx edx, si
+    mov byte [rbx+3], 0xB7
+    mov byte [rbx+4], 0xD6
+    mov byte [rbx+5], 0xFC                 ; cld
+    mov byte [rbx+6], 0xF3                 ; rep insd
+    mov byte [rbx+7], 0x6D
+    mov byte [rbx+8], 0x31                 ; xor eax, eax
+    mov byte [rbx+9], 0xC0
+    add rbx, 10
     ret
 
 Σ:
@@ -1830,12 +2012,11 @@ global ψ
     je .skip_z
     cmp al, 0xFD
     je .skip_nz
-
     ; loop_back: rewind if pipeline ≠ 0
     test r15, r15
     jz .skip_done
     sub r12, rbx
-    jmp .next
+    jmp .skip_done                     ; +5 to account for instruction size
 
 .skip_z:                              ; skip if pipeline = 0
     test r15, r15
@@ -1888,3 +2069,5 @@ section .rodata
 global γ, γ_len
 γ:      incbin ".build/genesis.bin"
 γ_len:  dd (γ_len - γ)
+
+section .data

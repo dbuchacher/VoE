@@ -850,29 +850,63 @@ FILE STRUCTURE
 ================
 
   code2/
-    genesis.w          the first walk (hodos notation, .w file)
+    genesis.w          the founding walk — includes all walks below
+    walks/
+      pci.w            PCI bus scan + virtio capability walking
+      virtio.w         virtio modern transport init + virtqueue setup
+      gpu.w            6 virtio-GPU commands (display_info → flush)
+      ata.w            ATA PIO disk read (firmware loading)
+      ucode.w          CPU microcode: CPUID → index scan → wrmsr
+      gpu_nvidia.w     NVIDIA GPU detect + BAR map + firmware load
+      gsp_boot.w       NVIDIA GSP boot skeleton (radix3, falcon reset)
+    firmware/
+      cpu/             34 microcode blobs (AMD Zen 1-5, Intel 6th-15th gen)
+      gpu/nvidia-tu102/ 24 firmware files (GSP, booter, engine fw)
+      pack.sh          CPU microcode packer (indexed binary format)
+      pack_gpu.sh      GPU firmware packer (per vendor:device)
     build/
-      hodos.c          walk assembler — bond symbols → wave bytes (325 lines C)
+      hodos.c          walk assembler — bond symbols → wave bytes
       link.ld          linker script (kernel at 1MB)
-      run              build + run script (hodos → NASM → ld → QEMU)
+      run              build + run (hodos → NASM → ld → QEMU, firmware packing)
     legacy/
       x86.asm          entire x86 substrate in one file (sealed):
                          cpu (mode switch, page tables, AP wake)
-                         handoff (init JIT, run γ, signal APs)
-                         nomos/ƒ (JIT compiler, all 16 bonds)
-                         walker/ψ (wave byte interpreter)
+                         handoff (init JIT, firmware info, run γ, signal APs)
+                         nomos/ƒ (JIT compiler, all bonds + width/MSR/CPUID)
+                         walker/ψ (wave byte interpreter, loop_back fixed)
                          genesis data (incbin .build/genesis.bin)
       boot.asm         MBR bootloader (VESA enumerate, 16-bit, runs once)
 
-  Walks are .w files assembled by hodos. New walks go in code2/ root.
+  Walks are .w files in walks/. genesis.w @includes them.
   The legacy/ folder is sealed — x86 substrate that dissolves on trit.
 
-  code/ (renamed to legacy/) was the pre-code2 implementation. Reference only.
+  Width encoding in ƒ:
+    |τ|=1→qword, 3→byte, 5→word, 7→dword (memory and port I/O)
+    |φ|=1→port, 3→MSR, 5→CPUID (register file selection)
+    π∮δ̄ = port bulk read (rep insd)
 
-Most devices are non-local (BIOS already set them up):
-  pixel buffer, keyboard, serial, VGA text, debugcon, disk.
+  Known addresses (0x9000-0x9800 region):
+    0x9100   VESA FB info (from MBR)
+    0x9200   loop_region base
+    0x9300   CPU firmware: LBA start, sector count
+    0x9308   CPU firmware: RAM address (set by ATA walk)
+    0x9310   CPU firmware: size in bytes
+    0x9318   GPU firmware: LBA start, sector count
+    0x9400+  PCI results (virtio caps, BAR addresses)
+    0x9500+  virtqueue info (desc, avail, used, doorbell)
+    0x9560   display width/height
+    0x9600+  NVIDIA GPU info (slot, BAR0, BAR1, fw addr)
+    0x96C0-96FF  GSP boot scratch (reused per phase)
+    0x9700+  parsed firmware: bl/booter/bootloader/gsp addrs+sizes
+    0x9750+  booter hs_load_header fields, DMA base addrs
 
-Genes only for: mouse (PS/2 aux), NIC (MMIO), speaker (PIT).
+  Memory layout (RAM):
+    0x100000 (1MB)   kernel
+    0x400000 (4MB)   virtqueue
+    0x500000 (5MB)   virtio-GPU framebuffer
+    0x600000 (6MB)   CPU firmware (ATA loaded)
+    0x800000 (8MB)   GPU firmware (ATA loaded)
+    0x2800000 (40MB) GSP page tables + metadata + queues
 
 
 GENOME SEED
@@ -934,7 +968,7 @@ CODING REFERENCE
     JIT spinlock in ƒ for concurrent code emission.
     One drainer per loop (Pauli exclusion on consumers).
 
-  For current status: see wit/history/session-13.md.
+  For current status: see wit/history/session-14.md.
 
 
 BUILD ORDER
@@ -943,21 +977,30 @@ BUILD ORDER
   DONE (code2/ — clean room rewrite):
     ✓ substrate: boot.asm (MBR, VESA enumerate, teal screen)
     ✓ substrate: cpu + handoff + ƒ + ψ (merged into x86.asm)
-    ✓ substrate: all 16 bond patterns (was 9 stubs, now all real)
+    ✓ substrate: all 16 bond patterns + width variants + MSR + CPUID
     ✓ substrate: apply (+∘) does recursive walk invocation
     ✓ substrate: all cores enter find-work (no special BSP)
     ✓ substrate: symbol vocabulary (ƒ ψ π ∘ ∮ δ τ χ μ φ)
-    ✓ walks: hodos walk assembler (325 lines C, replaces NASM)
+    ✓ walks: hodos walk assembler (with @include, extended θ patterns)
     ✓ walks: genesis.w (first .w file, display + boot confirmation)
     ✓ walks: zero-copy loop macros (tested, then dissolved into hodos)
     ✓ walks: loop write/read/bind tested via debugcon
     ✓ walks: .w syntax highlighting for neovim
+    ✓ walks: PCI bus scan + virtio capability walking (pci.w)
+    ✓ walks: virtio modern transport init + virtqueue (virtio.w)
+    ✓ walks: virtio-GPU 6 commands — teal pixels on screen (gpu.w)
+    ✓ walks: ATA PIO disk read — loads firmware from disk (ata.w)
+    ✓ walks: CPU microcode — CPUID + index scan + wrmsr (ucode.w)
+    ✓ walks: NVIDIA GPU detect + BAR map + firmware load (gpu_nvidia.w)
+    ✓ firmware: 34 CPU microcode blobs (AMD Zen 1-5, Intel 6th-15th gen)
+    ✓ firmware: NVIDIA TU102 GPU firmware (28.8MB, all components)
+    ✓ 33MB bootable USB image with kernel + CPU + GPU firmware
 
   NEXT:
-    1. GPU firmware: get GPU alive before building display walks
-       - virtio-gpu first (no firmware blobs, QEMU)
-       - then AMD with open docs + firmware blobs as gene data
-       - see prior/schism gpu-protocol.md: driver = encoding table
+    1. NVIDIA GSP boot: falcon PIO loader → SEC2 boot → message queues
+       - gsp_boot.w skeleton exists with register offsets from nouveau
+       - needs: booter PIO load, message queue polling, CPU sequencer
+       - see walks/gsp_boot.w, history/session-14.md for register map
     2. walks: genesis with runtime loop allocation (cursor from 0x9200)
     3. walks: keyboard producer (poll + loop_write)
     4. walks: display pipeline via GPU command ring (not VESA)
@@ -1009,6 +1052,40 @@ WHAT WE LEARNED (DON'T REPEAT)
 
 - THE WAVE BYTE IS THE RECORD. Not compression. The 32-byte
   format was scaffolding. A walk is a byte array.
+
+- SAVE PIPELINE BEFORE DEBUG PRINTS. port_write clears pipeline
+  (xor eax, eax). Save to scratch, print, restore. Every debug
+  session that forgot this wasted 20 minutes.
+
+- DEREF LOADS QWORDS. The · modifier does mov rdi, [addr] — always
+  64 bits. Write qwords (π̄ not π̄₇) to scratch that gets deref'd.
+  A dword write + qword deref loads 4 bytes of garbage in the upper
+  half. Session 14 found this THREE TIMES.
+
+- LOOP_BACK NEEDS NONZERO PIPELINE. After δ (test), pipeline is
+  0 or 1. If 0 means "keep looping," reload a non-zero value from
+  scratch before loop_back. loop_back fires on pipeline ≠ 0.
+
+- PORT ADDRESSES DON'T FIT IN U8. ATA ports are 0x1F0-0x1F7
+  (>255). PCI config is 0xCF8/0xCFC. Use θ²ρρ (u32) not θ¹ρρ (u8)
+  for port numbers.
+
+- DON'T OVERLAP QWORD SCRATCH. A qword write at 0x9308 covers
+  bytes 0x9308-0x930F. A dword write at 0x930C clobbers the upper
+  4 bytes. Space scratch addresses 8 bytes apart when any are
+  read as qwords.
+
+- ASK THE LATTICE FIRST. Before adding bonds, ask "what IS this?"
+  Width on τ, register file on φ, port bulk as π∮δ̄. The lattice
+  predicted every design decision in session 14. When we guessed
+  instead of computing, we got it wrong.
+
+- CHECK THE LINUX SOURCE. For hardware register maps, the kernel
+  is right there. nouveau r535.c gave us every NVIDIA register
+  offset in one read. Don't guess at hardware.
+
+- CHECK -DDEBUG. The img build mode strips DEBUG. No debugcon
+  output doesn't mean crash — it means the MBR has no prints.
 
 - THE EQUATION STAYS SEALED. No templates. No new bond types
   for rendering, scrolling, blitting. Decompose to math.

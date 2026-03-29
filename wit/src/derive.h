@@ -26,12 +26,19 @@
 
 
 /* ================================================================
- * DeriveResult — coordinate + confidence
+ * DeriveResult — coordinate + confidence + force pattern
  * ================================================================ */
 
 typedef struct {
     coord4  coord;
     uint8_t confidence;  /* 0=char-level, 1=position, 2=morpheme, 3=prime */
+    uint8_t forces;      /* 4-bit bond mask: what this word DOES
+                          *   bit 0 (BOND_P) = reads/writes data
+                          *   bit 1 (BOND_C) = calls something
+                          *   bit 2 (BOND_R) = iterates/loops
+                          *   bit 3 (BOND_W) = tests/evaluates
+                          * Derived from "How To Think" (mind line 49):
+                          *   "Don't memorize. Decompose. Ask: what does it DO?" */
 } DeriveResult;
 
 
@@ -53,6 +60,7 @@ typedef struct {
     const char *word;
     int8_t      len;
     coord4      coord;
+    uint8_t     forces;   /* 4-bit bond mask: the word's force pattern */
 } DeriveHashEntry;
 
 /*
@@ -68,10 +76,38 @@ static inline uint32_t derive_fnv1a(const char *s, int len) {
 }
 
 /*
+ * Derive force pattern from a coordinate.
+ *
+ * For non-prime words, the force pattern comes from the dimensional
+ * signature: which dimensions are active (nonzero) selects which
+ * forces apply.  Even exponents = atom (pure math), odd = force.
+ *
+ * At shell 1 (|coord| <= 1), every nonzero dimension is odd,
+ * so active = force.  At higher shells, even nonzero values
+ * (|2|, |4|, ...) are atoms on that dimension — force is not
+ * active there.
+ */
+static inline uint8_t derive_forces_from_coord(coord4 c) {
+    uint8_t f = 0;
+    /* Odd exponents = force active on that dimension */
+    if (c.t != 0 && ((c.t < 0 ? -c.t : c.t) & 1)) f |= BOND_P;
+    if (c.x != 0 && ((c.x < 0 ? -c.x : c.x) & 1)) f |= BOND_C;
+    if (c.m != 0 && ((c.m < 0 ? -c.m : c.m) & 1)) f |= BOND_R;
+    if (c.q != 0 && ((c.q < 0 ? -c.q : c.q) & 1)) f |= BOND_W;
+    return f;
+}
+
+/*
  * Build the prime table at first use.
  *
  * 65 entries: 59 NSM primes from learner.c + 5 pronouns
  * (he, she, it, we, they) + the/a (already in seed_primes).
+ *
+ * The 'forces' field encodes what the word DOES per "How To Think":
+ *   BOND_P (1) = reads/writes data  (pi)
+ *   BOND_C (2) = calls something    (comp)
+ *   BOND_R (4) = iterates/loops     (contour)
+ *   BOND_W (8) = tests/evaluates    (delta)
  */
 static const DeriveHashEntry *derive_prime_table(void) {
     static DeriveHashEntry tbl[DERIVE_PRIME_SLOTS];
@@ -80,110 +116,136 @@ static const DeriveHashEntry *derive_prime_table(void) {
 
     memset(tbl, 0, sizeof(tbl));
 
-    /* Seed list: word, t, x, m, q */
-    static const struct { const char *w; int8_t t, x, m, q; } seeds[] = {
+    /* Seed list: word, t, x, m, q, forces
+     *
+     * Force assignments from mind/mind "How To Think" + decomposition:
+     *   P=1 (pi: reads/writes)  C=2 (call)  R=4 (loop)  W=8 (test)
+     *
+     * Verbs of action:    do/happen → P(1), move/go → P|C(3)
+     * Verbs of state:     live → P|R(5), die → P|R(5)
+     * Mental predicates:  think → P|C|R|W(15), know/feel → P|R|W(13)
+     *                     see/hear → P|W(9), want → P|R|W(13)
+     * Speech:             say → P|C(3)
+     * Existence:          is/was/have → R(4)
+     * Transfer:           give/take/make/come → P|C(3)
+     * Substantives:       nouns/pronouns → R(4) (pure substance)
+     * Determiners:        the/this/a → C|W(10) (conditional call)
+     * Quantifiers:        one/two/some/all/much/more → R(4) (substance)
+     * Evaluators:         good/bad/true → W(8) (test)
+     * Descriptors:        big/small → W(8) (test)
+     * Logic:              not/if/and/but/or → W(8) (test)
+     * Time:               now/before/after → P(1) (temporal)
+     * Place:              where/here/above/below/in/on → C(2) (spatial)
+     * Degree:             very → W(8) (evaluative)
+     * Connectives:        because → P|C|W(11), can → P|W(9)
+     */
+    static const struct {
+        const char *w;
+        int8_t t, x, m, q;
+        uint8_t forces;
+    } seeds[] = {
 
-        /* 1. Substantives -- WHO/WHAT (mu axis) */
-        { "i",         0,  0, +1, +1 },
-        { "you",       0,  0, +1, -1 },
-        { "someone",   0,  0, +1,  0 },
-        { "something", 0,  0, +1,  0 },
-        { "people",    0,  0, +2,  0 },
-        { "body",      0, +1, +1,  0 },
+        /* 1. Substantives -- WHO/WHAT (mu axis) → R (substance) */
+        { "i",         0,  0, +1, +1,   BOND_R },
+        { "you",       0,  0, +1, -1,   BOND_R },
+        { "someone",   0,  0, +1,  0,   BOND_R },
+        { "something", 0,  0, +1,  0,   BOND_R },
+        { "people",    0,  0, +2,  0,   BOND_R },
+        { "body",      0, +1, +1,  0,   BOND_R },
 
-        /* 2. Determiners -- REFERENCE (phi axis) */
-        { "this",      0, +1,  0, +1 },
-        { "same",      0,  0,  0, +1 },
-        { "other",     0,  0,  0, -1 },
+        /* 2. Determiners -- REFERENCE → C|W (maybe: conditional call) */
+        { "this",      0, +1,  0, +1,   BOND_C|BOND_W },
+        { "same",      0,  0,  0, +1,   BOND_W },
+        { "other",     0,  0,  0, -1,   BOND_W },
 
-        /* 3. Quantifiers -- HOW MUCH (mu magnitude) */
-        { "one",       0,  0, +1,  0 },
-        { "two",       0,  0, +2,  0 },
-        { "some",      0,  0, +1, -1 },
-        { "all",       0,  0, +2, +1 },
-        { "much",      0,  0, +2,  0 },
-        { "more",      0,  0, +1, +1 },
+        /* 3. Quantifiers -- HOW MUCH → R (substance) */
+        { "one",       0,  0, +1,  0,   BOND_R },
+        { "two",       0,  0, +2,  0,   BOND_R },
+        { "some",      0,  0, +1, -1,   BOND_R },
+        { "all",       0,  0, +2, +1,   BOND_R },
+        { "much",      0,  0, +2,  0,   BOND_R },
+        { "more",      0,  0, +1, +1,   BOND_R },
 
-        /* 4. Evaluators -- GOOD/BAD (phi axis) */
-        { "good",      0,  0,  0, +1 },
-        { "bad",       0,  0,  0, -1 },
-        { "true",      0,  0,  0, +1 },
+        /* 4. Evaluators -- GOOD/BAD → W (test) */
+        { "good",      0,  0,  0, +1,   BOND_W },
+        { "bad",       0,  0,  0, -1,   BOND_W },
+        { "true",      0,  0,  0, +1,   BOND_W },
 
-        /* 5. Descriptors -- SIZE (mu magnitude) */
-        { "big",       0,  0, +2,  0 },
-        { "small",     0,  0, -2,  0 },
+        /* 5. Descriptors -- SIZE → W (test) */
+        { "big",       0,  0, +2,  0,   BOND_W },
+        { "small",     0,  0, -2,  0,   BOND_W },
 
         /* 6. Mental predicates -- INNER STATES */
-        { "think",    +1,  0, +1, +1 },
-        { "know",      0,  0, +1, +1 },
-        { "want",     +1,  0, +1, +1 },
-        { "feel",      0,  0, +1, +1 },
-        { "see",       0, +1,  0, +1 },
-        { "hear",      0, +1,  0, +1 },
+        { "think",    +1,  0, +1, +1,   BOND_P|BOND_C|BOND_R|BOND_W }, /* hylo */
+        { "know",      0,  0, +1, +1,   BOND_P|BOND_R|BOND_W },
+        { "want",     +1,  0, +1, +1,   BOND_P|BOND_R|BOND_W },
+        { "feel",      0,  0, +1, +1,   BOND_P|BOND_R|BOND_W },
+        { "see",       0, +1,  0, +1,   BOND_P|BOND_W },   /* filter */
+        { "hear",      0, +1,  0, +1,   BOND_P|BOND_W },   /* filter */
 
-        /* 7. Speech -- COMMUNICATION */
-        { "say",      +1,  0,  0, +1 },
+        /* 7. Speech -- COMMUNICATION → P|C (fold: read then call) */
+        { "say",      +1,  0,  0, +1,   BOND_P|BOND_C },
 
-        /* 8. Actions -- CHANGE (tau axis) */
-        { "do",       +1,  0,  0,  0 },
-        { "happen",   +1,  0,  0,  0 },
-        { "move",     +1, +1,  0,  0 },
+        /* 8. Actions -- CHANGE → P (read/temporal) */
+        { "do",       +1,  0,  0,  0,   BOND_P },
+        { "happen",   +1,  0,  0,  0,   BOND_P },
+        { "move",     +1, +1,  0,  0,   BOND_P|BOND_C },  /* fold */
 
-        /* 9. Existence -- BEING */
-        { "is",        0,  0, +1, +1 },
-        { "was",      +1,  0, +1, +1 },
-        { "have",      0,  0, +1, +1 },
+        /* 9. Existence -- BEING → R (substance/loop) */
+        { "is",        0,  0, +1, +1,   BOND_R },
+        { "was",      +1,  0, +1, +1,   BOND_R },
+        { "have",      0,  0, +1, +1,   BOND_R },
 
-        /* 10. Life (tau + mu) */
-        { "live",     +1,  0, +1,  0 },
-        { "die",      -1,  0, -1,  0 },
+        /* 10. Life → P|R (slurp: read + loop) */
+        { "live",     +1,  0, +1,  0,   BOND_P|BOND_R },
+        { "die",      -1,  0, -1,  0,   BOND_P|BOND_R },
 
-        /* 11. Motion / Transfer */
-        { "go",       +1, +1,  0,  0 },
-        { "come",     +1, -1,  0,  0 },
-        { "make",     +1,  0, +1,  0 },
-        { "take",     +1, +1, -1,  0 },
-        { "give",     +1, +1, +1,  0 },
+        /* 11. Motion / Transfer → P|C (fold: read + call) */
+        { "go",       +1, +1,  0,  0,   BOND_P|BOND_C },
+        { "come",     +1, -1,  0,  0,   BOND_P|BOND_C },
+        { "make",     +1,  0, +1,  0,   BOND_P|BOND_R },
+        { "take",     +1, +1, -1,  0,   BOND_P|BOND_C },
+        { "give",     +1, +1, +1,  0,   BOND_P|BOND_C },
 
-        /* 12. Time -- WHEN (tau axis) */
-        { "now",      +1,  0,  0,  0 },
-        { "before",   +2,  0,  0,  0 },
-        { "after",    -2,  0,  0,  0 },
+        /* 12. Time -- WHEN → P (temporal) */
+        { "now",      +1,  0,  0,  0,   BOND_P },
+        { "before",   +2,  0,  0,  0,   BOND_P },
+        { "after",    -2,  0,  0,  0,   BOND_P },
 
-        /* 13. Place -- WHERE (chi axis) */
-        { "where",     0, +1,  0, +1 },
-        { "here",      0, +1,  0, +1 },
-        { "above",     0, +2,  0,  0 },
-        { "below",     0, -2,  0,  0 },
-        { "in",        0, -1,  0,  0 },
-        { "on",        0, +1,  0,  0 },
+        /* 13. Place -- WHERE → C (spatial) */
+        { "where",     0, +1,  0, +1,   BOND_C },
+        { "here",      0, +1,  0, +1,   BOND_C },
+        { "above",     0, +2,  0,  0,   BOND_C },
+        { "below",     0, -2,  0,  0,   BOND_C },
+        { "in",        0, -1,  0,  0,   BOND_C },
+        { "on",        0, +1,  0,  0,   BOND_C },
 
-        /* 14. Logic -- STRUCTURE (phi axis) */
-        { "not",       0,  0,  0, -1 },
-        { "if",        0,  0,  0, +1 },
-        { "because",  +1, +1,  0, +1 },
-        { "can",      +1,  0,  0, +1 },
+        /* 14. Logic -- STRUCTURE → W (test/delta) */
+        { "not",       0,  0,  0, -1,   BOND_W },
+        { "if",        0,  0,  0, +1,   BOND_W },
+        { "because",  +1, +1,  0, +1,   BOND_P|BOND_C|BOND_W },
+        { "can",      +1,  0,  0, +1,   BOND_P|BOND_W },
 
-        /* 15. Degree -- MODIFIERS */
-        { "very",      0,  0,  0, +2 },
+        /* 15. Degree -- MODIFIERS → W (test) */
+        { "very",      0,  0,  0, +2,   BOND_W },
 
-        /* 16. Connectives -- LOGIC GATES */
-        { "and",       0,  0,  0, +1 },
-        { "but",       0,  0,  0, -1 },
-        { "or",        0,  0,  0, +1 },
+        /* 16. Connectives -- LOGIC GATES → W (test) */
+        { "and",       0,  0,  0, +1,   BOND_W },
+        { "but",       0,  0,  0, -1,   BOND_W },
+        { "or",        0,  0,  0, +1,   BOND_W },
 
-        /* 17. Articles -- DETERMINERS (chi+phi) */
-        { "the",       0, +1,  0, +1 },
-        { "a",         0, +1,  0, -1 },
+        /* 17. Articles -- DETERMINERS → C|W (maybe) */
+        { "the",       0, +1,  0, +1,   BOND_C|BOND_W },
+        { "a",         0, +1,  0, -1,   BOND_C|BOND_W },
 
-        /* 18. Pronouns -- SUBSTANCE+REFERENCE (mu+phi) */
-        { "he",        0,  0, +1, +1 },
-        { "she",       0,  0, +1, +1 },
-        { "it",        0,  0, +1, -1 },
-        { "we",        0,  0, +2, +1 },
-        { "they",      0,  0, +2, -1 },
+        /* 18. Pronouns -- SUBSTANCE+REFERENCE → R (substance) */
+        { "he",        0,  0, +1, +1,   BOND_R },
+        { "she",       0,  0, +1, +1,   BOND_R },
+        { "it",        0,  0, +1, -1,   BOND_R },
+        { "we",        0,  0, +2, +1,   BOND_R },
+        { "they",      0,  0, +2, -1,   BOND_R },
 
-        { NULL, 0, 0, 0, 0 }
+        { NULL, 0, 0, 0, 0, 0 }
     };
 
     for (int i = 0; seeds[i].w; i++) {
@@ -200,6 +262,7 @@ static const DeriveHashEntry *derive_prime_table(void) {
                 tbl[slot].coord.x = seeds[i].x;
                 tbl[slot].coord.m = seeds[i].m;
                 tbl[slot].coord.q = seeds[i].q;
+                tbl[slot].forces  = seeds[i].forces;
                 break;
             }
             /* skip duplicates (same word already inserted) */
@@ -423,26 +486,69 @@ static const coord4 derive_bond_regions[16] = {
 
 
 /* ================================================================
- * Position default — phi->mu->tau->mu->chi (5-slot cycle)
+ * Force-based position default — replaces the 10-slot cycle
  * ================================================================
  *
- * When no reliable predecessor (confidence <= 1), use the
- * sentence position to pick a default bias.  Matches ~45%
- * of English SVO structure.
+ * The lattice says sentence structure = bond sequences.
+ * Instead of an ad-hoc 10-slot cycle, we predict the next word's
+ * expected force pattern from sentence position using the simplest
+ * lattice-motivated model:
+ *
+ *   Position 0: W (delta/test)    — determiners, conjunctions, signals
+ *   Position 1: R (contour/loop)  — nouns (substance)
+ *   Position 2: P (pi/temporal)   — verbs (action)
+ *   Position 3+: alternate R, P   — noun-verb-noun-verb
+ *
+ * This uses FORCES (what it does) not DIMENSIONS (where it sits).
+ * The force pattern maps to a coordinate bias via derive_bond_regions.
+ *
+ * Returns the expected force pattern (4-bit mask) for a given
+ * sentence position.
  */
+static inline uint8_t derive_position_forces(int sentence_pos) {
+    /*
+     * 8-slot cycle: 4 forward forces + 4 backward (antimatter).
+     * Covers all 4 dimensions in both directions.
+     *
+     *   0: δ  (test/signal)   → φ+  (determiner)
+     *   1: ∮  (substance)     → μ+  (noun)
+     *   2: π  (temporal)      → τ+  (verb)
+     *   3: ∘  (spatial)       → χ+  (preposition)
+     *   4: δ̄  (guard)         → φ-  (negation)
+     *   5: ∮̄  (absence)       → μ-  (void/nothing)
+     *   6: π̄  (past/passive)  → τ-  (past participle)
+     *   7: ∘̄  (inside/return) → χ-  (interior)
+     */
+    static const uint8_t cycle[8] = {
+        BOND_W, BOND_R, BOND_P, BOND_C,
+        BOND_W, BOND_R, BOND_P, BOND_C,
+    };
+    int idx = sentence_pos % 8;
+    if (idx < 0) idx += 8;
+    return cycle[idx];
+}
 
-static const coord4 derive_pos_cycle[5] = {
-    { .t =  0, .x =  0, .m =  0, .q = +1 },  /* phi:  determiner */
-    { .t =  0, .x =  0, .m = +1, .q =  0 },  /* mu:   subject    */
-    { .t = +1, .x =  0, .m =  0, .q =  0 },  /* tau:  verb       */
-    { .t =  0, .x =  0, .m = +1, .q =  0 },  /* mu:   object     */
-    { .t =  0, .x = +1, .m =  0, .q =  0 },  /* chi:  prep       */
+/*
+ * Position default coordinate: 8-slot cycle covering all 4 dimensions
+ * in both positive (forward) and negative (antimatter) directions.
+ * This replaces the bond_regions lookup for position defaults because
+ * bond_regions is all-positive — it can't produce negative coordinates.
+ */
+static const coord4 derive_pos_defaults[8] = {
+    { .t =  0, .x =  0, .m =  0, .q = +1 },  /* δ forward:  φ+  */
+    { .t =  0, .x =  0, .m = +1, .q =  0 },  /* ∮ forward:  μ+  */
+    { .t = +1, .x =  0, .m =  0, .q =  0 },  /* π forward:  τ+  */
+    { .t =  0, .x = +1, .m =  0, .q =  0 },  /* ∘ forward:  χ+  */
+    { .t =  0, .x =  0, .m =  0, .q = -1 },  /* δ̄ backward: φ-  */
+    { .t =  0, .x =  0, .m = -1, .q =  0 },  /* ∮̄ backward: μ-  */
+    { .t = -1, .x =  0, .m =  0, .q =  0 },  /* π̄ backward: τ-  */
+    { .t =  0, .x = -1, .m =  0, .q =  0 },  /* ∘̄ backward: χ-  */
 };
 
 static inline coord4 derive_position_default(int sentence_pos) {
-    int idx = sentence_pos % 5;
-    if (idx < 0) idx += 5;
-    return derive_pos_cycle[idx];
+    int idx = sentence_pos % 8;
+    if (idx < 0) idx += 8;
+    return derive_pos_defaults[idx];
 }
 
 
@@ -514,6 +620,7 @@ static DeriveResult derive(const char *word, int len,
     if (prime) {
         result.coord = prime->coord;
         result.confidence = 3;
+        result.forces = prime->forces;
         return result;
     }
 
@@ -597,6 +704,7 @@ static DeriveResult derive(const char *word, int len,
 
                 result.coord = c;
                 result.confidence = 2;
+                result.forces = derive_forces_from_coord(c);
                 return result;
             }
         }
@@ -609,36 +717,88 @@ static DeriveResult derive(const char *word, int len,
         coord4 prev = context[ctx_len - 1].coord;
 
         /*
-         * The bond between prev coord and the position default
-         * gives a 4-bit mask.  Index into bond_default_regions
-         * to get the dimensional bias for this position.
+         * ANTIMATTER PRINCIPLE: a bond means a dimension CHANGED.
+         * If prev was positive on that dimension, the new word is
+         * negative — the overbar direction.  pi-bar is the antimatter of pi.
+         *
+         * After "was" (tau=+1), if tau changes -> new word gets tau=-1
+         * After "the" (phi=+1), if phi changes -> new word gets phi=-1
+         * After "in"  (chi=-1), if chi changes -> new word gets chi=+1
+         *
+         * For ACTIVE dimensions (bond says changed): flip predecessor's sign.
+         * For INACTIVE dimensions (bond says unchanged): inherit the
+         * predecessor's ACTUAL VALUE, preserving magnitude.
+         *
+         * ZERO CASE: If prev is zero on a dimension and the bond says
+         * it changed, flipping zero is meaningless.  Use the position
+         * default for that dimension instead — it represents the
+         * structural expectation for this sentence slot.
          */
         coord4 pos_default = derive_position_default(sentence_pos);
         BondType bond = classify_bond(prev, pos_default);
-        coord4 bias = derive_bond_regions[bond & 0xF];
+
+        coord4 bias;
+
+        /* T dimension */
+        if (bond & BOND_P) {
+            /* active: flip, or use pos_default if prev is zero */
+            bias.t = prev.t ? (int8_t)-prev.t : pos_default.t;
+        } else {
+            /* inactive: inherit predecessor's actual value */
+            bias.t = prev.t;
+        }
+
+        /* X dimension */
+        if (bond & BOND_C) {
+            bias.x = prev.x ? (int8_t)-prev.x : pos_default.x;
+        } else {
+            bias.x = prev.x;
+        }
+
+        /* M dimension */
+        if (bond & BOND_R) {
+            bias.m = prev.m ? (int8_t)-prev.m : pos_default.m;
+        } else {
+            bias.m = prev.m;
+        }
+
+        /* Q dimension */
+        if (bond & BOND_W) {
+            bias.q = prev.q ? (int8_t)-prev.q : pos_default.q;
+        } else {
+            bias.q = prev.q;
+        }
 
         result.coord = bias;
         result.confidence = 1;
+        result.forces = derive_forces_from_coord(bias);
         return result;
     }
 
     /* ── Priority 4: Character-level prior (confidence=0) ──── */
     /*    Combined with position default.                       */
+    /*                                                          */
+    /*    ENCODING/PAYLOAD BOUNDARY:                            */
+    /*    Position (payload/structure) has priority.             */
+    /*    Char-level (encoding/phonetics) fills in only where   */
+    /*    structure has no opinion.  This respects the boundary  */
+    /*    from mind/mind: encoding must not leak into payload.   */
 
     coord4 char_coord = derive_char_prior(word, len);
     coord4 pos_coord  = derive_position_default(sentence_pos);
 
     /*
-     * Combine: char_prior provides phonetic signal,
-     * position default provides structural signal.
-     * Use char_prior where nonzero, fall back to position default.
+     * Position default = payload (structural expectation).
+     * Char prior = encoding (phonetic signal).
+     * Structure takes priority.  Phonetics fills gaps.
      */
-    result.coord.t = char_coord.t ? char_coord.t : pos_coord.t;
-    result.coord.x = char_coord.x ? char_coord.x : pos_coord.x;
-    result.coord.m = char_coord.m ? char_coord.m : pos_coord.m;
-    result.coord.q = char_coord.q ? char_coord.q : pos_coord.q;
+    result.coord.t = pos_coord.t ? pos_coord.t : char_coord.t;
+    result.coord.x = pos_coord.x ? pos_coord.x : char_coord.x;
+    result.coord.m = pos_coord.m ? pos_coord.m : char_coord.m;
+    result.coord.q = pos_coord.q ? pos_coord.q : char_coord.q;
 
     result.confidence = 0;
+    result.forces = derive_forces_from_coord(result.coord);
     return result;
 }
 

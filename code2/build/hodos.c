@@ -70,9 +70,11 @@ static const struct bond bonds[] = {
     {"π",      {0x40},       1},
     {"π̄",      {0xC0},       1},
     {"π₃",     {0x80, 0x03}, 2},     /* byte read (T=+3 extended) */
-    {"π̄₃",     {0xC0|0x80, 0xFD}, 2}, /* byte write (T=-3 extended) */
+    {"π̄₃",     {0x80, 0xFD}, 2},       /* byte write (T=-3 extended) */
+    {"π₅",     {0x80, 0x05}, 2},     /* word read (T=+5 extended) */
+    {"π̄₅",     {0x80, 0xFB}, 2},     /* word write (T=-5 extended) */
     {"π₇",     {0x80, 0x07}, 2},     /* dword read (T=+7 extended) */
-    {"π̄₇",     {0x80|0x40, 0xF9}, 2}, /* dword write (T=-7 extended) */
+    {"π̄₇",     {0x80, 0xF9}, 2},     /* dword write (T=-7 extended) */
 
     /* pattern 2: ∘ (call/return) */
     {"∘",      {0x10},       1},
@@ -99,8 +101,13 @@ static const struct bond bonds[] = {
     {"δ̄₁₃",    {0x02, 0xF3}, 2},    /* abs */
 
     /* pattern 9: πδ (filter/port/add) */
-    {"πδ̄",     {0x43},       1},     /* port_read (+P-W) */
-    {"π̄δ",     {0xC1},       1},     /* port_write (-P+W) */
+    {"πδ̄",     {0x43},       1},     /* port_read byte (+P-W) */
+    {"π₇δ̄",    {0x83, 0x07}, 2},    /* port_read dword (+P-W, T=+7 ext) */
+    {"πδ̄₃",    {0x42, 0xFD}, 2},    /* MSR read (+P, Q=-3 ext) */
+    {"πδ̄₅",    {0x42, 0xFB}, 2},    /* CPUID read (+P, Q=-5 ext) */
+    {"π̄δ",     {0xC1},       1},     /* port_write byte (-P+W) */
+    {"π̄₇δ",    {0x81, 0xF9}, 2},    /* port_write dword (-P+W, T=-7 ext) */
+    {"π̄δ₃",    {0xC2, 0x03}, 2},    /* MSR write (-P, Q=+3 ext) */
     {"π̄δ̄",     {0xC3},       1},     /* add (-P-W) */
     {"π̄δ̄₃",    {0xC2, 0xFD}, 2},   /* subtract (-P, Q=-3 ext) */
     {"πδ",     {0x41},       1},     /* filter/min (+P+W) */
@@ -130,8 +137,9 @@ static const struct bond bonds[] = {
     /* pattern 12: ∮δ (until/take_while) */
     {"∮δ",     {0x05},       1},
 
-    /* pattern 13: π∮δ (scan) */
-    {"π∮δ",    {0x45},       1},
+    /* pattern 13: π∮δ (scan) / π∮δ̄ (port bulk read) */
+    {"π∮δ",    {0x45},       1},     /* scan: accumulate */
+    {"π∮δ̄",    {0x47},       1},     /* port bulk read: rep insd */
 
     /* atom: τχ (multiply) */
     {"τχ",     {0x80|0x20, 0x02, 0x02}, 3},  /* T=+2 ext, D=+2 ext */
@@ -147,14 +155,22 @@ static const struct theta thetas[] = {
     {"θρρρ",   0x00, {0,0,0}},
     {"θ¹ρρ",   0x01, {1,0,0}},
     {"θ¹¹ρ",   0x05, {1,1,0}},
+    {"θ¹¹¹",   0x15, {1,1,1}},
     {"θ²ρρ",   0x02, {2,0,0}},
+    {"θ²¹ρ",   0x06, {2,1,0}},
     {"θ²²ρ",   0x0A, {2,2,0}},
+    {"θ²²²",   0x2A, {2,2,2}},
     {"θ²³ρ",   0x0E, {2,3,0}},
+    {"θ³ρρ",   0x03, {3,0,0}},
+    {"θ³²ρ",   0x0B, {3,2,0}},
+    {"θ³³ρ",   0x0F, {3,3,0}},
     {"θρ¹ρ",   0x04, {0,1,0}},
     {"θρ²ρ",   0x08, {0,2,0}},
     {"θρ²²",   0x28, {0,2,2}},
+    {"θρ³ρ",   0x0C, {0,3,0}},
     {"θ²ρρ·",  0x82, {2,0,0}},  /* deref arg0 */
     {"θρ²ρ·",  0x48, {0,2,0}},  /* deref arg1 */
+    {"θ³ρρ·",  0x83, {3,0,0}},  /* deref arg0 (u64) */
     {NULL, 0, {0,0,0}}
 };
 
@@ -289,6 +305,50 @@ static int resolve_fixups(void) {
     return 0;
 }
 
+/* ── process file (recursive for @include) ────────────────── */
+
+static int include_depth = 0;
+
+static int process_file(const char *path) {
+    if (include_depth > 8) {
+        fprintf(stderr, "hodos: include depth > 8: %s\n", path);
+        return 1;
+    }
+
+    FILE *f = fopen(path, "r");
+    if (!f) { perror(path); return 1; }
+
+    /* resolve directory of this file for relative includes */
+    char dir[MAX_LINE] = ".";
+    const char *slash = strrchr(path, '/');
+    if (slash) {
+        int dlen = (int)(slash - path);
+        if (dlen >= MAX_LINE) dlen = MAX_LINE - 1;
+        memcpy(dir, path, dlen);
+        dir[dlen] = '\0';
+    }
+
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        tokenize(line);
+        if (ntokens >= 2 && strcmp(tokens[0], "@include") == 0) {
+            char inc_path[MAX_LINE];
+            if (tokens[1][0] == '/')
+                snprintf(inc_path, sizeof(inc_path), "%s", tokens[1]);
+            else
+                snprintf(inc_path, sizeof(inc_path), "%s/%s", dir, tokens[1]);
+            include_depth++;
+            int err = process_file(inc_path);
+            include_depth--;
+            if (err) { fclose(f); return err; }
+            continue;
+        }
+        assemble_line();
+    }
+    fclose(f);
+    return 0;
+}
+
 /* ── main ──────────────────────────────────────────────────── */
 
 int main(int argc, char **argv) {
@@ -303,15 +363,7 @@ int main(int argc, char **argv) {
         if (strcmp(argv[i], "-o") == 0)
             outfile = argv[i + 1];
 
-    FILE *f = fopen(infile, "r");
-    if (!f) { perror(infile); return 1; }
-
-    char line[MAX_LINE];
-    while (fgets(line, sizeof(line), f)) {
-        tokenize(line);
-        assemble_line();
-    }
-    fclose(f);
+    if (process_file(infile)) return 1;
 
     if (resolve_fixups()) return 1;
 

@@ -1,7 +1,6 @@
 ; γ — genesis
 ;
-; display init + boot confirmation
-; loop operations come back when hodos has include support
+; display init + firmware + PCI + virtio + GPU + boot confirmation
 
 ; ── display ──────────────────────────────────────────────────
 
@@ -11,6 +10,24 @@ skip_z fill_end
 : fill
 π̄∮̄₃   θρ²²  0x00008080  786432
 : fill_end
+
+; ── ATA PIO: load firmware from disk ─────────────────────────
+@include walks/ata.w
+
+; ── CPU microcode update ─────────────────────────────────────
+@include walks/ucode.w
+
+; ── PCI scan for virtio-gpu ──────────────────────────────────
+@include walks/pci.w
+
+; ── virtio transport init ────────────────────────────────────
+@include walks/virtio.w
+
+; ── virtio-GPU commands ──────────────────────────────────────
+@include walks/gpu.w
+
+; ── NVIDIA GPU detection + firmware load ─────────────────────
+@include walks/gpu_nvidia.w
 
 ; ── boot confirmation ────────────────────────────────────────
 

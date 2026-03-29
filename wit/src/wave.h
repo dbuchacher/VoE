@@ -66,6 +66,34 @@ typedef struct {
     int8_t t, x, m, q;
 } coord4;
 
+/*
+ * float4 — continuous coordinate for walk evaluation.
+ *
+ * coord4 is for storage (bins, field, reverse index).
+ * float4 is for live computation (walks, attention, equation eval).
+ *
+ * "The path IS the function." — mind/mind
+ * Polynomials are continuous, not discrete. The walk must carry
+ * float precision so the equation can distinguish nearby words
+ * and the trajectory drifts smoothly instead of snapping to grid.
+ */
+typedef struct {
+    float t, x, m, q;
+} float4;
+
+static inline float4 coord4_to_float4(coord4 c) {
+    return (float4){ (float)c.t, (float)c.x, (float)c.m, (float)c.q };
+}
+
+static inline coord4 float4_to_coord4(float4 f) {
+    coord4 c;
+    c.t = (int8_t)(f.t > 127 ? 127 : f.t < -128 ? -128 : (f.t >= 0 ? (int)(f.t + 0.5f) : (int)(f.t - 0.5f)));
+    c.x = (int8_t)(f.x > 127 ? 127 : f.x < -128 ? -128 : (f.x >= 0 ? (int)(f.x + 0.5f) : (int)(f.x - 0.5f)));
+    c.m = (int8_t)(f.m > 127 ? 127 : f.m < -128 ? -128 : (f.m >= 0 ? (int)(f.m + 0.5f) : (int)(f.m - 0.5f)));
+    c.q = (int8_t)(f.q > 127 ? 127 : f.q < -128 ? -128 : (f.q >= 0 ? (int)(f.q + 0.5f) : (int)(f.q - 0.5f)));
+    return c;
+}
+
 
 /* ================================================================
  * wave_decode — wave byte to 4D coordinate

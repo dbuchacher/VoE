@@ -20,13 +20,51 @@ DBGFLAG="-DDEBUG"
 [ ! -f "$OUT/hodos" ] || [ build/hodos.c -nt "$OUT/hodos" ] && \
     cc -O2 -o "$OUT/hodos" build/hodos.c
 
+# ── pack firmware ────────────────────────────────────────────
+
+FWBIN=""
+FWSECTORS=0
+FWSTART=256                            # CPU firmware starts at sector 256
+
+GPUBIN=""
+GPUSECTORS=0
+GPUSTART=0                             # GPU firmware starts after CPU firmware
+
+# pack firmware blobs
+[ -f firmware/pack.sh ] && (cd firmware && bash pack.sh) 2>&1 | grep "^firmware:" >&2
+[ -f firmware/pack_gpu.sh ] && (cd firmware && bash pack_gpu.sh) 2>&1 | grep "^gpu firmware:" >&2
+
+# CPU firmware
+if [ -f firmware/cpu_firmware.bin ]; then
+    FWBIN="firmware/cpu_firmware.bin"
+    FWSIZE=$(stat -c%s "$FWBIN")
+    FWSECTORS=$(( (FWSIZE + 511) / 512 ))
+fi
+
+# GPU firmware — starts right after CPU firmware
+if [ -f firmware/gpu_firmware.bin ]; then
+    GPUBIN="firmware/gpu_firmware.bin"
+    GPUSIZE=$(stat -c%s "$GPUBIN")
+    GPUSECTORS=$(( (GPUSIZE + 511) / 512 ))
+    GPUSTART=$((FWSTART + FWSECTORS))
+fi
+
 # ── assemble walks (hodos → raw bytes) ───────────────────────
 
 "$OUT/hodos" genesis.w -o "$OUT/genesis.bin"
 
-# ── assemble substrate (NASM → ELF) ─────────────────────────
+# firmware follows kernel — compute FWSTART after we know kernel size
+# (preliminary: will be finalized after objcopy, but NASM needs it now)
+# Estimate kernel at ~200 sectors max. Actual FWSTART set in MBR disk image section.
+# For x86.asm, we pass the sector count so walks know how much to read.
 
-nasm $DBGFLAG -f elf32 "legacy/x86.asm" -o "$OUT/x86.o"
+# ── assemble substrate (NASM → ELF) ─────────────────────────
+# headless has no disk → no firmware
+[ "$1" = "headless" ] && FWSECTORS=0 && FWSTART=0 && GPUSECTORS=0 && GPUSTART=0
+
+nasm $DBGFLAG -DFWSECTORS=$FWSECTORS -DFWSTART=$FWSTART \
+    -DGPUSECTORS=$GPUSECTORS -DGPUSTART=$GPUSTART \
+    -f elf32 "legacy/x86.asm" -o "$OUT/x86.o"
 
 # ── link ─────────────────────────────────────────────────────
 
@@ -39,7 +77,8 @@ echo "built: $(stat -c%s "$OUT/nomos.elf") bytes"
 if [ "$1" = "headless" ]; then
     timeout ${3:-5} qemu-system-x86_64 -kernel "$OUT/nomos.elf" -m 128M -no-reboot \
         -debugcon stdio -serial file:/dev/stderr -smp ${2:-4} \
-        -cpu Skylake-Server -display none
+        -cpu Skylake-Server -display none \
+        -device virtio-gpu-pci
     exit 0
 fi
 
@@ -48,21 +87,40 @@ fi
 objcopy -O binary "$OUT/nomos.elf" "$OUT/nomos.bin"
 KSIZE=$(stat -c%s "$OUT/nomos.bin")
 KSECTORS=$(( (KSIZE + 511) / 512 ))
+
+if [ $KSECTORS -ge 256 ]; then
+    echo "ERROR: kernel too large ($KSECTORS sectors >= FWSTART=$FWSTART)" >&2
+    exit 1
+fi
+
 if [ $KSECTORS -le 127 ]; then
     S1=$KSECTORS; S2=0
 else
     S1=127; S2=$(( KSECTORS - 127 ))
 fi
 
-nasm $DBGFLAG -DSEC1=$S1 -DSEC2=$S2 "legacy/boot.asm" -o "$OUT/mbr.bin"
+# firmware follows kernel: sector 1+KSECTORS
+# FWSTART is fixed at 256 (set above)
+nasm $DBGFLAG -DSEC1=$S1 -DSEC2=$S2 \
+    -DFWSTART=$FWSTART -DFWSECTORS=$FWSECTORS \
+    "legacy/boot.asm" -o "$OUT/mbr.bin"
 
-IMGSECTORS=$(( 1 + KSECTORS + 64 ))
+TOTAL_FW=$((FWSECTORS + GPUSECTORS))
+IMGSECTORS=$(( FWSTART + TOTAL_FW + 64 ))
 dd if=/dev/zero of="$OUT/nomos.img" bs=512 count=$IMGSECTORS 2>/dev/null
 dd if="$OUT/mbr.bin"  of="$OUT/nomos.img" conv=notrunc 2>/dev/null
 dd if="$OUT/nomos.bin" of="$OUT/nomos.img" bs=512 seek=1 conv=notrunc 2>/dev/null
 
+# write firmware after kernel
+if [ -n "$FWBIN" ] && [ $FWSECTORS -gt 0 ]; then
+    dd if="$FWBIN" of="$OUT/nomos.img" bs=512 seek=$FWSTART conv=notrunc 2>/dev/null
+fi
+if [ -n "$GPUBIN" ] && [ $GPUSECTORS -gt 0 ]; then
+    dd if="$GPUBIN" of="$OUT/nomos.img" bs=512 seek=$GPUSTART conv=notrunc 2>/dev/null
+fi
+
 if [ "$1" = "img" ]; then
-    echo "image: $KSIZE bytes kernel, $KSECTORS sectors ($S1+$S2)"
+    echo "image: kernel=$KSECTORS cpu_fw=$FWSECTORS gpu_fw=$GPUSECTORS sectors"
     echo "  dd if=$OUT/nomos.img of=/dev/sdX bs=512"
     exit 0
 fi
@@ -80,5 +138,6 @@ else
     [ -w /dev/kvm ] && KVM="-enable-kvm -cpu host"
     qemu-system-x86_64 -hda "$OUT/nomos.img" -m 128M -no-reboot \
         -serial file:/dev/null -debugcon stdio $QEMU_HW \
-        ${KVM:-"-cpu Skylake-Server"} -vga std
+        ${KVM:-"-cpu Skylake-Server"} -vga std \
+        -device virtio-gpu-pci
 fi
