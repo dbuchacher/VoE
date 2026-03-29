@@ -247,8 +247,36 @@ The read IS observation (wave collapse). The loop IS angular momentum.
   Writing = fermion (spin ½) = exclusive = single writer
   Reading = boson (spin 1) = shareable = many readers
 
-Pauli exclusion = no two writers to same loop.
-Bose-Einstein condensate = many readers on same loop.
+Pauli exclusion = no two writers to same ADDRESS (not per loop).
+The loop has many addresses: write cursor, buffer slots, per-reader
+cursors. Each address has exactly one writer. No locks needed.
+
+A billion people look at the sun. They don't share photons — each
+absorbs their own. The buffer IS the sun. The cache hierarchy
+provides photon duplication for free (cache coherency = broadcast).
+Readers don't consume the data. They observe it. The writer
+overwrites it when it wraps (the sun keeps shining regardless).
+
+Each reader has its OWN read cursor (where they're looking).
+The header's write cursor is the only shared write point (writer
+owns it). Readers never write to each other's cursors. No shared
+mutable state between readers. No atomics. No competition.
+
+  Writer:  owns write cursor, writes buffer slots
+  Reader:  owns its own read cursor, reads buffer slots (read-only)
+  Reclaim: writer checks slowest reader cursor before overwriting
+
+Session 9 discovered: a shared read cursor forced readers to
+compete for records (each record consumed by one reader). This
+contradicts the boson model and requires atomics to avoid
+corruption — adding protection to compensate for a wrong design.
+Per-reader cursors remove the problem instead of patching it.
+Same pattern as every structural property: absence, not addition.
+
+Performance: per-reader cursors hit L1 (~1ns). Shared cursor
+with lock xadd forces cache-line transfer (~40ns). 40× faster
+by not sharing. Security: readers can't observe each other's
+progress. No covert timing channel between readers.
 
 
 FILL PRESSURE = NATURAL SELECTION
@@ -297,12 +325,18 @@ The only data structure. Everything is loops.
 
   loop layout (64 bytes, cache-line aligned):
     [0:7]   write cursor    (single writer — fermion)
-    [8:15]  read cursor     (many readers — boson)
+    [8:15]  slowest reader  (for reclamation — writer updates this)
     [16:23] buffer address
     [24:31] depth (power of 2)
     [32:39] mask (depth - 1)
     [40:47] record size
-    [48:63] reserved
+    [48:55] scratch_a       (per-loop temp, used by drain walk)
+    [56:63] scratch_b       (per-loop temp, used by drain walk)
+
+  Each reader's actual read cursor lives in the reader's own
+  memory (drain walk's per-loop scratch, or core-local storage).
+  The header [8:15] tracks the slowest reader for the writer's
+  reclamation check (can I overwrite this slot yet?).
 
 Disk regions, RAM buffers, NVMe queues, network RDMA, GPU
 command rings, wireless, powerline — all loops. Same bytes everywhere.
@@ -335,10 +369,29 @@ Wireless has two modes on the same radio:
 Separation is cryptographic, not firewall. Different keys = different
 loops. A flux peer can't produce valid records for a local loop.
 
-Reserved bytes [48:63] hold network fields when needed:
-  resistance (4B)   protocol fee per record (R in every loop)
-  identity (4B)     pointer to Ed25519 owner key
-  seqno (8B)        causal ordering across machines without clock sync
+Bytes [48:63] are the Q dimension — meaning depends on loop context:
+
+  Local loops (keyboard, display, inter-core):
+    [48:55] scratch_a   reader's own cursor (per-reader, core-safe)
+    [56:63] scratch_b   per-loop temp for drain walk
+
+  Network loops (RDMA, flux, internet):
+    [48:51] resistance  protocol fee per record (R in every loop)
+    [52:55] identity    pointer to Ed25519 owner key
+    [56:63] seqno       causal ordering across machines without clock sync
+
+Same bytes, different dimensional meaning — same as D=column in text,
+D=x in image, D=sample in audio. The walk that operates the loop
+knows which context. No runtime flag. No check. Structural.
+
+A local loop CAN'T leak network identity (the bytes are scratch).
+A network loop CAN'T skip identity (the walk expects it).
+Security from absence of the wrong fields, not validation of them.
+
+Local → network transition goes through a bridge walk:
+  local loop → bridge walk → network loop → remote machine
+  [48:63]=scratch   (encrypt)   [48:63]=identity
+The bridge IS the security boundary. One walk, one place.
 
 Everything else is walk-level: encryption (ChaCha20-Poly1305 per
 record), key exchange (X25519), NAT traversal, relay, discovery.
@@ -468,25 +521,36 @@ LOOP PIPELINE — HOW WALKS USE LOOPS
 
 The foundational primitive. Everything above loops depends on this.
 
-Loop read (~10 bonds, all existing operations):
+Loop empty check (~4 bonds):
 
-  read(loop + WCURSOR)     → pipeline = write_cursor
-  write(stash, pipeline)    → save write_cursor
-  read(loop + RCURSOR)     → pipeline = read_cursor
-  test(pipeline, stash)     → 1 if equal (empty), 0 if has data
-  skip_nz                   → skip read path if empty (pipeline=1)
-  AND(pipeline, mask)       → slot index
-  atom DM(pipeline, recsz)  → byte offset (slot × record_size)
-  add(buf_addr, pipeline)   → slot address
-  read(pipeline)            → the data
-  write(loop+RCURSOR, +1)  → advance read cursor
+  read(loop + WCURSOR)      → pipeline = write_cursor
+  write(stash, pipeline)     → save write_cursor (temp)
+  read(loop + SCRATCHA)      → pipeline = reader's own cursor
+  test(pipeline, stash)      → 1 if equal (empty), 0 if has data
 
-Loop write (symmetric): check full (write - read >= depth),
-compute write slot, write data, advance write cursor.
+Loop read (~10 bonds):
 
-Stash: BSS variable (stash_a). Single-core for now. Multi-core
-needs per-loop scratch in reserved bytes [48:63] or core-local
-memory.
+  read(loop + SCRATCHA)      → pipeline = reader's cursor
+  AND(pipeline, mask)        → slot index
+  atom TD(pipeline, recsz)   → byte offset (slot × record_size)
+  add(buf_addr, pipeline)    → slot address
+  read(pipeline)             → the data
+  write(stash, pipeline)     → save data (temp)
+  read(loop + SCRATCHA)      → reader's cursor
+  increment                  → cursor + 1
+  write(loop + SCRATCHA)     → advance reader's own cursor
+  read(stash)                → restore data to pipeline
+
+Loop write (symmetric): compute write slot from WCURSOR,
+write data, advance WCURSOR. Writer never touches SCRATCHA.
+
+Reader's cursor lives in loop scratch_a [48]. Each reader
+has its own. Writer's cursor lives in header [0:7]. Buffer
+data is read-only from readers. No shared mutable state.
+No atomics. No locks. Boson semantics from the hardware up.
+
+Global stash_a/stash_b still exist for BSP's single-core walks
+(kbd/mouse). Multi-core walks (drain) use per-loop scratch only.
 
 
 LOOP REGISTRY
@@ -523,9 +587,13 @@ Conversion table: BSS array, lazily populated on first use (same
 pattern as get_atom). PS/2 scancode set 1 has ~128 entries.
 Shift state tracked as a walk variable (stash).
 
-Current: kbd walk polls PS/2, outputs raw scancodes to debugcon.
-Target: kbd walk polls PS/2, converts to wave byte, loop_write.
-Consumer walk reads keyboard loop, processes (echo/render/search).
+kbd walk polls PS/2, converts scancode to wave byte via 256-byte
+table, renders via apply(render_char). Debugcon echo wrapped in
+%ifdef DEBUG — present in QEMU builds, absent from bare metal.
+Consumer walk (kbd_consumer.asm) and drain walk exist. Full pipeline
+(BSP → loop_write → AP drain → consumer → render) tested but
+blocked by render_char crash under sustained input (session 7 bug).
+Fix = render_char as walk (equation has the math since session 9).
 
 
 NVMe DISCOVERY
@@ -670,9 +738,13 @@ FILE STRUCTURE
     [6] genesis      founding walk: inits hardware, fills loops (runs once)
     [data] glyph.ha  8×16 bitmap font (scaffolding, dissolves with SDF)
     walks/
-      kbd.asm        keyboard poll walk
-      speaker.asm    440Hz beep walk
-      pci.asm        NVMe BAR discovery macro
+      input.asm        keyboard + mouse poll walk (producer)
+      mouse.asm        cursor drawing scaffolding (dissolves into walk)
+      speaker.asm      440Hz beep walk
+      pci.asm          NVMe BAR discovery macro
+      loop.asm         loop read/write/empty macros (per-reader cursors)
+      drain.asm        bind drain walk (anarcho-capitalist scheduler)
+      kbd_consumer.asm keyboard loop consumer (called by drain)
 
   File names use bracket notation: [order][platform][name][description].asm
   ls shows the whole system. No hunting through directories.
@@ -690,11 +762,13 @@ Shell 0 = wave (0,0,0,0) = identity = vacuum.
 Shell 1 = 16 bonds = fundamental forces.
 Everything above = excitations that emerge when walked.
 
-Atoms stay lazy — materialize on first use.
-Bonds exist from the start — structural.
+Everything is lazy — atoms AND bonds materialize on first use.
+get_atom: cache miss → JIT → cache → return. Cache hit → return.
+JIT spinlock serializes concurrent first-use across cores.
+No pre-seeding. No startup cost for bonds never used.
 
   lattice_start:
-    seed 16 bonds → walk genesis → enter market
+    init code buffer → walk genesis → signal APs → enter market
 
 
 LAZY EVERYTHING
@@ -764,8 +838,13 @@ Know the gaps before you start writing.
 
   Bind drain:
     DESIGN: bind bond drains loops, cores self-organize
-    ACTUAL: BSP hardcoded to walk kbd_walk after genesis.
-    APs spin (pause loop). Bind drain not built yet.
+    ACTUAL: drain_walk built (walks/drain.asm). One AP enters drain
+    via CAS (ap_drain_taken). Scans loop_kbd, reads records, calls
+    kbd_consumer via walk_sub. BSP runs kbd_walk (producer). Per-loop
+    scratch [48:63] isolates reader state from producer. JIT spinlock
+    serializes concurrent get_atom. Full multicore (all APs drain) needs
+    one core per loop (Pauli exclusion on consumers) — works when there
+    are multiple loops. Single-loop = single drainer.
 
   Equation magnitude coverage:
     DESIGN: any 4 coordinates in, x86 function out. Lazy.
@@ -808,9 +887,9 @@ Know the gaps before you start writing.
     ACTUAL: loop read/write primitive built (walks/loop.asm).
     Three macros: loop_empty, loop_read, loop_write.
     Genesis self-test: write 'L', read back, echo to debugcon.
-    loop_empty has a separate bug: returns "has data" after ~4400
-    idle iterations. Cause unknown. The kbd walk bypasses loop_empty
-    by rendering inline instead of via loop consumer.
+    loop_empty had a bug (returns "has data" after ~4400 idle iterations)
+    with the old shared read cursor. Session 9 changed to per-reader
+    cursors in scratch_a [48]. Bug may be gone — needs re-testing.
     Loop macros read header fields (mask, recsz, bufaddr) via
     indirect dereference flags. Generic for any loop/record size.
     Uses atom TD (+2,+2,0,0) for slot_index × record_size —
@@ -838,16 +917,20 @@ BUILD ORDER
     ✓ bitmap glyph renderer (scaffolding, renders "nomos")
     ✓ NVMe PCI discovery (BAR stored, not yet used)
     ✓ loop read/write primitive (walks/loop.asm, self-test passes)
+    ✓ input pipeline (scancode → wave byte → render_char)
+    ✓ loop registry (loop_list + consumer_list, genesis fills)
+    ✓ bind drain (one AP, per-loop scratch, JIT spinlock)
+    ✓ equation magnitude extensions (subtract, compare, negate, abs, max)
+    ✓ per-reader cursors (boson semantics, no shared read cursor)
+    ✓ debugcon ifdef (DEBUG for QEMU, absent from bare metal)
 
   NEXT:
-    1. Input pipeline (scancode → wave char → loop write)
-    2. Loop registry (fixed array, genesis fills)
-    3. Bind drain (all cores find fullest loop, bind loops it)
-    4. Serial text output (wave chars from loop → serial port)
-    5. SDF character rendering (display walk → framebuffer)
-    6. Born-indexed writes (trigram posting lists)
-    7. NVMe gene (MBR discovers BAR, loops to disk)
-    8. Network loops (RDMA, flux)
+    1. render_char as walk (dissolves session 7 crash + connects pipeline)
+    2. Serial text output (wave chars from loop → serial port)
+    3. SDF character rendering (display walk → framebuffer)
+    4. Born-indexed writes (trigram posting lists)
+    5. NVMe gene (MBR discovers BAR, loops to disk)
+    6. Network loops (RDMA, flux, bridge walks)
 
   LATER:
     - GPU driver gene (SDF rendering at hardware speed)

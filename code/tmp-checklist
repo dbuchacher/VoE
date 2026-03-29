@@ -1,0 +1,45 @@
+Design doc vs code — reconciliation checklist
+==============================================
+
+[x] 1. Many readers vs single reader per loop
+    Decision: per-reader cursors, no atomics, no shared read cursor.
+    Doc updated. Code updated (loop.asm: reader uses scratch_a as own cursor,
+    header [8:15] renamed LP_SLOWREAD for reclamation). Tested all modes.
+
+[x] 2. Reserved bytes [48:63] = Q dimension
+    [48:63] is the Q dimension of the loop. Local loops: scratch (reader
+    cursor + temp). Network loops: identity/seqno/resistance. Same bytes,
+    different meaning by context. Walk knows which. No flag. No check.
+    Doc updated. No code change needed — already works this way.
+
+[x] 3. Stash section outdated
+    LOOP PIPELINE pseudocode updated to show per-reader cursor model.
+    Reader uses scratch_a, writer uses WCURSOR. Global stash noted
+    as BSP-only legacy. Done.
+
+[x] 4. Input pipeline current state outdated
+    Doc updated. Also: all debugcon echo bonds wrapped in %ifdef DEBUG.
+    QEMU builds get -DDEBUG, bare metal (img) omits it. 72 bytes smaller.
+    Zero dead code on real hardware.
+
+[x] 5. FILE STRUCTURE walks/ incomplete
+    Updated. All 7 walk files listed with descriptions.
+
+[x] 6. GENOME SEED says "seed 16 bonds"
+    No seeding. 100% lazy. JIT lock handles concurrent first-use.
+    Doc updated to match code.
+
+[x] 7. Bind drain says "not built yet"
+    Updated. Drain walk built, one AP drains, per-loop scratch, JIT lock.
+
+[x] 8. Input pipeline blocker description wrong
+    render_char is the WRONG ABSTRACTION. Not "fix render_char" but
+    "replace with draw-record display loop." Schism had it right.
+    Next session: display loop + text walk + render walk.
+
+[x] 9. loop_empty bug — still present?
+    Doc updated: may be fixed by per-reader cursors. Needs re-test.
+
+[x] 10. BUILD ORDER NEXT outdated
+    DONE list updated (+6 items from session 9). NEXT reordered:
+    render_char as walk is #1 (dissolves crash + connects pipeline).

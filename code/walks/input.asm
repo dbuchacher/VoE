@@ -369,8 +369,10 @@ kbd_walk:
     ; ── keyboard path ──
     w +1,0,0,-1                                 ; port_read(0x60) → scancode
     db F(U8,P,P), 0x60
-    w -1,0,0,+1                                 ; echo raw scancode
+%ifdef DEBUG
+    w -1,0,0,+1                                 ; echo raw scancode to debugcon
     db F(U8,P,P), 0xE9
+%endif
     w -1,0,0,0                                  ; save scancode to render_pending
     db F(U32,P,P)
     dd render_pending
@@ -384,9 +386,11 @@ kbd_walk:
     w 0,+1,0,0                                  ; apply(render_char, wave byte)
     db F(U32,P,P)
     dd render_char
-    w -1,0,0,+1                                 ; echo '+'
+%ifdef DEBUG
+    w -1,0,0,+1                                 ; echo '+' to debugcon
     db F(U8,U8,P), 0xE9, '+'
-    skip_nz (.loopback - .kbd_done)             ; pipeline='+' nonzero, always skips
+%endif
+    skip_nz (.loopback - .kbd_done)             ; pipeline nonzero (render_char returns), always skips
 .kbd_done:
 
     ; ── mouse path ──

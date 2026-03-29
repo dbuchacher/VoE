@@ -81,10 +81,9 @@ global main_walk, main_len
 
 main_walk:
 
-; 1. proof of life — write "genesis\n" to debugcon (port 0xE9)
-;    port 0xE9 is QEMU's debug console. writing a byte prints it to the host terminal.
-;    this is the first sign that the walker is alive and executing bonds.
-    w -1,0,0,+1                             ; port_write(0xE9, 'g')
+; 1. proof of life — write "genesis\n" to debugcon (QEMU only)
+%ifdef DEBUG
+    w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 'g'
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 'e'
@@ -99,7 +98,8 @@ main_walk:
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 's'
     w -1,0,0,+1
-    db F(U8,U8,P), 0xE9, 10                ;   10 = newline
+    db F(U8,U8,P), 0xE9, 10
+%endif
 
 ; 2. clear pixel buffer — fill the screen with blue
 ;    The MBR set up VESA 1024×768×32 and stored the framebuffer address at 0x9100.
@@ -171,9 +171,8 @@ main_walk:
     dd consumer_len_list
     dd kbd_consumer_len
 
-; 5b. loop self-test — write 'L' to loop, read back, echo to debugcon
-;     If the loop primitive works: prints 'L'. If broken: silence or garbage.
-;     Uses the keyboard loop we just initialized above.
+; 5b. loop self-test — write 'L' to loop, read back
+%ifdef DEBUG
     w -1,0,0,-1                             ; add(0x4C, 0) → pipeline = 'L' (0x4C)
     db F(U8,U8,P), 0x4C, 0
     loop_write loop_kbd                     ; write 'L' to keyboard loop
@@ -182,9 +181,10 @@ main_walk:
     skip_nz (.test_end - .test_read)        ; if empty after write, something broke — skip
 .test_read:
     loop_read loop_kbd                      ; read from loop → pipeline (should be 'L')
-    w -1,0,0,+1                             ; port_write(0xE9, pipeline) — echo to debugcon
+    w -1,0,0,+1                             ; port_write(0xE9, pipeline) — echo 'L'
     db F(U8,P,P), 0xE9
 .test_end:
+%endif
 
 ; 6. NVMe discovery — probe PCI slots 3-6 for an NVMe controller
 ;    If found, stores BAR0 in nvme_bar. Prints 'N' (found) or 'n' (not found).
@@ -194,6 +194,7 @@ main_walk:
     pci_probe_dev 5
     pci_probe_dev 6
 
+%ifdef DEBUG
     w +1,0,0,0                              ; read nvme_bar → pipeline
     db F(U32,P,P)
     dd nvme_bar
@@ -203,6 +204,7 @@ main_walk:
     skip_nz 4                               ; nvme_bar != 0 → skip 'n' (4 bytes)
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 'n'               ;   NVMe not found
+%endif
 
 ; 6b. mouse gene — enable PS/2 AUX port, init mouse, center cursor
 ;     apply(mouse_init, 0): inline x86 handles the port I/O sequence.
@@ -239,65 +241,61 @@ main_walk:
     dd render_char
     db 0x43                                     ; 's'
 
-; 8. equation self-test — verify new magnitude variants
-;    Each test computes a result and prints a single char to debugcon.
-;    Expected output: "=-<>NA" (subtract, negate, abs, less-than, max)
-;    If a bond fails, the wrong char (or nothing) appears.
-
-; 8a. subtract: 10 - 3 = 7. chr(7+48) = '7'. But let's use '=' marker.
-;     Use add to load 10, then subtract 3, check result is 7.
-    w -1,0,0,-1                             ; add(10, 0) → pipeline = 10
+; 8. equation self-tests + genesis complete marker (debugcon only)
+%ifdef DEBUG
+    ; subtract: 10 - 3 = 7
+    w -1,0,0,-1
     db F(U8,U8,P), 10, 0
-    w -1,0,0,-3                             ; subtract(pipeline, 3) → pipeline = 7
+    w -1,0,0,-3
     db F(P,U8,P), 3
-    w 0,0,0,+1                              ; test(pipeline, 7) → 1 if correct
+    w 0,0,0,+1
     db F(P,U8,P), 7
-    skip_z 4                                ; if test failed (pipeline=0), skip '='
-    w -1,0,0,+1                             ; port_write(0xE9, '=')
+    skip_z 4
+    w -1,0,0,+1
     db F(U8,U8,P), 0xE9, '='
 
-; 8b. negate: negate(42) should give -42. Add it back: -42 + 42 = 0.
-;     test(0, 0) = 1 → print '-'
-    w 0,0,0,+13                             ; negate(42) → pipeline = -42
+    ; negate: negate(42) + 42 = 0
+    w 0,0,0,+13
     db F(U8,P,P), 42
-    w -1,0,0,-1                             ; add(pipeline, 42) → pipeline = 0
+    w -1,0,0,-1
     db F(P,U8,P), 42
-    w 0,0,0,+1                              ; test(pipeline, 0) → 1 if correct
+    w 0,0,0,+1
     db F(P,U8,P), 0
-    skip_z 4                                ; if test failed, skip '-'
+    skip_z 4
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, '-'
 
-; 8c. abs: abs(-5) = 5. test(5, 5) = 1 → print '<'
-    w 0,0,0,+13                             ; negate(5) → pipeline = -5
+    ; abs: abs(-5) = 5
+    w 0,0,0,+13
     db F(U8,P,P), 5
-    w 0,0,0,-13                             ; abs(pipeline) → pipeline = 5
+    w 0,0,0,-13
     db F(P,P,P)
-    w 0,0,0,+1                              ; test(pipeline, 5) → 1 if correct
+    w 0,0,0,+1
     db F(P,U8,P), 5
     skip_z 4
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, '>'
 
-; 8d. compare less-than: 3 < 10 → 1 → print 'N'
-    w 0,0,0,+11                             ; less_than(3, 10) → pipeline = 1
+    ; less-than: 3 < 10 → 1
+    w 0,0,0,+11
     db F(U8,U8,P), 3, 10
-    skip_z 4                                ; pipeline=0 means 3 >= 10 — broken
+    skip_z 4
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 'A'
 
-; 8e. max: max(3, 10) = 10. test(10, 10) = 1 → print '!'
-    w +1,0,0,+3                             ; max(3, 10) → pipeline = 10
+    ; max: max(3, 10) = 10
+    w +1,0,0,+3
     db F(U8,U8,P), 3, 10
-    w 0,0,0,+1                              ; test(pipeline, 10) → 1 if correct
+    w 0,0,0,+1
     db F(P,U8,P), 10
     skip_z 4
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, '!'
 
-; 9. done — signal genesis complete
-    w -1,0,0,+1                             ; port_write(0xE9, 'T') — 'T' for "loop ready"
+    ; genesis complete
+    w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 'T'
+%endif
 
 main_len: dd (main_len - main_walk)
 
@@ -715,15 +713,19 @@ mouse_init:
     call .send_mouse_cmd
     jc .mi_fail
 
+%ifdef DEBUG
     mov dx, 0xE9
     mov al, 'M'
     out dx, al
+%endif
     jmp .mi_done
 
 .mi_fail:
+%ifdef DEBUG
     mov dx, 0xE9
     mov al, 'm'
     out dx, al
+%endif
 
 .mi_done:
     pop r12

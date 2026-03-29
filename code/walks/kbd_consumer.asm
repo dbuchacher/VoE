@@ -21,9 +21,10 @@ section .rodata
 global kbd_consumer, kbd_consumer_len
 
 kbd_consumer:
-    ; debug: consumer entered
+%ifdef DEBUG
     w -1,0,0,+1
     db F(U8,U8,P), 0xE9, 'K'
+%endif
 
     ; load the record from loop_kbd scratch_a → pipeline
     w +1,0,0,0                              ; read [loop_kbd + LP_SCRATCHA] → wave byte
