@@ -783,117 +783,38 @@ The lattice is infinite. Walks collapse it to the finite
 subset needed. Nothing pre-allocated. Nothing "just in case."
 
 
-CURRENT STATE vs DESIGN (read this before coding)
-====================================================
+CODING REFERENCE
+==================
 
-The design doc describes the TARGET. The code isn't there yet.
-Know the gaps before you start writing.
+  Apply bond:
+    +C does jmp rdi. Walker sets rdi=arg0, rsi=arg1, rdx=arg2,
+    rcx=pipeline. Callee gets OWN ADDRESS in rdi (useless).
+    walk_sub bridges apply → walker_wave (scaffolding).
 
-  Walker format:
-    Wave byte walker with magnitude extension. All walks use
-    wave bytes. 32-byte walker deleted. See WALKS ARE WAVE BYTES.
+  Pipeline: flags 00 = use pipeline. Literal 0 = use U8 + 0x00.
 
-  Apply bond calling convention:
-    The apply bond (+C) does jmp rdi. The walker sets:
-      rdi = arg0 (the function pointer — lands in the callee)
-      rsi = arg1
-      rdx = arg2
-      rcx = pipeline (always)
-    The callee gets its OWN ADDRESS in rdi (useless). Real args
-    start at rsi. Don't write new apply targets that read rdi
-    as a meaningful argument.
-    walk_sub is asm scaffolding that bridges apply to walker_wave.
-    It stays until the equation can handle nested walks natively.
+  Walker control: skip_z/skip_nz/loop_back count BYTES, not records.
 
-  Pipeline substitution:
-    Flags byte 00 = use pipeline. No sentinel values. To pass
-    literal 0, use flags 01 (u8) with inline value 0x00.
+  BSS: bootloader zeros it. Page tables in .pagetables (not zeroed).
 
-  Walker control counts:
-    skip_z, skip_nz, loop_back all count in BYTES, not records.
-    Compute byte offsets from walk layout.
-
-  BSS:
-    Bootloader zeros BSS (rep stosq from __bss_start to __bss_end).
-    Page tables in separate .pagetables section (not zeroed).
-    No need to explicitly zero BSS variables in genesis.
-
-  Multiboot vs MBR:
-    bash build headless = multiboot (-kernel). Skips MBR. No VESA.
-    FB address at 0x9100 = 0. Genesis skips filld. Serial only.
-    bash build = MBR path. VESA sets mode. Blue screen.
-    bash build kvm = MBR path, KVM, display none, debugcon to stdout.
-    All three modes show debugcon output (GUI mode too, since session 5).
+  Build modes:
+    bash build/run          GUI (KVM if available, MBR, VESA)
+    bash build/run headless single core, multiboot, no VESA
+    bash build/run kvm      MBR, KVM, display none
+    bash build/run img      bare metal USB image (no DEBUG)
+    %ifdef DEBUG wraps all debugcon bonds.
 
   Testing:
-    ALWAYS test GUI mode (bash build/run) alongside headless. Headless
-    skips framebuffer rendering. Bugs in FB access only appear in GUI.
-    Build incrementally — one change at a time, test each. Don't
-    rewrite multiple files at once. The session 5 crash was caused
-    by changing kbd.asm + render_char + genesis simultaneously —
-    couldn't isolate which change broke it.
-    Debugcon (-debugcon stdio) is ALWAYS enabled in all build modes.
-    Don't redirect to /dev/null. If you need to suppress it, pipe
-    to /dev/null in the shell, not in QEMU args.
+    ALWAYS test GUI alongside headless. FB bugs only appear in GUI.
+    Build incrementally — one change, one test.
 
-  Bind drain:
-    DESIGN: bind bond drains loops, cores self-organize
-    ACTUAL: drain_walk built (walks/drain.asm). One AP enters drain
-    via CAS (ap_drain_taken). Scans loop_kbd, reads records, calls
-    kbd_consumer via walk_sub. BSP runs kbd_walk (producer). Per-loop
-    scratch [48:63] isolates reader state from producer. JIT spinlock
-    serializes concurrent get_atom. Full multicore (all APs drain) needs
-    one core per loop (Pauli exclusion on consumers) — works when there
-    are multiple loops. Single-loop = single drainer.
+  Multi-core:
+    Global stash_a/stash_b: BSP walks only (kbd, mouse).
+    Multi-core walks: per-loop scratch [48:63]. Never global stash.
+    JIT spinlock in get_atom for concurrent code emission.
+    One drainer per loop (Pauli exclusion on consumers).
 
-  Equation magnitude coverage:
-    DESIGN: any 4 coordinates in, x86 function out. Lazy.
-    ACTUAL: atoms fully generative (mul/div chain for any even coords).
-    Bonds use 16-pattern dispatch (one per force bitmask). Within each
-    pattern, magnitude variants select operation type. Session 9 added:
-      W |Q|=11: signed less-than / greater-than
-      W |Q|=13: negate / absolute value
-      P+W +P+W |Q|=3: max(a,b)
-      P+W -P-W |Q|=3: subtract (a-b)
-    Rendering math (subtract, compare, abs, max, negate) now available
-    as bonds. render_char CAN be rewritten as a walk.
-    The dispatch table is still a dispatch table, not a compositor.
-    But the magnitude space is now covered for the operations walks need.
-
-  Characters:
-    DESIGN: wave bytes in 4D space, SDF rendering
-    ACTUAL: SDF renderer (render_char) draws phonetic shapes from
-    coordinates. No font file. Genesis renders "nomos" on screen.
-    Shapes: circle (vowel), diamond (fricative), square (stop).
-    render_char is x86 scaffolding — CAN now dissolve into a walk
-    since the equation has subtract, abs, compare-lt, max, negate.
-
-  Input pipeline:
-    DESIGN: scancode → phonetic coordinate → loop → consumer → render
-    ACTUAL: Producer walk built. Translates PS/2 scancodes to phonetic
-    coordinates via 128-entry table. Key-up filtering, unmapped-key
-    filtering all working. Coordinates echoed to debugcon.
-    BLOCKER: render_char crashes when called from kbd walk after PS/2
-    processing in KVM+GUI mode. Works from genesis, works from walk
-    start, crashes from after-key-processing position. Triple fault.
-    Root cause: render_char is x86 scaffolding called via apply bond.
-    x86 scaffolding doesn't play by walker state rules. Fix: rewrite
-    render_char as a walk (now possible with session 9 equation).
-    Current state: coordinates stored in render_pending BSS var but
-    NOT rendered. Rendering disabled pending rewrite as walk.
-
-  Loops:
-    DESIGN: walks read/write loops, loop-to-loop pipelines
-    ACTUAL: loop read/write primitive built (walks/loop.asm).
-    Three macros: loop_empty, loop_read, loop_write.
-    Genesis self-test: write 'L', read back, echo to debugcon.
-    loop_empty had a bug (returns "has data" after ~4400 idle iterations)
-    with the old shared read cursor. Session 9 changed to per-reader
-    cursors in scratch_a [48]. Bug may be gone — needs re-testing.
-    Loop macros read header fields (mask, recsz, bufaddr) via
-    indirect dereference flags. Generic for any loop/record size.
-    Uses atom TD (+2,+2,0,0) for slot_index × record_size —
-    first atom ever executed in a walk.
+  For current implementation status: see wit/history/session-09.md.
 
 
 BUILD ORDER
