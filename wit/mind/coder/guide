@@ -62,7 +62,7 @@ At runtime: slots * bytes / ticks. Exact integer math.
 
 For bonds:
   $ grep "port_read" codex.txt
-  B  +π-δ  ...  port_read  ...
+  B  πδ̄  ...  port_read  ...
   Coordinates: (+1, 0, 0, -1)
 
   coordinates: (+1, 0, 0, -1)
@@ -106,10 +106,10 @@ Division by zero returns 0. Multiplications happen before divisions (precision).
 Bonds have odd coordinates. Which dimensions are odd selects the force pattern.
 Sign selects direction: + = consume/forward, - = produce/backward.
 
-  T odd → π (read)   +π = memory read    -π = memory write
-  D odd → ∘ (call)   +∘ = call function   -∘ = return/curry
-  M odd → ∮ (loop)   +∮ = loop/advance    -∮ = rewind/increment
-  Q odd → δ (test)   +δ = test/compare    -δ = guard/select
+  T odd → π (read)   π = memory read    π̄ = memory write
+  D odd → ∘ (call)   ∘ = call function   ∘̄ = return/curry
+  M odd → ∮ (loop)   ∮ = loop/advance    ∮̄ = rewind/increment
+  Q odd → δ (test)   δ = test/compare    δ̄ = guard/select
 
 The 16 patterns (bitmask π=1 ∘=2 ∮=4 δ=8):
 
@@ -118,7 +118,7 @@ The 16 patterns (bitmask π=1 ∘=2 ∮=4 δ=8):
   2     ∘        apply       tail call function                         (0, +1, 0, 0)
   3     π∘       fold        load value then call function              (+1, +1, 0, 0)
   4     ∮        drain/inc   countdown loop or add 1                    (0, 0, +/-1, 0)
-  5     π∮       slurp/fill  copy memory (+π+∮) or fill (-π-∮)         (+1, 0, +1, 0)
+  5     π∮       slurp/fill  copy memory (π∮) or fill (π̄∮̄)         (+1, 0, +1, 0)
   6     ∘∮       fix/retry   call fn N times                            (0, +1, +1, 0)
   7     π∘∮      foldl       left fold over array                       (+1, +1, +1, 0)
   8     δ        test/guard  compare eq or conditional value            (0, 0, 0, +/-1)
@@ -131,21 +131,21 @@ The 16 patterns (bitmask π=1 ∘=2 ∮=4 δ=8):
   15    π∘∮δ     hylo        full pipeline: unfold+xform+fold           (+1, +1, +1, +1)
 
 Pattern 8 (δ) has magnitude variants on |Q|:
-  |Q|=1   +δ test (== compare)       -δ guard (conditional select)
-  |Q|=3   +δ AND                     -δ OR
-  |Q|=5   +δ XOR                     -δ NOT
-  |Q|=7   +δ SHL                     -δ SHR
-  |Q|=9   +δ BSWAP32                 -δ BSWAP64
-  |Q|=11  +δ less-than (signed)      -δ greater-than (signed)
-  |Q|=13  +δ negate (-a)             -δ absolute value (|a|)
+  |Q|=1   δ test (== compare)       δ̄ guard (conditional select)
+  |Q|=3   δ AND                     δ̄ OR
+  |Q|=5   δ XOR                     δ̄ NOT
+  |Q|=7   δ SHL                     δ̄ SHR
+  |Q|=9   δ BSWAP32                 δ̄ BSWAP64
+  |Q|=11  δ less-than (signed)      δ̄ greater-than (signed)
+  |Q|=13  δ negate (-a)             δ̄ absolute value (|a|)
 
 Pattern 9 (πδ) has sign variants, each with magnitude extensions:
-  +π +δ  (+1, 0, 0, +1)  filter     min(a, b)
-  +π +δ  (+1, 0, 0, +3)  filter     max(a, b)        [|Q|=3]
-  +π -δ  (+1, 0, 0, -1)  port_read  read hardware port
-  -π +δ  (-1, 0, 0, +1)  port_write write hardware port
-  -π -δ  (-1, 0, 0, -1)  add        a + b
-  -π -δ  (-1, 0, 0, -3)  subtract   a - b             [|Q|=3]
+  π δ  (+1, 0, 0, +1)  filter     min(a, b)
+  π δ  (+1, 0, 0, +3)  filter     max(a, b)        [|Q|=3]
+  π δ̄  (+1, 0, 0, -1)  port_read  read hardware port
+  π̄ δ  (-1, 0, 0, +1)  port_write write hardware port
+  π̄ δ̄  (-1, 0, 0, -1)  add        a + b
+  π̄ δ̄  (-1, 0, 0, -3)  subtract   a - b             [|Q|=3]
 
 Pattern 5 (π∮) has width variants based on |R| magnitude:
   |R|=1  byte width
@@ -208,13 +208,13 @@ A shell-1 coordinate fits in 1 byte. Two bits per dimension:
 
 Every shell-1 bond has a unique byte:
 
-  0xC0 = (-1, 0, 0, 0) = -π = write
-  0x40 = (+1, 0, 0, 0) = +π = read
-  0xC1 = (-1, 0, 0,+1) = -π+δ = port write
-  0x41 = (+1, 0, 0,-1) = +π-δ = port read
-  0x10 = (0, +1, 0, 0) = +∘ = apply
-  0x44 = (+1, 0,+1, 0) = +π+∮ = slurp
-  0x01 = (0, 0, 0,+1)  = +δ = test
+  0xC0 = (-1, 0, 0, 0) = π̄ = write
+  0x40 = (+1, 0, 0, 0) = π = read
+  0xC1 = (-1, 0, 0,+1) = π̄δ = port write
+  0x41 = (+1, 0, 0,-1) = πδ̄ = port read
+  0x10 = (0, +1, 0, 0) = ∘ = apply
+  0x44 = (+1, 0,+1, 0) = π∮ = slurp
+  0x01 = (0, 0, 0,+1)  = δ = test
 
 The wave byte IS the instruction. Not an opcode, not a compression —
 the coordinate itself, encoded in the minimum physical unit (1 byte).
@@ -274,7 +274,7 @@ The shells are Taylor series orders:
 ===============
 
 Addition
-  Addition is the -π-δ bond. Increment is the -∮ bond (+1).
+  Addition is the π̄δ̄ bond. Increment is the ∮̄ bond (+1).
   Subtraction is add(a, -b) — composition, not a new operation.
 
 Identity

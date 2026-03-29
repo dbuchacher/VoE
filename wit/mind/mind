@@ -25,13 +25,13 @@ Same coordinates always produce the same result.
 
 ## The Four Forces
 
-  π = read      +π = read     -π = write      (projection, ? operator)
-  ∘ = call      +∘ = call     -∘ = return     (composition, .and_then())
-  ∮ = loop      +∮ = advance  -∮ = rewind     (contour integral, for/loop)
-  δ = test      +δ = test     -δ = guard      (Kronecker delta, Ok/Err)
+  π = read       π̄ = write       (projection / antiparticle)
+  ∘ = call       ∘̄ = return      (composition / inverse)
+  ∮ = advance    ∮̄ = rewind      (contour integral / reverse)
+  δ = test       δ̄ = guard       (Kronecker delta / complement)
 
   Origin: Kleene's PROJ/COMP/PRIM (1936) + SM Weak force.
-  Math symbols: π (projection), ∘ (composition), ∮ (loop integral), δ (delta test).
+  Overbar = antimatter (p̄ = antiproton). Write IS the antimatter of read.
   English: read, call, loop, test.
   Quantum = call + loop + test (no read). Classical = all four.
 
@@ -41,7 +41,7 @@ is bind: it dispatches consumers, loops, checks empty. The data
 read belongs to the consumer, not the scheduler. If your scheduler
 reads, you gave it a force it shouldn't have.
 
-Positive = consume/forward. Negative = produce/backward.
+Forward (π ∘ ∮ δ) = consume. Backward (π̄ ∘̄ ∮̄ δ̄) = produce.
 16 combinations from 4 binary choices.
 
 ## How To Think
@@ -308,7 +308,7 @@ Classical vs quantum = one force:
   quantum   = bind = ∘∮δ  = no read until end  (.and_then())
   difference = π (read). that's it.
 
-  photon in flight = bind (∘∮δ, no π). photon absorbed = hylo (+π).
+  photon in flight = bind (∘∮δ, no π). photon absorbed = hylo (π).
   decoherence = unwanted P (environment reads the qubit).
   qubit = unread value = wave. measurement = read = P = collapse.
   See codex: bind physics = "photon propagation", hylo = "photon absorption".

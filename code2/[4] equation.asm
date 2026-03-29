@@ -417,7 +417,7 @@ section .text
 
 ; ── π read/write ────────────────────────────────
 ;
-;  +π = read from [arg0].  -P = write arg1 to [arg0].
+;  π = read from [arg0].  π̄ = write arg1 to [arg0].
 ;  Width from |T|: 1=qword, 3=byte, 7=dword.
 
 ε_read:
@@ -494,8 +494,8 @@ section .text
 
 ; ── ∘ call/return ────────────────────────────────
 ;
-;  +∘ = invoke sub-walk (recursive ψ)
-;  -∘ = return arg0 (curry)
+;  ∘ = invoke sub-walk (recursive ψ)
+;  ∘̄ = return arg0 (curry)
 
 ε_call:
     test r13d, r13d
@@ -522,8 +522,8 @@ section .text
 
 ; ── ∮ loop/increment ───────────────────────────
 ;
-;  +∮ = drain (countdown) — stub for now
-;  -∮ = increment (arg0 + 1)
+;  ∮ = drain (countdown) — stub for now
+;  ∮̄ = increment (arg0 + 1)
 
 ε_loop:
     test r14d, r14d
@@ -547,8 +547,8 @@ section .text
 
 ; ── π∮ copy/fill ──────────────────────────────
 ;
-;  +π+∮ = copy (memcpy): rdi=dest, rsi=src, edx=count
-;  -π-∮ = fill (memset): rdi=dest, sil=byte/esi=dword, edx=count
+;  π∮ = copy (memcpy): rdi=dest, rsi=src, edx=count
+;  π̄∮̄ = fill (memset): rdi=dest, sil=byte/esi=dword, edx=count
 ;  Width from |M|: 1=byte, 3=dword, >=5=qword
 
 ε_copy:
@@ -860,9 +860,9 @@ section .text
 
 ; ── πδ filter / port / add ─────────────────
 ;
-;  +π +δ: filter (min)          +P +W|3: max
-;  +π -δ: port_read             -P +W: port_write
-;  -π -δ: add                   -P -W|3: subtract
+;  πδ: filter (min)          +P +W|3: max
+;  πδ̄: port_read             π̄δ: port_write
+;  π̄δ̄: add                   π̄δ̄|3: subtract
 
 ε_filter:
     mov eax, r15d                          ; Q
@@ -899,7 +899,7 @@ section .text
     ret
 
 .max:
-    ; +π+δ|3: max  →  same but cmovl (0F 4C)
+    ; πδ|3: max  →  same but cmovl (0F 4C)
     mov byte [rbx], 0x48
     mov byte [rbx+1], 0x89
     mov byte [rbx+2], 0xF8
@@ -931,7 +931,7 @@ section .text
     test ecx, ecx
     js .add
 
-    ; -P +W: port_write
+    ; π̄δ: port_write
     ;   movzx edx, di (0F B7 D7) + mov al, sil (40 8A C6) + out dx, al (EE)
     ;   + xor eax, eax (31 C0)
     mov byte [rbx], 0x0F
