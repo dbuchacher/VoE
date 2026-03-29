@@ -66,21 +66,21 @@ LP_SCRATCHB equ 56
 
     ;; read write cursor, save to scratch_b (temp)
     w +1,0,0,0                              ; read qword [wcursor]
-    db F(U32,P,P)
+    db F(U32,ρ,ρ)
     dd (%1 + LP_WCURSOR)
 
     w -1,0,0,0                              ; scratch_b = write_cursor
-    db F(U32,P,P)
+    db F(U32,ρ,ρ)
     dd (%1 + LP_SCRATCHB)
 
     ;; read this reader's cursor
     w +1,0,0,0                              ; read qword [scratch_a]
-    db F(U32,P,P)
+    db F(U32,ρ,ρ)
     dd (%1 + LP_SCRATCHA)
 
     ;; compare: reader_cursor == write_cursor?
     w 0,0,0,+1                              ; test(pipeline, deref scratch_b)
-    db F(P,U32,P) | 0x40                    ;   arg1 = deref → write_cursor value
+    db F(ρ,U32,ρ) | 0x40                    ;   arg1 = deref → write_cursor value
     dd (%1 + LP_SCRATCHB)
 
 %endmacro
@@ -106,36 +106,36 @@ LP_SCRATCHB equ 56
 
     ;; 1. read reader's cursor
     w +1,0,0,0                              ; read qword [scratch_a] → cursor C
-    db F(U32,P,P)
+    db F(U32,ρ,ρ)
     dd (%1 + LP_SCRATCHA)
 
     ;; 2. advance cursor: C + 1
     w 0,0,-1,0                              ; increment(pipeline) → C + 1
-    db F(P,P,P)
+    db F(ρ,ρ,ρ)
 
     ;; 3. write advanced cursor back
     w -1,0,0,0                              ; scratch_a = C + 1
-    db F(U32,P,P)
+    db F(U32,ρ,ρ)
     dd (%1 + LP_SCRATCHA)
 
     ;; 4. recover original cursor: C + 1 - 1 = C
     w -1,0,0,-3                             ; subtract(pipeline, 1) → C
-    db F(P,U8,P)
+    db F(ρ,U8,ρ)
     db 1
 
     ;; 5. slot_index = C AND mask
     w 0,0,0,+3                              ; AND(pipeline, deref mask)
-    db F(P,U32,P) | 0x40
+    db F(ρ,U32,ρ) | 0x40
     dd (%1 + LP_MASK)
 
     ;; 6. byte_offset = slot_index × record_size
     w +2,+2,0,0                             ; atom T*D(pipeline, deref recsz)
-    db F(P,U32,P) | 0x40
+    db F(ρ,U32,ρ) | 0x40
     dd (%1 + LP_RECSZ)
 
     ;; 7. slot_pointer = buffer_address + byte_offset
     w -1,0,0,-1                             ; add(deref bufaddr, pipeline)
-    db F(U32,P,P) | 0x80
+    db F(U32,ρ,ρ) | 0x80
     dd (%1 + LP_BUFADDR)
 
 %endmacro
@@ -158,44 +158,44 @@ LP_SCRATCHB equ 56
 
     ;; 1. save data to scratch_b
     w -1,0,0,0                              ; scratch_b = pipeline (data)
-    db F(U32,P,P)
+    db F(U32,ρ,ρ)
     dd (%1 + LP_SCRATCHB)
 
     ;; 2. read write cursor
     w +1,0,0,0                              ; read qword [wcursor] → W
-    db F(U32,P,P)
+    db F(U32,ρ,ρ)
     dd (%1 + LP_WCURSOR)
 
     ;; 3. slot_index = W AND mask
     w 0,0,0,+3                              ; AND(pipeline, deref mask)
-    db F(P,U32,P) | 0x40
+    db F(ρ,U32,ρ) | 0x40
     dd (%1 + LP_MASK)
 
     ;; 4. byte_offset = slot_index × record_size
     w +2,+2,0,0                             ; atom T*D(pipeline, deref recsz)
-    db F(P,U32,P) | 0x40
+    db F(ρ,U32,ρ) | 0x40
     dd (%1 + LP_RECSZ)
 
     ;; 5. slot_address = buffer_address + byte_offset
     w -1,0,0,-1                             ; add(deref bufaddr, pipeline)
-    db F(U32,P,P) | 0x80
+    db F(U32,ρ,ρ) | 0x80
     dd (%1 + LP_BUFADDR)
 
     ;; 6. write data to slot: [slot_addr] = deref scratch_b
     w -1,0,0,0                              ; write: [pipeline] = data
-    db F(P,U32,P) | 0x40                    ;   arg1 = deref scratch_b → data
+    db F(ρ,U32,ρ) | 0x40                    ;   arg1 = deref scratch_b → data
     dd (%1 + LP_SCRATCHB)
 
     ;; 7. advance write cursor: read, increment, write back
     w +1,0,0,0                              ; read [wcursor] → W
-    db F(U32,P,P)
+    db F(U32,ρ,ρ)
     dd (%1 + LP_WCURSOR)
 
     w 0,0,-1,0                              ; increment → W + 1
-    db F(P,P,P)
+    db F(ρ,ρ,ρ)
 
     w -1,0,0,0                              ; wcursor = W + 1
-    db F(U32,P,P)
+    db F(U32,ρ,ρ)
     dd (%1 + LP_WCURSOR)
 
 %endmacro

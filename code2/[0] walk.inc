@@ -1,37 +1,47 @@
-; walk.inc — encoding tool: lattice coordinates to wave bytes
+; walk.inc — encoding: coordinates → wave bytes
 ;
-; NASM macros. Zero runtime cost. The output binary is identical
-; to hand-coded bytes. This file IS the encoding layer (Q/M) —
-; it translates coordinates into the byte format x86 needs.
-; On a trit processor, this file dissolves.
+;   physics:    encodes quantum numbers into wave packets
+;   math:       packs 4D coordinates into compact byte representation
+;   programmer: NASM macros that emit walk bytecode at zero runtime cost
+;   english:    turns 4 numbers into the bytes the machine reads
 ;
-;   w T, D, M, Q       emit wave byte + extension bytes
-;   F(a0, a1, a2)      build flags byte
-;   skip_z N            skip N bytes forward if pipeline == 0
-;   skip_nz N           skip N bytes forward if pipeline != 0
-;   loop_back N         rewind N bytes if pipeline != 0
+; On a trit processor, this file dissolves — hardware reads coordinates natively.
 ;
-;   P   = pipeline (no inline bytes, use previous result)
-;   U8  = 1 byte inline
-;   U32 = 4 bytes inline
-;   U64 = 8 bytes inline
+; ── usage ─────────────────────────────────────────────────────
+;
+;   w τ, χ, μ, φ            emit wave byte (+ extension bytes if |coord| > 1)
+;   F(a0, a1, a2)           build flags byte for 3 args
+;   skip_z  N               skip N bytes if ρ = 0   (pipeline empty)
+;   skip_nz N               skip N bytes if ρ ≠ 0   (pipeline has value)
+;   loop_back N              rewind N bytes if ρ ≠ 0 (keep looping)
+;
+; ── arg sizes ─────────────────────────────────────────────────
+;
+;   ρ   = pipeline     (no inline bytes — use previous result)
+;   U8  = 1 byte       (inline constant)
+;   U32 = 4 bytes      (inline constant)
+;   U64 = 8 bytes      (inline constant)
 
-; ── arg size constants ────────────────────────────────────────
-P   equ 0
+ρ   equ 0
 U8  equ 1
 U32 equ 2
 U64 equ 3
 
-; ── flags byte builder ────────────────────────────────────────
-; Packs 3 arg sizes into one byte. Each arg gets 2 bits.
-; bit 7: deref arg0. bit 6: deref arg1.
+; ── F(a0, a1, a2) — flags byte ───────────────────────────────
+;
+;   packs 3 arg sizes into one byte (2 bits each)
+;   bit 7: dereference arg0 (follow pointer)
+;   bit 6: dereference arg1 (follow pointer)
+
 %define F(a0,a1,a2) ((a0)|((a1)<<2)|((a2)<<4))
 
-; ── wave byte from coordinates ────────────────────────────────
-; 4 integers (T, D, M, Q) → wave byte + extension bytes.
-; 2 bits per dimension: 00=0  01=+1  11=-1  10=extended
-; Bit layout: [7:6]=T  [5:4]=D  [3:2]=M  [1:0]=Q
-; Extended: 10 marker + signed i8 for values outside {-1, 0, +1}
+; ── w τ, χ, μ, φ — wave byte from coordinates ────────────────
+;
+;   2 bits per dimension:  00 = 0    01 = +1    11 = -1    10 = extended
+;   bit layout: [7:6]=τ  [5:4]=χ  [3:2]=μ  [1:0]=φ
+;
+;   shell 1 (±1): fits in 1 byte. higher magnitudes add 1 extension byte each.
+
 %macro w 4
   %assign _wb 0
   %if %1 == 1
@@ -77,8 +87,11 @@ U64 equ 3
   %endif
 %endmacro
 
-; ── walker control ────────────────────────────────────────────
-; Not bonds. Walker instructions (bytes >= 0xFC).
+; ── ψ control — walker instructions (not bonds) ──────────────
+;
+;   bytes ≥ 0xFC are walker control, not coordinates.
+;   these are the only non-lattice bytes in a walk.
+
 %macro skip_z 1
   db 0xFE
   dd %1
