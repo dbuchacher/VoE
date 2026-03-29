@@ -36,7 +36,7 @@ echo "built: $(stat -c%s "$OUT/nomos.elf") bytes"
 # ── headless: multiboot, no MBR needed ───────────────────────
 
 if [ "$1" = "headless" ]; then
-    qemu-system-x86_64 -kernel "$OUT/nomos.elf" -m 128M -no-reboot \
+    timeout ${3:-5} qemu-system-x86_64 -kernel "$OUT/nomos.elf" -m 128M -no-reboot \
         -debugcon stdio -serial file:/dev/stderr -smp ${2:-4} \
         -cpu Skylake-Server -display none
     exit 0
