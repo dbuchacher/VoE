@@ -18,7 +18,7 @@ DBGFLAG="-DDEBUG"
 # ── assemble kernel ──────────────────────────────────────────
 
 # x86 substrate (dissolves on trit processor)
-nasm $DBGFLAG -f elf32 "x86/x86.asm"          -o "$OUT/x86.o"
+nasm $DBGFLAG -f elf32 "legacy/x86.asm"          -o "$OUT/x86.o"
 
 # walks (stay forever)
 nasm $DBGFLAG -f elf32 "[6] genesis.asm"       -o "$OUT/genesis.o"
@@ -50,7 +50,7 @@ else
     S1=127; S2=$(( KSECTORS - 127 ))
 fi
 
-nasm $DBGFLAG -DSEC1=$S1 -DSEC2=$S2 "x86/[1] boot.asm" -o "$OUT/mbr.bin"
+nasm $DBGFLAG -DSEC1=$S1 -DSEC2=$S2 "legacy/boot.asm" -o "$OUT/mbr.bin"
 
 IMGSECTORS=$(( 1 + KSECTORS + 64 ))
 dd if=/dev/zero of="$OUT/nomos.img" bs=512 count=$IMGSECTORS 2>/dev/null
