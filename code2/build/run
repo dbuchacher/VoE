@@ -17,11 +17,14 @@ DBGFLAG="-DDEBUG"
 
 # ── assemble kernel ──────────────────────────────────────────
 
-nasm $DBGFLAG -f elf32 "[2] cpu.asm"      -o "$OUT/cpu.o"
-nasm $DBGFLAG -f elf32 "[3] handoff.asm"  -o "$OUT/handoff.o"
-nasm $DBGFLAG -f elf32 "[4] nomos.asm" -o "$OUT/nomos.o"
-nasm $DBGFLAG -f elf32 "[5] walker.asm"   -o "$OUT/walker.o"
-nasm $DBGFLAG -f elf32 "[6] genesis.asm"  -o "$OUT/genesis.o"
+# x86 substrate (dissolves on trit processor)
+nasm $DBGFLAG -f elf32 "x86/[2] cpu.asm"      -o "$OUT/cpu.o"
+nasm $DBGFLAG -f elf32 "x86/[3] handoff.asm"  -o "$OUT/handoff.o"
+nasm $DBGFLAG -f elf32 "x86/[4] nomos.asm"    -o "$OUT/nomos.o"
+nasm $DBGFLAG -f elf32 "x86/[5] walker.asm"   -o "$OUT/walker.o"
+
+# walks (stay forever)
+nasm $DBGFLAG -f elf32 "[6] genesis.asm"       -o "$OUT/genesis.o"
 
 ld -m elf_i386 -T build/link.ld \
     "$OUT"/cpu.o \
@@ -53,7 +56,7 @@ else
     S1=127; S2=$(( KSECTORS - 127 ))
 fi
 
-nasm $DBGFLAG -DSEC1=$S1 -DSEC2=$S2 "[1] boot.asm" -o "$OUT/mbr.bin"
+nasm $DBGFLAG -DSEC1=$S1 -DSEC2=$S2 "x86/[1] boot.asm" -o "$OUT/mbr.bin"
 
 IMGSECTORS=$(( 1 + KSECTORS + 64 ))
 dd if=/dev/zero of="$OUT/nomos.img" bs=512 count=$IMGSECTORS 2>/dev/null
