@@ -6,7 +6,7 @@
  *   programmer: assembles walk files into raw binary blobs
  *   english:    turns bond symbols into the bytes the walker reads
  *
- * Usage: wasm input.w [-o output.bin]
+ * Usage: wa input.w [-o output.bin]
  *
  * Input format:
  *   π̄δ  θ¹¹ρ  0xE9  'V'        bond  flags  arg0  arg1
@@ -269,7 +269,7 @@ static int resolve_fixups(void) {
     for (int i = 0; i < nfixups; i++) {
         int target = find_label(fixups[i].name);
         if (target < 0) {
-            fprintf(stderr, "wasm: undefined label '%s'\n", fixups[i].name);
+            fprintf(stderr, "wa: undefined label '%s'\n", fixups[i].name);
             return 1;
         }
         /* offset = target - (fixup_pos + 4) for skip_z/skip_nz
@@ -293,7 +293,7 @@ static int resolve_fixups(void) {
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "usage: wasm input.w [-o output.bin]\n");
+        fprintf(stderr, "usage: wa input.w [-o output.bin]\n");
         return 1;
     }
 
@@ -320,6 +320,6 @@ int main(int argc, char **argv) {
     fwrite(out, 1, pos, out_f);
     fclose(out_f);
 
-    fprintf(stderr, "wasm: %d bytes\n", pos);
+    fprintf(stderr, "wa: %d bytes\n", pos);
     return 0;
 }
