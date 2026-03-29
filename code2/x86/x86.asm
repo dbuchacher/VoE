@@ -1,17 +1,318 @@
-; ƒ — νόμος (nomos: the law). Sealed.
+; x86.asm — the substrate. everything here dissolves on a trit processor.
 ;
-;   ƒ(τ, χ, μ, φ) = τᵃ·χᵇ·μᶜ·φᵈ
+; One file, four sections:
+;   1. CPU    — 32→64 bit mode switch, page tables, wake all cores
+;   2. HANDOFF — init JIT buffer, walk genesis, enter find-work
+;   3. NOMOS  — ƒ(τ,χ,μ,φ) = τᵃ·χᵇ·μᶜ·φᵈ — the JIT compiler
+;   4. WALKER — ψ — wave byte interpreter
 ;
-;   physics:    the fundamental law — quantum numbers in, interaction out
-;   math:       coordinate → function resolver with lazy materialization
-;   programmer: JIT compiler — 4 integers in, x86 function pointer out
-;   english:    give it 4 numbers, it figures out what operation that means
+; Interface (used by walks):
+;   ƒ  — resolve coordinates → function pointer
+;   ψ  — interpret a walk (byte array)
+;   ρ  — last pipeline result
 ;
-; Even coordinates = atoms (pure math, monomial evaluation)
-; Odd coordinates  = bonds (forces, the 16 patterns of control flow)
-;
-; On a trit processor this dissolves. The walks stay identical.
+; Everything else is internal x86 plumbing.
 
+
+; ═══════════════════════════════════════════════════════════════
+; SECTION 1: CPU — entry, mode switch, page tables, AP wake
+; ═══════════════════════════════════════════════════════════════
+
+; ── multiboot header ──────────────────────────────────────────
+
+section .multiboot
+bits 32
+    jmp _start
+    align 4
+    dd 0x1BADB002                          ; multiboot magic
+    dd 0x00000003                          ; flags: align + meminfo
+    dd -(0x1BADB002 + 0x00000003)          ; checksum
+
+; ── BSS ───────────────────────────────────────────────────────
+
+section .bss
+align 16
+stack_bottom:   resb 16384                 ; 16KB BSP stack
+stack_top:
+
+align 4096
+ap_stacks:      resb 4096 * 16            ; 16 AP stacks, 4KB each
+
+; page tables in dedicated section (not zeroed with BSS)
+section .pagetables nobits alloc write
+align 4096
+pml4:           resb 4096
+pdpt:           resb 4096
+pd0:            resb 4096                  ; low 1GB
+pd3:            resb 4096                  ; high 1GB (MMIO)
+
+; ── data ──────────────────────────────────────────────────────
+
+section .data
+align 4
+
+gdt:            dq 0                       ; null descriptor
+                dq 0x00AF9A000000FFFF      ; 0x08: code64 (L=1)
+                dq 0x00CF92000000FFFF      ; 0x10: data64
+                dq 0x00CF9A000000FFFF      ; 0x18: code32 (trampoline)
+gdt_end:
+gdtr:           dw gdt_end - gdt - 1
+                dd gdt
+
+ap_count:       dd 0
+genesis_done:   dd 0
+
+; ── 32-bit entry ──────────────────────────────────────────────
+
+section .text
+bits 32
+
+global _start
+
+_start:
+    cli
+
+    ; mask all PIC IRQs — we poll, not interrupt
+    mov al, 0xFF
+    out 0x21, al
+    out 0xA1, al
+
+    ; copy AP trampoline to 0x8000
+    mov esi, trampoline_code
+    mov edi, 0x8000
+    mov ecx, trampoline_end - trampoline_code
+    cld
+    rep movsb
+
+    ; ── build page tables ──
+
+    ; PML4[0] → PDPT
+    mov eax, pdpt
+    or eax, 3                              ; present | writable
+    mov [pml4], eax
+
+    ; PDPT[0] → PD0 (low 1GB)
+    mov eax, pd0
+    or eax, 3
+    mov [pdpt], eax
+
+    ; PDPT[3] → PD3 (high 1GB, MMIO)
+    mov eax, pd3
+    or eax, 3
+    mov [pdpt + 3*8], eax
+
+    ; PD0: identity map 0–1GB as 2MB huge pages
+    xor ecx, ecx
+    mov eax, 0x83                          ; present | writable | 2MB
+.map_low:
+    mov [pd0 + ecx*8], eax
+    mov dword [pd0 + ecx*8 + 4], 0
+    add eax, 0x200000
+    inc ecx
+    cmp ecx, 512
+    jl .map_low
+
+    ; PD3: map 3–4GB (MMIO) as 2MB pages
+    xor ecx, ecx
+    mov eax, 0xC0000083                    ; 3GB base | present | writable | 2MB
+.map_high:
+    mov [pd3 + ecx*8], eax
+    mov dword [pd3 + ecx*8 + 4], 0
+    add eax, 0x200000
+    inc ecx
+    cmp ecx, 512
+    jl .map_high
+
+    ; APIC MMIO page: mark uncacheable (PCD)
+    or dword [pd3 + 503*8], 0x10
+
+    ; ── enable long mode ──
+
+    mov eax, pml4
+    mov cr3, eax
+
+    ; PAE + SSE
+    mov eax, cr4
+    or eax, (1<<5)|(1<<9)|(1<<10)
+    mov cr4, eax
+
+    ; EFER.LME (long mode enable)
+    mov ecx, 0xC0000080
+    rdmsr
+    or eax, (1<<8)
+    wrmsr
+
+    ; enable paging, clear FPU emulation
+    mov eax, cr0
+    or eax, (1<<31)
+    and eax, ~((1<<2)|(1<<3))
+    mov cr0, eax
+
+    lgdt [gdtr]
+    jmp 0x08:long_mode
+
+; ── 64-bit entry ──────────────────────────────────────────────
+
+bits 64
+
+long_mode:
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov rsp, stack_top
+
+    ; zero BSS
+    extern __bss_start, __bss_end
+    lea rdi, [__bss_start]
+    lea rcx, [__bss_end]
+    sub rcx, rdi
+    shr rcx, 3
+    xor eax, eax
+    rep stosq
+
+    ; wake APs
+    call wake_cores
+
+    ; hand off to the lattice
+    jmp Λ
+
+
+; ══════════════════════════════════════════════════════════════
+; AP wake — INIT/SIPI broadcast
+; ══════════════════════════════════════════════════════════════
+
+wake_cores:
+    ; write trampoline parameters at 0x8090+
+    mov ax, [gdtr]
+    mov [0x8090], ax
+    mov eax, [gdtr + 2]
+    mov [0x8092], eax
+
+    mov rax, cr3
+    mov [0x8098], eax
+
+    lea rax, [ap_entry]
+    mov [0x80A0], eax
+    mov word [0x80A4], 0x08                ; code64 selector
+
+    mov r10, 0xFEE00000                    ; APIC base
+
+    ; INIT IPI (broadcast to all APs)
+    mov dword [r10 + 0x310], 0
+    mov dword [r10 + 0x300], 0x000C4500
+    mov ecx, 1000000
+.d1: dec ecx
+     jnz .d1
+
+    ; SIPI → vector 0x08 = physical 0x8000
+    mov dword [r10 + 0x310], 0
+    mov dword [r10 + 0x300], 0x000C4608
+    mov ecx, 100000
+.d2: dec ecx
+     jnz .d2
+
+    ; second SIPI (spec says send twice)
+    mov dword [r10 + 0x310], 0
+    mov dword [r10 + 0x300], 0x000C4608
+    ret
+
+
+; ══════════════════════════════════════════════════════════════
+; AP entry — APs land here after trampoline mode switch
+; ══════════════════════════════════════════════════════════════
+
+ap_entry:
+    ; per-core stack from APIC ID
+    mov r10, 0xFEE00000
+    mov eax, [r10 + 0x20]
+    shr eax, 24
+    and eax, 0xFF
+    shl rax, 12                            ; 4KB per core
+    lea rsp, [ap_stacks + 4096*16]
+    sub rsp, rax
+
+    lock inc dword [ap_count]
+
+    ; wait for genesis to complete
+.ap_wait:
+    pause
+    cmp dword [genesis_done], 0
+    je .ap_wait
+
+    ; find-work loop (spin for now — walks come later)
+.ap_spin:
+    pause
+    jmp .ap_spin
+
+
+; ══════════════════════════════════════════════════════════════
+; Trampoline — 16-bit → 32-bit → 64-bit for APs
+; Raw bytes, hand-assembled. Copied to physical 0x8000.
+; Reads GDT, CR3, and entry point from 0x8090+ data area.
+; ══════════════════════════════════════════════════════════════
+
+section .rodata
+align 16
+trampoline_code:
+    ;  0: cli; xor ax,ax; mov ds,ax        — real mode setup
+    ;  5: mov byte [0x8100],0x11           — debug: "I'm alive"
+    ; 10: lgdt [0x8090]                    — load GDT from data area
+    ; 16: mov eax,cr0; or al,1; mov cr0,eax — enable PE
+    ; 22: jmp 0x18:0x8020                  — far jump to 32-bit (code32 seg)
+    ; 32: mov byte [0x8100],0x22           — debug: "in 32-bit"
+    ; 39: mov ax,0x10; mov ds,ax; mov es,ax; mov ss,ax — load data seg
+    ; 49: mov eax,cr4; or eax,0x620; mov cr4,eax — PAE+SSE
+    ; 61: mov eax,[0x8098]; mov cr3,eax    — load page table
+    ; 69: mov ecx,0xC0000080; rdmsr; or eax,0x100; wrmsr — EFER.LME
+    ; 81: mov eax,cr0; or eax,0x80000000; and eax,~0xC; mov cr0,eax — PG
+    ; 93: mov byte [0x8100],0x33           — debug: "in 64-bit"
+    ; 100: xor edi,edi; jmp far [0x80A0]   — jump to ap_entry
+    db 0xfa, 0x31, 0xc0, 0x8e, 0xd8, 0xc6, 0x06, 0x00, 0x81, 0x11
+    db 0x66, 0x0f, 0x01, 0x16, 0x90, 0x80, 0x0f, 0x20, 0xc0, 0x0c
+    db 0x01, 0x0f, 0x22, 0xc0, 0x66, 0xea, 0x20, 0x80, 0x00, 0x00
+    db 0x18, 0x00, 0xc6, 0x05, 0x00, 0x81, 0x00, 0x00, 0x22, 0x66
+    db 0xb8, 0x10, 0x00, 0x8e, 0xd8, 0x8e, 0xc0, 0x8e, 0xd0, 0x0f
+    db 0x20, 0xe0, 0x0d, 0x20, 0x06, 0x00, 0x00, 0x0f, 0x22, 0xe0
+    db 0xa1, 0x98, 0x80, 0x00, 0x00, 0x0f, 0x22, 0xd8, 0xb9, 0x80
+    db 0x00, 0x00, 0xc0, 0x0f, 0x32, 0x0d, 0x00, 0x01, 0x00, 0x00
+    db 0x0f, 0x30, 0x0f, 0x20, 0xc0, 0x0d, 0x00, 0x00, 0x00, 0x80
+    db 0x83, 0xe0, 0xf3, 0x0f, 0x22, 0xc0, 0xc6, 0x05, 0x00, 0x81
+    db 0x00, 0x00, 0x33, 0xff, 0x2d, 0xa0, 0x80, 0x00, 0x00
+trampoline_end:
+
+
+; ═══════════════════════════════════════════════════════════════
+; SECTION 2: HANDOFF — init JIT buffer, walk genesis, enter find-work
+; ═══════════════════════════════════════════════════════════════
+
+section .text
+bits 64
+
+extern γ, γ_len
+
+Λ:
+    ; init JIT code buffer
+    lea rax, [code_base]
+    mov [code_cursor], rax
+
+    ; walk genesis
+    lea rdi, [γ]
+    mov esi, [γ_len]
+    call ψ
+
+    ; signal APs: genesis complete
+    mov dword [genesis_done], 1
+
+    ; BSP enters find-work (spin for now)
+.spin:
+    pause
+    jmp .spin
+
+
+; ═══════════════════════════════════════════════════════════════
+; SECTION 3: NOMOS — ƒ(τ,χ,μ,φ) = τᵃ·χᵇ·μᶜ·φᵈ — the JIT compiler
+; ═══════════════════════════════════════════════════════════════
 
 ; ── data ──────────────────────────────────────────────────────
 
@@ -44,8 +345,6 @@ code_base: resb 262144                    ; 256KB JIT code buffer
 
 section .text
 bits 64
-
-extern ψ
 
 
 ; ══════════════════════════════════════════════════════════════
@@ -1297,3 +1596,280 @@ section .text
     pop r12
     pop rbx
     ret
+
+
+; ═══════════════════════════════════════════════════════════════
+; SECTION 4: WALKER — ψ — wave byte interpreter
+; ═══════════════════════════════════════════════════════════════
+
+; ψ — the wave function
+;
+;   physics:    collapses wave bytes into observables
+;   math:       evaluates a polynomial (sequence of terms)
+;   programmer: bytecode interpreter for wave-encoded instructions
+;   english:    reads a list of 4-number coordinates and does each one
+;
+; Input:  rdi = walk pointer, esi = walk length
+; Output: rax = last result
+;
+; On a trit processor this dissolves — the hardware IS ψ.
+
+section .text
+bits 64
+
+global ψ
+ψ:
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov r12, rdi                   ; walk pointer
+    mov r13d, esi                  ; walk length
+    lea r14, [r12 + r13]           ; end
+    xor r15d, r15d                 ; pipeline = 0 (vacuum state)
+
+; ── next term in the polynomial ──────────────────────────────
+;   physics:    observe the next quantum state
+;   math:       evaluate next monomial/bond in the sum
+;   programmer: fetch-decode-execute cycle
+;   english:    read the next instruction and do it
+.next:
+    cmp r12, r14
+    jge .done                         ; end of walk
+
+    movzx eax, byte [r12]
+
+    cmp al, 0xFC                   ; control bytes (skip, loop)
+    jae .control
+
+    ; ── decode wave byte → 4 coordinates ─────────────────────
+    ;   physics:    extract quantum numbers from the wave packet
+    ;   math:       unpack (T,D,M,Q) from base-3 encoding
+    ;   programmer: decode 2-bit fields from one byte
+    ;   english:    split one byte into four small numbers
+    movzx ebx, al
+    inc r12
+
+    lea rax, [decode_table]
+
+    ; τ = bits [7:6]  (time / temporal / sequence)
+    mov ecx, ebx
+    shr ecx, 6
+    cmp ecx, 2
+    jne .τ
+    movsx edi, byte [r12]
+    inc r12
+    jmp .dec_χ
+.τ:
+    movsx edi, byte [rax + rcx]
+
+.dec_χ:
+    ; χ = bits [5:4]  (distance / spatial / position)
+    mov ecx, ebx
+    shr ecx, 4
+    and ecx, 3
+    cmp ecx, 2
+    jne .χ
+    movsx esi, byte [r12]
+    inc r12
+    jmp .dec_μ
+.χ:
+    movsx esi, byte [rax + rcx]
+
+.dec_μ:
+    ; μ = bits [3:2]  (mass / substance / content)
+    mov ecx, ebx
+    shr ecx, 2
+    and ecx, 3
+    cmp ecx, 2
+    jne .μ
+    movsx edx, byte [r12]
+    inc r12
+    jmp .dec_φ
+.μ:
+    movsx edx, byte [rax + rcx]
+
+.dec_φ:
+    ; φ = bits [1:0]  (charge / quality / signal)
+    mov ecx, ebx
+    and ecx, 3
+    cmp ecx, 2
+    jne .φ
+    movsx ecx, byte [r12]
+    inc r12
+    jmp .flags
+.φ:
+    movsx ecx, byte [rax + rcx]
+
+    ; ── flags: how arguments are encoded ─────────────────────
+    ;   2 bits per arg: 00=pipeline, 01=u8, 10=u32, 11=u64
+    ;   bit 7: dereference arg0.  bit 6: dereference arg1.
+.flags:
+    movzx r13d, byte [r12]
+    inc r12
+
+    ; ── resolve coordinates → operation ──────────────────────
+    ;   physics:    quantum numbers → interaction vertex
+    ;   math:       coordinates → function
+    ;   programmer: opcode → function pointer (JIT on miss)
+    ;   english:    look up what these 4 numbers mean
+    call ƒ
+    mov rbx, rax
+
+    ; ── load arguments ───────────────────────────────────────
+    ;   three args from the walk data (inline or pipeline)
+    ;   fourth arg is always the pipeline (accumulated result)
+
+    ; arg0 → rdi
+    mov eax, r13d
+    and eax, 3
+    jz .arg0_pipe
+    cmp eax, 1
+    je .arg0_u8
+    cmp eax, 2
+    je .arg0_u32
+    mov rdi, [r12]
+    add r12, 8
+    jmp .arg0_ok
+.arg0_u8:
+    movzx edi, byte [r12]
+    inc r12
+    jmp .arg0_ok
+.arg0_u32:
+    mov edi, [r12]
+    add r12, 4
+    jmp .arg0_ok
+.arg0_pipe:
+    mov rdi, r15
+.arg0_ok:
+    test r13d, 0x80
+    jz .arg0_deref
+    mov rdi, [rdi]
+.arg0_deref:
+
+    ; arg1 → rsi
+    mov eax, r13d
+    shr eax, 2
+    and eax, 3
+    jz .arg1_pipe
+    cmp eax, 1
+    je .arg1_u8
+    cmp eax, 2
+    je .arg1_u32
+    mov rsi, [r12]
+    add r12, 8
+    jmp .arg1_ok
+.arg1_u8:
+    movzx esi, byte [r12]
+    inc r12
+    jmp .arg1_ok
+.arg1_u32:
+    mov esi, [r12]
+    add r12, 4
+    jmp .arg1_ok
+.arg1_pipe:
+    mov rsi, r15
+.arg1_ok:
+    test r13d, 0x40
+    jz .arg1_deref
+    mov rsi, [rsi]
+.arg1_deref:
+
+    ; arg2 → rdx
+    mov eax, r13d
+    shr eax, 4
+    and eax, 3
+    jz .arg2_pipe
+    cmp eax, 1
+    je .arg2_u8
+    cmp eax, 2
+    je .arg2_u32
+    mov rdx, [r12]
+    add r12, 8
+    jmp .arg2_ok
+.arg2_u8:
+    movzx edx, byte [r12]
+    inc r12
+    jmp .arg2_ok
+.arg2_u32:
+    mov edx, [r12]
+    add r12, 4
+    jmp .arg2_ok
+.arg2_pipe:
+    mov rdx, r15
+.arg2_ok:
+
+    mov rcx, r15                   ; arg3 = pipeline (always)
+
+    ; ── execute ──────────────────────────────────────────────
+    ;   physics:    the interaction happens
+    ;   math:       evaluate the term
+    ;   programmer: call the JIT'd function
+    ;   english:    do the thing
+    call rbx
+    mov r15, rax                   ; result → pipeline
+    mov [ρ], rax                   ; store last result
+    jmp .next
+
+; ── walker control ───────────────────────────────────────────
+;   physics:    superposition branching (conditional path selection)
+;   math:       piecewise evaluation (skip terms based on value)
+;   programmer: conditional jump / loop
+;   english:    skip ahead or go back depending on the result
+.control:
+    mov ebx, [r12+1]
+
+    cmp al, 0xFE
+    je .skip_z
+    cmp al, 0xFD
+    je .skip_nz
+
+    ; loop_back: rewind if pipeline ≠ 0
+    test r15, r15
+    jz .skip_done
+    sub r12, rbx
+    jmp .next
+
+.skip_z:                              ; skip if pipeline = 0
+    test r15, r15
+    jnz .skip_done
+    add r12, rbx
+    jmp .skip_done
+
+.skip_nz:                              ; skip if pipeline ≠ 0
+    test r15, r15
+    jz .skip_done
+    add r12, rbx
+
+.skip_done:
+    add r12, 5
+    jmp .next
+
+; ── end ──────────────────────────────────────────────────────
+;   physics:    wave function fully collapsed
+;   math:       polynomial fully evaluated
+;   programmer: interpreter returns
+;   english:    finished, here's the answer
+.done:
+    mov rax, r15
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+
+; ── decode table ─────────────────────────────────────────────
+;   2-bit field → signed coordinate
+;   00 → 0    01 → +1    10 → extended    11 → -1
+
+section .rodata
+
+decode_table:
+    db  0
+    db  1
+    db  0
+    db -1

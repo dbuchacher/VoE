@@ -18,19 +18,13 @@ DBGFLAG="-DDEBUG"
 # ── assemble kernel ──────────────────────────────────────────
 
 # x86 substrate (dissolves on trit processor)
-nasm $DBGFLAG -f elf32 "x86/[2] cpu.asm"      -o "$OUT/cpu.o"
-nasm $DBGFLAG -f elf32 "x86/[3] handoff.asm"  -o "$OUT/handoff.o"
-nasm $DBGFLAG -f elf32 "x86/[4] nomos.asm"    -o "$OUT/nomos.o"
-nasm $DBGFLAG -f elf32 "x86/[5] walker.asm"   -o "$OUT/walker.o"
+nasm $DBGFLAG -f elf32 "x86/x86.asm"          -o "$OUT/x86.o"
 
 # walks (stay forever)
 nasm $DBGFLAG -f elf32 "[6] genesis.asm"       -o "$OUT/genesis.o"
 
 ld -m elf_i386 -T build/link.ld \
-    "$OUT"/cpu.o \
-    "$OUT"/handoff.o \
-    "$OUT"/nomos.o \
-    "$OUT"/walker.o \
+    "$OUT"/x86.o \
     "$OUT"/genesis.o \
     -o "$OUT/nomos.elf"
 
