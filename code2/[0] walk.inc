@@ -10,30 +10,30 @@
 ; ── usage ─────────────────────────────────────────────────────
 ;
 ;   w τ, χ, μ, φ            emit wave byte (+ extension bytes if |coord| > 1)
-;   F(a0, a1, a2)           build flags byte for 3 args
-;   skip_z  N               skip N bytes if ρ = 0   (pipeline empty)
-;   skip_nz N               skip N bytes if ρ ≠ 0   (pipeline has value)
-;   loop_back N              rewind N bytes if ρ ≠ 0 (keep looping)
+;   θ(a0, a1, a2)           arg encoding (shell levels + deref bits)
+;   skip_z  N               skip N bytes if ρ = 0
+;   skip_nz N               skip N bytes if ρ ≠ 0
+;   loop_back N              rewind N bytes if ρ ≠ 0
 ;
-; ── arg sizes ─────────────────────────────────────────────────
+; ── arg shells ────────────────────────────────────────────────
 ;
-;   ρ   = pipeline     (no inline bytes — use previous result)
-;   U8  = 1 byte       (inline constant)
-;   U32 = 4 bytes      (inline constant)
-;   U64 = 8 bytes      (inline constant)
+;   shell 0: ρ   (0 bytes — use previous result)
+;   shell 1: ¹   (1 byte inline)
+;   shell 2: ²   (4 bytes inline)
+;   shell 3: ³   (8 bytes inline)
 
 ρ   equ 0
-U8  equ 1
-U32 equ 2
-U64 equ 3
+¹   equ 1
+²   equ 2
+³   equ 3
 
-; ── F(a0, a1, a2) — flags byte ───────────────────────────────
+; ── θ(a0, a1, a2) — arg encoding ─────────────────────────────
 ;
-;   packs 3 arg sizes into one byte (2 bits each)
+;   packs 3 arg shells into one byte (2 bits each)
 ;   bit 7: dereference arg0 (follow pointer)
 ;   bit 6: dereference arg1 (follow pointer)
 
-%define F(a0,a1,a2) ((a0)|((a1)<<2)|((a2)<<4))
+%define θ(a0,a1,a2) ((a0)|((a1)<<2)|((a2)<<4))
 
 ; ── w τ, χ, μ, φ — wave byte from coordinates ────────────────
 ;
@@ -85,6 +85,99 @@ U64 equ 3
   %if %4 != 0 && %4 != 1 && %4 != -1
     db (%4) & 0xFF
   %endif
+%endmacro
+
+; ── bonds — named macros for common coordinates ──────────────
+;
+;   the symbol IS the coordinate. no tuple needed.
+;   w τ,χ,μ,φ still works for unusual combinations.
+
+; pattern 1: π (read/write)
+%macro π 0
+  w +1,0,0,0
+%endmacro
+%macro π̄ 0
+  w -1,0,0,0
+%endmacro
+%macro π₃ 0                     ; byte read
+  w +3,0,0,0
+%endmacro
+%macro π̄₃ 0                     ; byte write
+  w -3,0,0,0
+%endmacro
+%macro π₇ 0                     ; dword read
+  w +7,0,0,0
+%endmacro
+%macro π̄₇ 0                     ; dword write
+  w -7,0,0,0
+%endmacro
+
+; pattern 2: ∘ (call/return)
+%macro ∘ 0
+  w 0,+1,0,0
+%endmacro
+%macro ∘̄ 0
+  w 0,-1,0,0
+%endmacro
+
+; pattern 4: ∮ (loop/increment)
+%macro ∮̄ 0                      ; increment (+1)
+  w 0,0,-1,0
+%endmacro
+
+; pattern 5: π∮ (copy/fill)
+%macro π̄∮̄₃ 0                    ; dword fill
+  w -1,0,-3,0
+%endmacro
+
+; pattern 8: δ (test/guard) + magnitudes
+%macro δ 0                      ; test (==)
+  w 0,0,0,+1
+%endmacro
+%macro δ̄ 0                      ; guard (conditional)
+  w 0,0,0,-1
+%endmacro
+%macro δ₃ 0                     ; AND
+  w 0,0,0,+3
+%endmacro
+%macro δ̄₃ 0                     ; OR
+  w 0,0,0,-3
+%endmacro
+%macro δ₅ 0                     ; XOR
+  w 0,0,0,+5
+%endmacro
+%macro δ̄₅ 0                     ; NOT
+  w 0,0,0,-5
+%endmacro
+
+; pattern 9: πδ (filter/port/add)
+%macro πδ̄ 0                     ; port_read
+  w +1,0,0,-1
+%endmacro
+%macro π̄δ 0                     ; port_write
+  w -1,0,0,+1
+%endmacro
+%macro π̄δ̄ 0                     ; add
+  w -1,0,0,-1
+%endmacro
+%macro π̄δ̄₃ 0                    ; subtract
+  w -1,0,0,-3
+%endmacro
+
+; pattern 14: ∘∮δ (bind — the event loop)
+%macro ∘∮δ 0
+  w 0,+1,+1,+1
+%endmacro
+
+; pattern 15: π∘∮δ (hylo — full pipeline)
+%macro π∘∮δ 0
+  w +1,+1,+1,+1
+%endmacro
+
+; ── atoms — common formulas ──────────────────────────────────
+
+%macro τχ 0                     ; τ·χ = multiply (arg0 × arg1)
+  w +2,+2,0,0
 %endmacro
 
 ; ── ψ control — walker instructions (not bonds) ──────────────
