@@ -1,242 +1,443 @@
-# Session 15: SEC2 Falcon PIO Loader + VRAM Layout + WPR Metadata
+# Session 15: Full NVIDIA GSP Boot Pipeline
 
 Coder session. Continued GPU firmware pipeline from session 14.
-Implemented SEC2 falcon PIO boot, VRAM discovery, FB layout computation,
-WPR metadata construction, and sparse radix3 page table.
+Went from "SEC2 PIO loader skeleton" to "complete GSP boot pipeline
+ready for real hardware testing" in one session. 7 new walk files,
+13KB of walk code, matching nouveau's ~2000-line C implementation.
 
 
 ## What We Built
 
-### Firmware pack index (pack_gpu.sh rewrite)
-The old format concatenated all files with no per-file index — the walk
-couldn't find individual files within the blob. New format adds a file
-directory with 4-char ASCII tags per file:
-
+### 1. Firmware pack index (pack_gpu.sh rewrite)
+Old format concatenated all files with no per-file index. New format:
 ```
-FWGP header → device entries → file directory (tag+offset+size per file)
-→ padding to 512 → file data
+FWGP header → device entries → file directory (tag+offset+size) → data
+```
+4-char ASCII tags: bl__=bl.bin, bolo=booter_load, boot=bootloader,
+gsp_=gsp.bin, etc. 25 files indexed for TU102.
+
+**Gotcha**: bash command substitution strips null bytes. Tags like
+"bl\0\0" silently lose the nulls. Fix: use printable padding ("bl__").
+
+### 2. Firmware index parsing (gpu_nvidia.w PART 3)
+After ATA firmware load, parses pack header using direct index access
+(known alphabetical positions) to extract 4 file addresses:
+- bl.bin (1280 bytes) → [0x9700]
+- booter_load.bin (59KB) → [0x9710]
+- bootloader.bin (4KB) → [0x9720]
+- gsp.bin (28.5MB) → [0x9730]
+
+**Key pattern**: `π̄δ̄ θ²ρρ· addr` = runtime add. Reads [addr], adds to
+pipeline. This is the backbone of every computed address in the pipeline.
+
+### 3. VRAM discovery + FB layout (gsp_vram.w)
+Reads VRAM size from BAR0+0x100ce0:
+```
+data = read32(BAR0 + 0x100ce0)
+lmag = (data >> 4) & 0x3F
+lsca = data & 0x0F
+fb_size = lmag << (lsca + 20)
+```
+Variable shift (lsca) implemented as a loop: shift left by 1, lsca times.
+
+Top-down FB layout matching nouveau's r535_gsp_oneinit():
+```
+fb_size (top)
+  vga_workspace = fb_size - 1MB    (simplified, skips display reg check)
+  frts = ALIGN_DOWN(vga, 128K) - 1MB
+  boot = ALIGN_DOWN(frts - boot_size, 4K)
+  elf = ALIGN_DOWN(boot - fwimage_size, 64K)
+  heap = ALIGN_DOWN(elf - heap_size, 1MB)
+  wpr2 = ALIGN_DOWN(heap - 256, 1MB)
+  nonwpr = wpr2 - 1MB
 ```
 
-Tags: bl__=bl.bin, bolo=booter_load, boot=bootloader, gsp_=gsp.bin, etc.
-Walk searches by tag. 25 files indexed for TU102.
+Heap size: 8MB + ALIGN(96KB × fb_size_gb, 1MB) + 96MB.
+**Multiplication trick**: 96KB × N = (fb_size >> 14) + (fb_size >> 15).
+Two shifts and an add instead of a multiply (which walks can't do).
 
-### Firmware index parsing (gpu_nvidia.w PART 3)
-After ATA firmware load, parses the pack header to extract RAM addresses
-of the 4 files GSP boot needs:
-- bl.bin (falcon bootloader, 1280 bytes) → [0x9700]
-- booter_load.bin (SEC2 payload, 59KB) → [0x9710]
-- bootloader.bin (GSP RISC-V bootloader) → [0x9720]
-- gsp.bin (GSP-RM firmware, 28.5MB) → [0x9730]
+### 4. WPR metadata + radix3 (gsp_wpr.w)
+**RM_RISCV_UCODE_DESC parsing** from bootloader.bin: extracts
+monitorCodeOffset, monitorDataOffset, manifestOffset, appVersion
+by chaining header_offset → desc_addr → field reads.
 
-Uses direct index access (known alphabetical positions) with the `π̄δ̄ θ²ρρ·`
-pattern for runtime address addition: `pipeline = [addr] + pipeline`.
+**WPR metadata** at 0x2810000 (GspFwWprMeta, 256 bytes, 32 fields):
+```
++0x00 magic = 0xdc3aae21371a60b3
++0x08 revision = 1
++0x10 sysmemAddrOfRadix3Elf = 0x2800000
++0x18 sizeOfRadix3Elf = fwimage_size
++0x20 sysmemAddrOfBootloader = bootloader_img_addr
++0x28 sizeOfBootloader
++0x30 bootloaderCodeOffset = monitorCodeOffset
++0x38 bootloaderDataOffset = monitorDataOffset
++0x40 bootloaderManifestOffset = manifestOffset
++0x58 gspFwRsvdStart = nonwpr_addr
++0x60 nonWprHeapOffset = nonwpr_addr
++0x68 nonWprHeapSize = 1MB
++0x70 gspFwWprStart = wpr2_addr
++0x78 gspFwHeapOffset = heap_addr
++0x80 gspFwHeapSize
++0x88 gspFwOffset = elf_addr
++0x90 bootBinOffset = boot_addr
++0x98 frtsOffset = frts_addr
++0xA0 frtsSize = 1MB
++0xA8 gspFwWprEnd = ALIGN_DOWN(vga, 128K)
++0xB0 fbSize
++0xB8 vgaWorkspaceOffset
++0xC0 vgaWorkspaceSize
+```
 
-### SEC2 PIO loader (gsp_boot.w complete rewrite)
-Previous gsp_boot.w had phases in wrong order (reset GSP before SEC2,
-wrote GSP mailboxes before firmware was loaded). Restructured:
+**64-bit VRAM address writes**: pipeline holds 64-bit value from qword
+read. `π̄₇` writes low 32 bits. For high 32: re-read, `δ̄₇ θρ¹ρ 32`
+(shift right 32), write. Two dword writes per u64 field.
 
-**Phase 1: Radix3 page table** — fixed to use gsp.bin address from pack
-index instead of hardcoded firmware_base + 0x40.
+**Sparse radix3 page table** at 0x2800000:
+1. Fill ALL level-2 entries with a zero page address (0x2820000)
+2. Overwrite ELF pages with gsp.bin+0x40 addresses
+3. Overwrite bootloader pages with bootloader.bin addresses
+4. Set page 0 = WPR metadata page (0x2810000)
+5. Build level 1 from level 2 page addresses
+6. Level 0 → level 1
 
-**Phase 2: SEC2 falcon reset** — assert/deassert reset at BAR0+0x8403C0,
-wait for memory scrub, set DMA control for non-VMM mode.
-
-**Phase 3: PIO load bl.bin** — the core implementation:
-- Parse bl.bin nvfw_bin_hdr + nvfw_bl_desc at runtime
-- Read HWCFG register → compute boot_off (top of IMEM - code_size)
-- PIO write bl.bin code to IMEM (256-byte blocks with tags)
-- PIO write bl.bin data to DMEM
-- Parse booter_load.bin hs_header_v2 + hs_load_header_v2
-- Patch production signature into booter image data
-- Construct flcn_bl_dmem_desc_v2 (BLD) — ctx_dma=4 (PHYS_SYS_NCOH),
-  code/data DMA addresses pointing to booter_load in system RAM
-- Write BLD to DMEM at offset 0 (overwrites first 84 bytes of bl data)
-
-**Phase 4: Start SEC2** — write radix3 address to MBOX0/1, set BOOTVEC
-to boot_off, write 2 to CPUCTL, poll for halt (bit 4), check MBOX0=0.
-
-### VRAM discovery + FB layout (gsp_vram.w, NEW)
-Reads VRAM size from BAR0+0x100ce0 (lmag/lsca encoding). Computes
-top-down FB layout matching nouveau's r535_gsp_oneinit():
-  fb_size → vga_workspace → frts → bootloader → elf → heap → wpr2 → nonwpr
-
-Heap size computed as: 8MB + ALIGN(96KB * fb_size_gb, 1MB) + 96MB.
-Uses (fb_size >> 14) + (fb_size >> 15) to avoid multiplication.
-
-### WPR metadata + radix3 (gsp_wpr.w, NEW)
-Parses RM_RISCV_UCODE_DESC from bootloader.bin for monitorCodeOffset,
-monitorDataOffset, manifestOffset, appVersion.
-
-Builds WPR metadata struct at 0x2810000 (256 bytes, 32 fields):
-magic, revision, radix3 addr, ELF size, bootloader addr/offsets,
-VRAM layout addresses, fb_size, VGA workspace.
-
-Builds sparse radix3 page table:
-- All entries default to a zero page (0x2820000)
-- ELF pages overwritten with gsp.bin+0x40 addresses
-- Bootloader pages overwritten with bootloader.bin addresses
-- Page 0 = WPR metadata page (0x2810000)
 This avoids allocating 100+ MB of system RAM for the empty heap.
+Only data pages (~7000 for ELF + 1 bootloader + 1 metadata) point to
+real data; everything else points to the pre-zeroed page.
 
-### Key patterns discovered
+### 5. LibOS init args + shared memory (gsp_libos.w)
+**Log buffers**: 3 × 64KB at 0x2850000/0x2860000/0x2870000.
+Each has internal PTE array at buffer+8 (16 entries, each = buffer + i×4096).
+PTE loop: 10 bonds per iteration × 16 iterations × 3 buffers.
 
-**Runtime address addition**: `π̄δ̄ θ²ρρ· addr` = pipeline += [addr].
-Deref reads the value at addr, adds to pipeline. Essential for
-computing addresses from parsed offsets.
-
-**MMIO write with immediate**: 2 bonds instead of 3:
+**Libos init args**: 4 entries × 64 bytes at 0x2840000:
 ```
-π̄₇    θ²²ρ  temp  VALUE     ; pipeline = VALUE (side effect: stored at temp)
-π̄₇    θ²ρρ·  mmio_addr     ; dword write VALUE to [mmio_addr]
+Entry 0: "LOGINIT" (0x4C4F47494E495400) → 0x2850000, 64KB, CONTIGUOUS, SYSMEM
+Entry 1: "LOGINTR" (0x4C4F47494E545200) → 0x2860000, 64KB
+Entry 2: "LOGRM"   (0x4C4F47524D000000) → 0x2870000, 64KB
+Entry 3: "RMARGS"  (0x524D415247530000) → 0x2880000, 4KB
 ```
 
-**Repeated MMIO writes**: pipeline unchanged after write, so
-consecutive writes of same value (e.g., 8 zeros for BLD reserved+sig)
-need only one value load.
+**id8 encoding gotcha**: characters packed MSB-first into u64. In
+little-endian memory, the dword order is reversed. "LOGINIT":
+low dword = 0x4E495400 ("TINI"), high dword = 0x4C4F4749 ("IGOL").
+
+**Shared memory** at 0x2890000:
+- PTE array: 129 entries (1 page PTEs + 64 cmdq pages + 64 statq pages)
+- Command queue at +0x1000 (256KB, header initialized by CPU)
+- Status queue at +0x41000 (256KB, header initialized by GSP)
+
+**Command queue header** (CPU initializes):
+```
+version=0, size=0x40000, entryOff=0x1000, msgSize=0x1000,
+msgCount=63, writePtr=0, flags=1, rxHdrOff=0x20, rx.readPtr=0
+```
+
+**GSP_ARGUMENTS_CACHED** at 0x2880000:
+```
+sharedMemPhysAddr = 0x2890000
+pageTableEntryCount = 129
+cmdQueueOffset = 0x1000
+statQueueOffset = 0x41000
+oldLevel=0, flags=0, bInPMTransition=0 (cold boot)
+```
+
+### 6. SEC2 PIO loader (gsp_sec2.w)
+Restructured from session 14's gsp_boot.w. Previous version had phases
+in wrong order (reset GSP before SEC2, wrote GSP mailboxes before
+firmware was loaded).
+
+**Phase flow**:
+1. Parse bl.bin nvfw_bin_hdr → data_offset, then nvfw_bl_desc → code_off,
+   code_size, data_off, data_size
+2. Read SEC2 HWCFG → code_limit = (val & 0x1FF) << 8
+3. boot_off = code_limit - code_size (bl code goes at top of IMEM)
+4. PIO write bl.bin code to IMEM in 256-byte blocks with tags
+5. PIO write bl.bin data to DMEM
+6. Parse booter_load.bin headers (nvfw_bin_hdr → nvfw_hs_header_v2 →
+   nvfw_hs_load_header_v2) for BLD field values
+7. Patch production signature into booter image data:
+   sig at booter+sig_prod_offset → booter+img_data_offset+[booter+patch_loc]
+8. Construct flcn_bl_dmem_desc_v2 (84 bytes) via DMEM PIO:
+   ctx_dma=4 (PHYS_SYS_NCOH), code_dma_base/data_dma_base pointing to
+   booter_load in system RAM
+9. Write radix3 addr to SEC2 MBOX0/1
+10. Recompute boot_off (scratch was clobbered), write to BOOTVEC
+11. Write 2 to SEC2 CPUCTL → start
+12. Poll CPUCTL bit 4 (halt), check MBOX0 == 0
+
+**IMEM PIO protocol** (per 256-byte block):
+```
+WR32(SEC2 + 0x180, BIT(24) | imem_addr)   ; port control
+WR32(SEC2 + 0x188, tag)                    ; block tag
+for i in 0..63:                            ; 64 dwords
+    WR32(SEC2 + 0x184, data[i])            ; auto-increments
+```
+
+**DMEM PIO protocol**:
+```
+WR32(SEC2 + 0x1C0, BIT(24) | dmem_addr)   ; port control
+for i in 0..N:
+    WR32(SEC2 + 0x1C4, data[i])            ; auto-increments
+```
+
+**BLD overwrites bl data**: bl.bin data (256 bytes) written to DMEM
+first, then BLD (84 bytes) overwrites bytes 0-83. The bootloader's
+data section IS the BLD placeholder.
+
+### 7. GSP start + sequencer handler (gsp_start.w)
+After SEC2 halts, the booter has loaded GSP firmware into VRAM and
+started GSP RISC-V in a limited mode. CPU writes libos args address
+to GSP falcon mailboxes (BAR0 + 0x110040/44), then polls the message
+queue for INIT_DONE.
+
+**Message entry layout** (at msgq + 0x1000 + rptr × 0x1000):
+```
++0x00: r535_gsp_msg header (0x30 bytes: auth_tag, aad, checksum, seq, count)
++0x30: nvfw_gsp_rpc header (0x20 bytes)
+  +0x3C: function ID (0x1001=INIT_DONE, 0x1002=RUN_CPU_SEQUENCER)
++0x50: RPC payload
+  For sequencer: +0x54=cmdIndex, +0x78=commandBuffer[]
+```
+
+**Poll loop**: read msgq tx.writePtr at msgq+0x14, compare to our rptr
+(stored at cmdq+0x20). If different, read entry, dispatch by function ID.
+After processing, advance rptr modulo 63, write to cmdq rx.readPtr.
+
+**CPU sequencer** (opcodes 0-8):
+| Opcode | Name | Payload (dwords) | Implementation |
+|--------|------|-----------------|----------------|
+| 0 | REG_WRITE | addr, val (2) | write val to BAR0+addr |
+| 1 | REG_MODIFY | addr, mask, val (3) | **STUBBED** — can't AND two runtime values |
+| 2 | REG_POLL | addr, mask, val, timeout, error (5) | Fixed-iteration wait (no runtime mask) |
+| 3 | DELAY_US | val (1) | Spin loop |
+| 4 | REG_STORE | addr, slot (2) | Skipped (saves to regSaveArea) |
+| 5 | CORE_RESET | none (0) | Reset GSP falcon (0x3C0 bit 0) + DMA ctrl + scrub |
+| 6 | CORE_START | none (0) | Check CPUCTL bit 6 → write 2 to CPUCTL or CPUCTL_ALIAS |
+| 7 | CORE_WAIT_HALT | none (0) | Poll CPUCTL bit 4 |
+| 8 | CORE_RESUME | none (0) | Skipped |
+
+**Command buffer format**: each command = opcode (1 dword) + payload
+(variable dwords). `ptr += 1 + payload_size_dwords(opcode)`.
+
+**Debug characters** printed to debugcon during boot:
+- 's' = sequencer received
+- 'R' = core reset
+- 'G' = core start
+- '?' = unknown message
+- "SEC2ok" / "SEC2!" = SEC2 result
+- "GSPok" = INIT_DONE received
 
 
-## 1 Bug Found
+## Bugs Found
 
-### Phase 3d reads clobbered scratch
+### 1. Phase 3d reads clobbered scratch
 Phase 3c (IMEM PIO) stored current_tag at 0x96EC, overwriting
-bl_data_size that Phase 3a saved there. Phase 3d then read garbage
-for the DMEM dword count. Fix: re-read bl_data_size from the bl.bin
-header instead of relying on scratch.
+bl_data_size from Phase 3a. Fix: re-read from bl.bin header.
 
-**Lesson**: the single-pipeline scratch gotcha compounds across phases.
-Values saved in early phases get clobbered by later phases that reuse
-the same scratch addresses. Either save at dedicated addresses (0x9700+)
-or re-derive from source data.
+**Lesson**: single-pipeline scratch clobber compounds across phases.
+Save persistent values at dedicated addresses (0x9700+) or re-derive.
+
+### 2. Null bytes in bash command substitution
+`TAG=$(file_tag "bl")` where file_tag outputs `printf 'bl\x00\x00'`
+strips the nulls silently. The packed firmware header had corrupt tags.
+Fix: use printable padding ("bl__" instead of "bl\0\0").
 
 
 ## Key Decisions
 
 ### SEC2 first, GSP later
-Previous code reset GSP falcon and wrote GSP mailboxes before loading
-firmware. Wrong order. The correct flow: SEC2 boots the booter, booter
-loads GSP firmware into VRAM WPR, THEN CPU starts GSP RISC-V. Removed
-all premature GSP falcon code.
+Previous code (session 14's gsp_boot.w) reset GSP falcon and wrote GSP
+mailboxes before loading firmware. Wrong order. Correct flow:
+SEC2 boots booter → booter loads GSP into VRAM → CPU writes libos to GSP
+mailbox → GSP sends sequencer commands → CPU executes → GSP sends INIT_DONE.
 
-### Parse headers at runtime, not build time
-Could have added a build-time tool to extract firmware layout and emit
-defines. Instead, the walk parses nvfw_bin_hdr, nvfw_bl_desc,
-nvfw_hs_header_v2, and nvfw_hs_load_header_v2 at boot time. More walk
-bonds (~50 extra), but no new build dependency and robust against
-firmware version changes.
+### Parse headers at runtime
+Walk parses nvfw_bin_hdr, nvfw_bl_desc, nvfw_hs_header_v2,
+nvfw_hs_load_header_v2, RM_RISCV_UCODE_DESC at boot time. ~50 extra bonds
+but robust against firmware version changes. No build-time parser needed.
 
 ### Physical DMA without VMM
-TU102 booter uses FALCON_DMAIDX_PHYS_SYS_NCOH (ctx_dma=4) — physical
-system memory addresses without an instance block or VMM. On bare metal
-without IOMMU, this is the simplest path. No need for virtual address
-translation or instance block binding.
+BLD ctx_dma=4 (FALCON_DMAIDX_PHYS_SYS_NCOH). Physical system memory
+addresses without instance block binding. Simplest path on bare metal.
 
-### BLD overwrites bl data at DMEM 0
-The bootloader's data section IS the BLD placeholder. Write bl data to
-DMEM first, then overwrite first 84 bytes with the actual BLD. The
-bootloader reads BLD from DMEM 0 on startup.
+### Sparse radix3
+Only ~7003 pages of real data (ELF + bootloader + metadata). WPR2 total
+could be ~25000 pages. Empty entries point to one pre-zeroed page instead
+of allocating 100+ MB. Memory-efficient.
+
+### Multiplication via bit shifts
+96KB × N = (fb_size >> 14) + (fb_size >> 15). Walks have no multiply bond.
+Shift-and-add decomposes 96K = 64K + 32K into two power-of-two shifts.
+
+### Skip REG_MODIFY for initial bring-up
+Single-pipeline can't AND two runtime values (no deref-AND bond).
+REG_MODIFY needs (read & ~mask) | val — three runtime values combined.
+Stubbed for now. Most cold boot sequencer commands are REG_WRITE and
+CORE_*. If a REG_MODIFY is sent and we skip it, GSP may hang.
+
+**Future fix options**:
+1. Add a runtime AND bond to the walker (δ₃ with deref arg)
+2. Compute the AND via XOR/OR/complement chain (4-5 extra bonds)
+3. Use a scratch-based bit manipulator (loop over 32 bits)
+
+
+## Limitations / Known Issues
+
+- **REG_MODIFY stubbed**: skips 3-dword payload, doesn't execute RMW
+- **REG_POLL heuristic**: fixed-iteration wait, no (read & mask) == val check
+- **No timeout**: poll loops spin forever on failure (SEC2 halt, INIT_DONE)
+- **VGA workspace simplified**: uses fb_size - 1MB, doesn't read BAR0+0x625f04
+- **ALIGN_DOWN on 64-bit**: mask only affects low 32 bits. For VRAM > 4GB,
+  alignment that crosses the 4GB boundary would be wrong. Fine for offsets
+  within the WPR2 region (always < 4GB from top of VRAM).
+- **Page table coverage**: pd0 maps 0-1GB, pd3 maps 3-4GB. If GPU BAR0
+  is between 1-3GB, MMIO reads page fault.
+- **REG_STORE ignored**: doesn't save register values (regSaveArea slots).
+  If a later command references a stored value, it'll read 0.
 
 
 ## Files Changed
 
 ```
 MODIFIED:
-  firmware/pack_gpu.sh       rewritten — per-file index with tags
-  walks/gpu_nvidia.w         +65 lines — PART 3 firmware index parsing
+  firmware/pack_gpu.sh         rewritten — per-file index with tags
+  walks/gpu_nvidia.w           +65 lines — PART 3 firmware index parsing
+                               @include path: gsp_boot.w → gsp/gsp_boot.w
 
-NEW:
-  walks/gsp_vram.w           VRAM discovery + FB layout (top-down computation)
-  walks/gsp_wpr.w            RM_RISCV_UCODE_DESC + radix3 + WPR metadata
-  walks/gsp_sec2.w           SEC2 falcon reset + PIO load + BLD + start + poll
-  walks/gsp_libos.w          LibOS init args + log buffers + shared mem + RM args
-  walks/gsp_start.w          GSP mailbox write + INIT_DONE poll + sequencer handler
-
-REWRITTEN:
-  walks/gsp_boot.w           orchestrator — @includes vram/wpr/libos/sec2/start
+NEW (walks/gsp/):
+  gsp_boot.w                   orchestrator — skip guards + 6 @includes
+  gsp_vram.w                   VRAM discovery + FB layout computation
+  gsp_wpr.w                    RM_RISCV_UCODE_DESC + radix3 + WPR metadata
+  gsp_libos.w                  LibOS args + log buffers + shared mem + RM args
+  gsp_sec2.w                   SEC2 falcon reset + PIO load + BLD + start + poll
+  gsp_start.w                  GSP mailbox + INIT_DONE poll + sequencer handler
 
 SIZES:
-  genesis.w walk output:     13053 bytes (was ~6KB in session 14)
-  gpu_firmware.bin:           28841377 bytes (same files, new index format)
+  genesis.w walk output:       13053 bytes (was ~6KB in session 14)
+  gpu_firmware.bin:             28841377 bytes (same files, new index format)
+```
+
+
+## Memory Map
+
+### System RAM (used by GSP boot)
+```
+0x0800000  GPU firmware (packed, loaded from disk by ATA walk)
+0x2800000  radix3 level 0 page (8 bytes used)
+0x2801000  radix3 level 1 page (up to 512 entries)
+0x2802000  radix3 level 2 pages (up to ~50 pages)
+0x2810000  WPR metadata (GspFwWprMeta, 256 bytes)
+0x2820000  zero page (all empty radix3 entries point here)
+0x2840000  libos init args (4 × 64 bytes)
+0x2850000  LOGINIT log buffer (64KB, PTEs at +8)
+0x2860000  LOGINTR log buffer (64KB)
+0x2870000  LOGRM log buffer (64KB)
+0x2880000  GSP_ARGUMENTS_CACHED (4KB)
+0x2890000  shared memory:
+  +0x0000  PTE array (4KB, 129 entries)
+  +0x1000  command queue (256KB, CPU→GSP, header init'd by CPU)
+  +0x41000 status queue (256KB, GSP→CPU, header init'd by GSP)
+0x2911000  end of shared memory
+```
+
+### Scratch Memory (0x9000-0x9800 region)
+```
+0x9100     VESA FB info (from MBR)
+0x9200     loop_region base
+0x9300     CPU firmware: LBA, sectors, RAM addr, size
+0x9318     GPU firmware: LBA, sectors
+0x9400+    PCI results (virtio)
+0x9500+    virtqueue info
+0x9560     display dimensions
+0x9600     NVIDIA: slot, BAR0, BAR1, fw_addr, fw_size
+0x96C0-FF  per-phase scratch (clobbered freely between phases)
+0x9700     bl.bin: addr, size
+0x9710     booter_load: addr, size
+0x9720     bootloader: addr, size
+0x9730     gsp.bin: addr, size
+0x9750-6C  booter hs_load_header fields (for BLD)
+0x9768     code_dma_base, data_dma_base
+0x9780     fb_size (VRAM total)
+0x9788     vga_workspace_addr
+0x9790     frts_addr
+0x9798     boot_addr (bootloader in VRAM)
+0x97A0     elf_addr (GSP-RM ELF in VRAM)
+0x97A8     heap_addr
+0x97B0     heap_size
+0x97B8     wpr2_addr
+0x97C0     wpr2_size
+0x97C8     nonwpr_addr
+0x97D0     fwimage_addr (system RAM)
+0x97D8     fwimage_size
+0x97E0     monitorCodeOffset
+0x97E4     monitorDataOffset
+0x97E8     manifestOffset
+0x97EC     appVersion
+0x97F0     bootloader_img_addr
+0x97F8     bootloader_img_size
+```
+
+### NVIDIA Register Map (BAR0 offsets)
+```
+SEC2 falcon (BAR0 + 0x840000):
+  +0x040 MBOX0          +0x044 MBOX1
+  +0x100 CPUCTL          +0x104 BOOTVEC
+  +0x108 HWCFG           +0x10C MEM_SCRUB
+  +0x180 IMEM_PORT0      +0x184 IMEM_DATA0      +0x188 IMEM_TAG0
+  +0x1C0 DMEM_PORT0      +0x1C4 DMEM_DATA0
+  +0x3C0 FALCON_RESET    +0x624 DMA_CTRL
+
+GSP falcon (BAR0 + 0x110000):
+  +0x040 MBOX0 (libos args addr low)
+  +0x044 MBOX1 (libos args addr high)
+  +0x080 APP_VERSION
+  +0x100 CPUCTL           +0x104 BOOTVEC
+  +0x10C MEM_SCRUB        +0x130 CPUCTL_ALIAS
+  +0x3C0 FALCON_RESET     +0x624 DMA_CTRL
+
+Other:
+  0x100CE0  VRAM size (lmag/lsca)
+  0x625F04  VGA workspace (display, not read — simplified)
 ```
 
 
 ## For the Next Wit
 
 ### State
-Boots headless and MBR. All previous functionality intact. NVIDIA code
-paths complete through SEC2 boot with VRAM discovery, FB layout, WPR
-metadata, and sparse radix3. Untested on real hardware.
+Complete GSP boot pipeline implemented. Boots in QEMU (headless + GUI
+with teal screen). NVIDIA code paths untested — no NVIDIA GPU in QEMU.
 
-The full SEC2 → GSP pipeline is implemented. On real hardware with a
-TU102 GPU, the expected flow is:
-1. PCI scan finds NVIDIA (0x10DE)
-2. ATA loads firmware from disk
-3. Pack index parsed, file addresses extracted
-4. VRAM size read from BAR0+0x100CE0
-5. FB layout computed (top-down from VRAM)
-6. WPR metadata written at 0x2810000
-7. Sparse radix3 built at 0x2800000
-8. SEC2 reset, bl.bin PIO'd, BLD written, SEC2 started
-9. SEC2 polls for halt, checks MBOX0
+### What's Next
 
-Likely failure points on first real hardware test:
-- **Page table coverage**: if BAR0 is between 1-3GB, MMIO reads fault
-- **MMIO timing**: real falcon may need delays between register writes
-- **WPR metadata values**: computed layout might not match what booter expects
-- **Signature**: if booter_load.bin sig doesn't match GPU fuses
-- **64-bit VRAM addresses**: the ALIGN_DOWN masks only affect low 32 bits
+1. **Test on real hardware** — `bash build/run img` → dd to USB → boot.
+   Read debugcon for progress. Expected: SEC2ok → sRG → GSPok.
+   Likely first failure: page fault (BAR0 unmapped) or WPR metadata
+   values wrong (SEC2 returns error in MBOX0).
 
-### What's Next (Priority Order)
+2. **Fix REG_MODIFY** — needed if sequencer sends one during cold boot.
+   Options: add deref-AND to walker, or multi-step XOR/complement chain.
 
-1. **Test on real hardware** — plug in, boot USB image, read debugcon.
-   The SEC2 halt + MBOX0 result tells us how far we got.
-   If page fault: add page table entries for BAR0 range.
-   If MBOX0 error: decode error, fix WPR metadata.
+3. **Fix REG_POLL** — needs proper (read & mask) == val check.
+   Same runtime-AND limitation as REG_MODIFY.
 
-2. **LibOS init args** — 4-entry array at 0x2840000:
-   LOGINIT/LOGINTR/LOGRM log buffers + RMARGS page.
-   Each entry: u64 id8, u64 pa, u64 size, u8 kind, u8 loc.
-   Needed for GSP RISC-V start.
+4. **Keyboard walk** — PS/2 poll → wave byte → input loop.
+   Independent of GPU. Can do in parallel with GPU debugging.
 
-3. **GSP_ARGUMENTS_CACHED** — message queue init + SR args.
-   sharedMemPhysAddr, pageTableEntryCount, cmdQ/statQ offsets.
-   At 0x2880000.
-
-4. **GSP RISC-V start** — after SEC2 succeeds:
-   write libos DMA addr to GSP MBOX0/1 (BAR0+0x110040/44),
-   write appVersion to 0x110080, write 2 to GSP CPUCTL.
-   Poll message queue for GSP_INIT_DONE.
-
-5. **CPU sequencer dispatch** — during GSP boot, GSP sends
-   RUN_CPU_SEQUENCER RPCs requiring MMIO register writes.
-
-### Architecture Notes
-```
-Parsed firmware (gpu_nvidia.w → 0x9700-0x97F8):
-  [0x9700] bl.bin         [0x9710] booter_load  [0x9720] bootloader  [0x9730] gsp.bin
-  [0x9750-0x976C] booter hs_load_header fields
-  [0x97E0-0x97EC] RM_RISCV_UCODE_DESC fields
-  [0x97F0] bootloader_img_addr  [0x97F8] bootloader_img_size
-
-VRAM layout (gsp_vram.w → 0x9780-0x97D8):
-  [0x9780] fb_size  [0x9788] vga  [0x9790] frts  [0x9798] boot
-  [0x97A0] elf  [0x97A8] heap  [0x97B0] heap_size
-  [0x97B8] wpr2  [0x97C0] wpr2_size  [0x97C8] nonwpr
-  [0x97D0] fwimage_addr  [0x97D8] fwimage_size
-
-System RAM layout:
-  0x800000   GPU firmware (packed, loaded from disk)
-  0x2800000  radix3 level 0 → level 1 → level 2 pages
-  0x2810000  WPR metadata (256 bytes)
-  0x2820000  zero page (for empty radix3 entries)
-```
+5. **Loop allocation in genesis** — runtime loop headers at 0x400000+.
+   Needed for keyboard input loop and display output loop.
 
 ### Source References
-- nouveau gm200.c: falcon PIO, fw_load, fw_boot
-- nouveau gp102.c: gp102_fb_vidmem_size (VRAM register)
-- nouveau r535.c: r535_gsp_wpr, r535_gsp_oneinit (FB layout)
-- nouveau tu102.c: tu102_gsp_fwsec_load_bld, tu102_gsp_oneinit
-- include/nvrm/.../gsp_fw_wpr_meta.h: GspFwWprMeta struct
-- include/nvrm/.../rmRiscvUcode.h: RM_RISCV_UCODE_DESC
-- include/nvrm/.../gsp_init_args.h: GSP_ARGUMENTS_CACHED
-- include/nvfw/flcn.h: flcn_bl_dmem_desc_v2
-- include/nvfw/hs.h: nvfw_hs_header_v2, nvfw_hs_load_header_v2
+```
+nouveau falcon PIO:     nvkm/falcon/gm200.c, v1.c
+nouveau VRAM discovery: nvkm/subdev/fb/gp102.c (gp102_fb_vidmem_size)
+nouveau GSP boot:       nvkm/subdev/gsp/r535.c (r535_gsp_wpr, r535_gsp_oneinit)
+nouveau TU102 init:     nvkm/subdev/gsp/tu102.c
+WPR metadata struct:    include/nvrm/.../gsp_fw_wpr_meta.h
+RM_RISCV_UCODE_DESC:   include/nvrm/.../rmRiscvUcode.h
+GSP init args:          include/nvrm/.../gsp_init_args.h
+Sequencer opcodes:      include/nvrm/.../rmgspseq.h
+BLD struct:             include/nvfw/flcn.h (flcn_bl_dmem_desc_v2)
+HS firmware headers:    include/nvfw/hs.h, fw.h
+RPC function IDs:       include/nvrm/.../rpc_global_enums.h
+Message queue format:   r535.c (r535_gsp_msg, r535_gsp_msgq_wait, r535_gsp_cmdq_push)
+```

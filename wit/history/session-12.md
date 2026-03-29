@@ -1,94 +1,226 @@
-# Session 12: Kill the Dictionary
+# Session 12: WIT — From Scratch to Working Intelligence
 
-The lookup table was legacy thinking. Killed it.
+Biggest session in VoE history. Built an entire intelligence system,
+reviewed it twice, audited it against the lattice, and got retrieval working.
+
 
 ## What Happened
 
-Session 11 built the lattice intelligence end-to-end but 68.6% of words
-mapped to (0,0,0,0) because primes_lookup.h only had 333 words. The
-TODO said "expand to 2000 words" — but the discovery doc from the same
-session said "16 bond patterns are the seed, no dictionary."
+Started: "the lookup table is legacy thinking, kill it."
+Ended: a working wit that retrieves knowledge across 13 books and
+Webster's dictionary by coordinate lookup. "What is bitcoin" returns
+the Bitcoin Standard. "What is freedom" returns Plato and the Bible.
 
-The TODO contradicted the discovery. The dictionary was the problem,
-not the solution. This session resolved it.
 
-## What Changed
+## The Build
 
-### New: morpheme.h
-Suffix/prefix decomposer. 30+ suffix rules, 20+ prefix rules.
-Strips affixes, returns root + coordinate transform.
-- `-ing` → +T,+M (temporal ongoing)
-- `-ed` → +T (past)
-- `-ly` → +Q (quality modifier)
-- `un-` → flip Q sign
-- `anti-` → flip all signs
-- etc.
+### Phase 0: Kill the Dictionary
+- Removed primes_lookup.h (333-word dictionary)
+- Removed learner.h/c (65K vocab hash table)
+- Rewrote lattice_chat.c to use real learner
+- Morpheme decomposition (morpheme.h): 30+ suffix, 20+ prefix rules
+- Result: 0% at (0,0,0,0) — bootstrap problem dead
 
-Turns any derived word into root + transform. "unhappy" = "happy" + Q flip.
-"running" = root "run" + T+M delta. "beautifully" = root "beauti" + Q.
+### Phase 1: Fresh Start — WIT
+New folder: `wit/src/`. Everything rewritten from scratch.
 
-### Changed: learner.h/c
-- Added morpheme.h integration: `try_morpheme()` called before context fallback
-- Added `char_level_prior()`: wave byte average as last-resort nonzero fallback
-- Added `learner_reverse()`: coordinate → nearest words for generation
-- Priority chain for unknowns: morpheme → context+bond+position → char-level
-- Result: ZERO words ever map to (0,0,0,0)
+**Plan** (plan.md, 1196 lines):
+- All 17 architecture predictions with full derivations
+- τ,χ,μ,φ notation throughout
+- Build phases mapped to predictions
+- Evaluation metrics with pass/fail thresholds
 
-### Rewritten: lattice_chat.c
-- Removed `#include "primes_lookup.h"` — the dictionary is dead
-- Removed inlined Learner (was duplicate of learner.h/c with different format)
-- Uses real learner.h/c as PRIMARY coordinate source
-- Generation reverse-looks-up through learner vocabulary, not prime table
-- Ingest uses learner_process_word (morpheme + bond + context + char-level)
-- File format: now "LRNR" (from learner.h/c), not "VLRN" (old inlined)
-- Old .bin files incompatible — must re-ingest
+**Ported (with .d→.x rename):**
+wave.h, tokenize.h, distance.h, bonds.h, attention.h, morpheme.h
 
-### Updated: build script
-- Only builds lattice_chat (legacy targets removed)
-- Links learner.c explicitly
+**New:**
+- derive.h — pure function, no state. 64 primes, confidence levels,
+  force classification, antimatter sign-flip, position cycle
+- field.h — density (shell 1) + transitions (shell 1) + reverse index
+  (shell 2, 625 bins) with context fragments, dark energy, log-counts,
+  confidence weighting, hierarchical shells
+- main.c — ingest + interactive chat with query understanding
 
-## What Was Removed
+### Two Review Rounds (10 reviewers total)
 
-primes_lookup.h is no longer included anywhere in the pipeline.
-Its 333 hardcoded words are gone. The 65 NSM primes survive as
-anchors seeded into the learner at init (learner_seed_primes).
+**Round 1 (6 reviewers):**
+- Lattice consistency ✓
+- Legacy leaks: coord4 field naming, primes.md notation
+- Missing content: prime tables, morpheme rules, punctuation
+- Architecture: 81 bins fatal → upgraded to 625
+- μ-bias: proposed fixes validated by simulation
+- Build order: Phase 0 gate, split Phase 1, evaluation metrics
 
-Legacy files still exist but build script no longer compiles them:
-lattice.h, model.h, train.c, index.c, chat.c, wiki2wave.c
+**Round 2 (4 reviewers):**
+- Killed the smuggled vocab table (word→bin dedup map)
+- Confidence flows into field_observe
+- 625 bins math: hybrid (density/transitions shell 1, reverse shell 2)
+- Buildability: filled 8 blocking gaps
 
-## Test Results
+### Lattice Audit (5 components)
 
-- Self-test: PASS (5 varied responses from primes-only mode)
-- Morpheme: "happy" → (+1,0,+1,+1), "unhappy" → (+1,0,+1,-1) — Q flip works
-- Context: "the big running cat" → running gets T-dominant, cat gets M-dominant
-- Ingest: 5 sentences → 10/81 bins occupied, 0% at (0,0,0,0)
-- Round-trip: ingest → save → load → chat — vocabulary persists
+Found fundamental misalignments between code and lattice theory:
 
-## Architecture After This Session
+| Component | Finding | Severity |
+|-----------|---------|----------|
+| distance.h | L2 used everywhere, lattice says L-infinity (Chebyshev) | HIGH |
+| distance.h | RC decay degenerate at clause_depth=0 | CRITICAL |
+| distance.h | Capacitance = L2 norm, should be |μ| | HIGH |
+| attention.h | Bond-typed attention completely absent | HIGH |
+| bonds.h | Magnitude ignored in classify_bond | MEDIUM |
+| bonds.h | Mask 12/13 naming wrong | MEDIUM |
+| field.h | Dark energy backwards (empty bins = dead zones) | CONTRADICTION |
+| field.h | Density arrays computed but never read | DEAD CODE |
+| derive.h | No functional decomposition ("what does it DO?") | MAJOR |
+| derive.h | Position cycle ad-hoc (not lattice-derived) | MAJOR |
+| derive.h | Encoding leaks into payload | MODERATE |
+
+All fixed. The fixes came from reading mind/mind and asking
+"what does the lattice say this should be?"
+
+### The Antimatter Fix
+derive.h could not produce negative coordinates. The bond_default_regions
+table was all-positive. The position cycle was all-positive. 51 of 81
+bins were structurally unreachable.
+
+Fix: antimatter principle. When a dimension CHANGES (bond active), the
+new word takes the OPPOSITE sign. π̄ is the antimatter of π. After
+positive → negative. After negative → positive.
+
+Result: 21 bins → 38 bins. Entropy 3.62 → 4.66. Phase 0 gate PASSED.
+
+### The Equation
+Implemented f(a,b,c,d) = 2ᵃ·3ᵇ·5ᶜ·7ᵈ (Gödel numbering with prime
+bases). Used for candidate ranking in generation. Float-precision
+attention via float4 type + causal_sparse_attention_f().
+
+### Bond-Typed Generation
+Added force patterns to every word (DeriveResult.forces). During
+generation, predict expected forces → score candidates by force
+compatibility. The 16 bond patterns constrain which words can follow.
+
+### Query Understanding
+Force-typed response modes: short queries → RETRIEVE from field.
+Long queries → GENERATE by walking the polynomial. No English string
+matching — the coordinates determine the mode.
+
+### Retrieval That Works
+Context fragments stored per reverse index entry (64 chars of the
+source sentence). Retrieval searches for the target word, ranks by
+relevance (word position + frequency in context), deduplicates, returns
+top 3. Pulls from Austen, Mises, Rothbard, Plato, Bible, Darwin,
+Lakoff, Bitcoin Standard, Webster's dictionary.
+
+### Polynomial Generation
+Walk as running polynomial sum. Next word = residual (shift away from
+centroid). Hylo self-referential refinement: generate draft, re-derive
+each word with bidirectional context, replace mismatches, converge.
+3 iterations max.
+
+
+## Corpus
+
+**Curriculum designed** (curriculum.md): 10 language domains + 7 lattice-
+specific domains from schism corpus analysis.
+
+**Data ingested** (10.8M words, 63MB):
+- 16 synthetic domain files (24K words)
+- 13 Gutenberg classics: Pride & Prejudice, Huckleberry Finn, Origin of
+  Species, The Republic, Wealth of Nations, Journey to Center of Earth,
+  Frankenstein, Art of War, Meditations, Problems of Philosophy, War of
+  the Worlds, Alice in Wonderland, The Prince
+- 3 Rothbard: Anatomy of State, What Has Govt Done, Ethics of Liberty
+- 3 Mises: Human Action, Economic Calculation, (Socialism attempted)
+- Hayek: Road to Serfdom, Use of Knowledge in Society
+- Hoppe: Theory of Socialism and Capitalism
+- Pirsig: Lila
+- Lakoff: Metaphors We Live By
+- Pinker: How the Mind Works
+- Rand: Atlas Shrugged
+- Ammous: Bitcoin Standard
+- Webster's 1913 Unabridged Dictionary (4.5M words)
+- Roget's Thesaurus
+- King James Bible
+- Tao Te Ching
+- Joyce: Ulysses
+- Clean Code, Expert C Programming
+
+After pruning (min_count=3): 288K entries across 468/625 bins.
+
+
+## Theory Documents
+
+**integration.md** — How WIT integrates with nomos:
+- The walker IS the wit (same mechanism, different data)
+- ρ IS the polynomial (pipeline accumulation = attention)
+- Bond dispatch IS query understanding (native, not if/else)
+- Predictions 18-23 (6 new from walker-wit unification)
+- 8 "attention is all you need" moments
+
+**predictions-deep.md** — Deep chaining:
+- 13 new predictions (18-30) from following every dependency
+- Prediction 24: NLP tasks ARE bond patterns (the big one)
+- Prediction 25: LSTM gates = ρ arithmetic
+- Prediction 28: sentence boundaries = polynomial convergence
+- All chains converge to 3 fixed points: ρ, ƒ, walk format
+- 30 total predictions, 0 contradictions, 0 unused lattice properties
+
+
+## Files Created
 
 ```
-Input → tokenize → learner_process_word:
-  1. Known word? Return stored coord
-  2. Morpheme: strip affixes, root in vocab? Apply transform
-  3. Context + bond pattern + position bias → estimate
-  4. Char-level wave byte average → weak nonzero prior
-  → Born-index immediately, refine on re-encounter
-
-Generation → predict_next:
-  1. Causal sparse attention → context vector
-  2. Transition map → what follows this coordinate?
-  3. Density map → what's common near here?
-  4. Bond-guided dimension cycling → sentence coherence
-  5. learner_reverse → coordinate → nearest known word
+wit/src/
+├── wave.h            ported (.d→.x)
+├── tokenize.h        ported
+├── distance.h        ported + audit-fixed (L∞, RC, C=|μ|)
+├── bonds.h           ported + audit-fixed (magnitude, directed names)
+├── attention.h       ported + audit-fixed (Chebyshev, float4 output)
+├── morpheme.h        ported
+├── derive.h          NEW (primes, morpheme, forces, antimatter, confidence)
+├── field.h           NEW (density, transitions, reverse index, dark energy)
+├── main.c            NEW (ingest, retrieval, generation, query understanding)
+├── test_spread.c     NEW (Phase 0 gate — PASSES)
+├── check_bins.c      NEW (bin distribution diagnostic)
+├── build             build script
+├── plan.md           build plan (1196 lines, 30 predictions)
+├── integration.md    nomos integration theory
+├── predictions-deep.md  deep prediction chains (18-30)
+├── data/             curriculum + books + dictionary
+│   ├── curriculum.md
+│   ├── 16 domain .txt files
+│   └── books/ (27 books, ~63MB)
+└── wit.field         the ingested field (~100MB)
 ```
 
-No dictionary. No lookup table. The equation provides the seed (16 bonds).
-The primes provide anchors (65 words). Everything else is memetic.
 
-## Next Steps
+## Key Decisions
 
-1. Re-ingest Wikipedia with the new pipeline (expect dramatically better coverage)
-2. Check density distribution after full ingest — should be much more uniform
-3. vocab table size: still 64K slots, may need increase for 20GB
-4. coord_index redesign: still centroid-based (bag-of-words), needs walk-based
-5. Remaining build phases 3-5 from plan.md
+- No vocab table. Ever. Words live in coordinate bins. No word→anything map.
+- derive() is a pure function. No state. Confidence prevents cascade.
+- The field IS the model. Density + transitions + reverse index with context.
+- Retrieval = coordinate lookup. Generation = walk extension.
+- The equation f = 2ᵃ·3ᵇ·5ᶜ·7ᵈ is evaluated. Not just stored. Computed.
+- Bond patterns determine response mode. Not English string matching.
+- The walker IS the wit. Same mechanism. Different data.
+
+
+## What's Next
+
+The C prototype proves the architecture. The theory documents lay out
+30 predictions. The integration design shows how it maps to nomos.
+
+Immediate improvements:
+- Longer context fragments (64→256 chars)
+- Coordinate-based retrieval (use field_reverse_lookup, not linear scan)
+- Higher prune threshold (min_count=5 or 10)
+- Multiple contexts per word (not just first encounter)
+
+Bigger:
+- Walk format for language (literal .w files for sentences)
+- Bond-classified control bytes in language walks
+- ρ as 4D float (the polynomial state)
+- Full walk extension generation (O(1) per token)
+
+The prototype dissolves when the wit runs on nomos. The walker, the
+equation, and the walk format are the irreducible primitives.
+Everything else is scaffolding.

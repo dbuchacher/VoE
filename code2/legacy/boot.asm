@@ -33,11 +33,20 @@ SECTORS equ (SEC1 + SEC2)
 
 start:
     cli
+    ; normalize CS:IP — some BIOSes jump to 07C0:0000 instead of 0000:7C00
+    jmp 0x0000:.normed
+.normed:
     xor ax, ax
     mov ds, ax
     mov es, ax
     mov ss, ax
     mov sp, 0x7C00
+
+    ; print '1' via BIOS teletype — works on all hardware
+    mov ax, 0x0E31                 ; AH=0Eh, AL='1'
+    xor bx, bx
+    int 0x10
+
     sti
     mov [boot_drive], dl            ; BIOS passes boot drive in DL
 
@@ -45,6 +54,15 @@ start:
     in al, 0x92
     or al, 2
     out 0x92, al
+
+    ; ── check LBA support (like GRUB does) ───────────────────
+    mov ah, 0x41
+    mov bx, 0x55AA
+    mov dl, [boot_drive]
+    int 0x13
+    jc .error                       ; no LBA → can't proceed
+    cmp bx, 0xAA55
+    jne .error
 
     ; ── load kernel from disk ────────────────────────────────
     ; INT 13h AH=42h: extended read using DAP (LBA addressing)
@@ -71,8 +89,12 @@ start:
     jc .error
 %endif
 
+    ; BIOS teletype: 'D' = disk loaded
+    mov ax, 0x0E44
+    xor bx, bx
+    int 0x10
 %ifdef DEBUG
-    mov al, 'D'                     ; disk loaded
+    mov al, 'D'
     out 0xE9, al
 %endif
 
@@ -132,8 +154,12 @@ start:
     mov ax, [VESA_INFO + 16]        ; pitch (bytes per line)
     mov [FB_INFO + 6], ax
 
+    ; BIOS teletype: 'V' = VESA OK
+    mov ax, 0x0E56
+    xor bx, bx
+    int 0x10
 %ifdef DEBUG
-    mov al, 'V'                     ; VESA set
+    mov al, 'V'
     out 0xE9, al
 %endif
     jmp .go_pm
@@ -144,13 +170,22 @@ start:
 
 .no_vesa:
     mov dword [FB_INFO], 0          ; no framebuffer — genesis skips display
+    ; BIOS teletype: 'v' = VESA failed
+    mov ax, 0x0E76
+    xor bx, bx
+    int 0x10
 %ifdef DEBUG
-    mov al, 'v'                     ; VESA failed
+    mov al, 'v'
     out 0xE9, al
 %endif
 
     ; ── protected mode ───────────────────────────────────────
 .go_pm:
+    ; BIOS teletype: 'P' = about to enter protected mode
+    mov ax, 0x0E50
+    xor bx, bx
+    int 0x10
+
     cli
     lgdt [gdt_desc]
     mov eax, cr0
@@ -181,6 +216,10 @@ bits 16
 .error:
     mov al, '!'
     out 0xE9, al
+    ; BIOS teletype: '!' visible on any screen
+    mov ax, 0x0E21
+    xor bx, bx
+    int 0x10
     hlt
     jmp .error
 
