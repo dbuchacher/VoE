@@ -1,4 +1,4 @@
-; ƒ — the equation. Sealed.
+; ƒ — νόμος (nomos: the law). Sealed.
 ;
 ;   ƒ(T, D, M, Q) = T^a · D^b · M^c · Q^d
 ;

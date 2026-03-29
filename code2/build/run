@@ -19,14 +19,14 @@ DBGFLAG="-DDEBUG"
 
 nasm $DBGFLAG -f elf32 "[2] cpu.asm"      -o "$OUT/cpu.o"
 nasm $DBGFLAG -f elf32 "[3] handoff.asm"  -o "$OUT/handoff.o"
-nasm $DBGFLAG -f elf32 "[4] equation.asm" -o "$OUT/equation.o"
+nasm $DBGFLAG -f elf32 "[4] nomos.asm" -o "$OUT/nomos.o"
 nasm $DBGFLAG -f elf32 "[5] walker.asm"   -o "$OUT/walker.o"
 nasm $DBGFLAG -f elf32 "[6] genesis.asm"  -o "$OUT/genesis.o"
 
 ld -m elf_i386 -T build/link.ld \
     "$OUT"/cpu.o \
     "$OUT"/handoff.o \
-    "$OUT"/equation.o \
+    "$OUT"/nomos.o \
     "$OUT"/walker.o \
     "$OUT"/genesis.o \
     -o "$OUT/nomos.elf"
