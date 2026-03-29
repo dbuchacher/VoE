@@ -1,6 +1,6 @@
 ; ƒ — νόμος (nomos: the law). Sealed.
 ;
-;   ƒ(T, D, M, Q) = T^a · D^b · M^c · Q^d
+;   ƒ(τ, χ, μ, φ) = τᵃ·χᵇ·μᶜ·φᵈ
 ;
 ;   physics:    the fundamental law — quantum numbers in, interaction out
 ;   math:       coordinate → function resolver with lazy materialization
@@ -51,7 +51,7 @@ extern ψ
 ; ══════════════════════════════════════════════════════════════
 ; ƒ — resolve coordinates to function
 ;
-; edi=T, esi=D, edx=M, ecx=Q → rax = function pointer
+; edi=τ, esi=χ, edx=μ, ecx=φ → rax = function pointer
 ; Thread-safe: spinlock serializes JIT emission.
 ; ══════════════════════════════════════════════════════════════
 
@@ -67,7 +67,7 @@ global ƒ
     movsx r12d, di                         ; T
     movsx r13d, si                         ; D
     movsx r14d, dx                         ; M
-    movsx r15d, cx                         ; Q
+    movsx r15d, cx                         ; φ
 
     ; pack key: 4 × i16 → u64
     movzx rax, r12w
@@ -167,7 +167,7 @@ global ƒ
 ; ══════════════════════════════════════════════════════════════
 ; ε_atom — all coordinates even
 ;
-; Emits a call to μ with exponents as immediates.
+; Emits a call to ∏ with exponents as immediates.
 ; r12-r15 = coordinates, rbx = emit pointer.
 ; ══════════════════════════════════════════════════════════════
 
@@ -190,16 +190,16 @@ global ƒ
     ; compute exponents at emit time (coord / 2)
     mov eax, r12d
     sar eax, 1
-    mov r8d, eax                           ; T_exp
+    mov r8d, eax                           ; τ_exp
     mov eax, r13d
     sar eax, 1
-    mov r9d, eax                           ; D_exp
+    mov r9d, eax                           ; χ_exp
     mov eax, r14d
     sar eax, 1
-    mov r10d, eax                          ; M_exp
+    mov r10d, eax                          ; μ_exp
     mov eax, r15d
     sar eax, 1
-    mov r11d, eax                          ; Q_exp
+    mov r11d, eax                          ; φ_exp
 
     ; emit: mov r8d, T_exp  (41 B8 xx xx xx xx)
     mov byte [rbx], 0x41
@@ -225,9 +225,9 @@ global ƒ
     mov dword [rbx+2], r11d
     add rbx, 6
 
-    ; emit: mov eax, μ (B8 xx xx xx xx)
+    ; emit: mov eax, ∏ (B8 xx xx xx xx)
     mov byte [rbx], 0xB8
-    mov eax, μ
+    mov eax, ∏
     mov dword [rbx+1], eax
     add rbx, 5
 
@@ -240,15 +240,15 @@ global ƒ
 
 
 ; ══════════════════════════════════════════════════════════════
-; μ — runtime evaluator for T^a * D^b * M^c * Q^d
+; ∏ — runtime evaluator for τᵃ·χᵇ·μᶜ·φᵈ
 ;
 ; Called by JIT'd atom functions at walk time.
-; rdi=T_val, rsi=D_val, rdx=M_val, rcx=Q_val
+; rdi=τ_val, rsi=χ_val, rdx=μ_val, rcx=φ_val
 ; r8d=T_exp, r9d=D_exp, r10d=M_exp, r11d=Q_exp
 ; Returns result in rax.
 ; ══════════════════════════════════════════════════════════════
 
-μ:
+∏:
     push rbx
     push r12
     push r13
@@ -256,10 +256,10 @@ global ƒ
     push r15
 
     ; save dimension values (div clobbers rdx)
-    mov r12, rdi                           ; T_val
-    mov r13, rsi                           ; D_val
-    mov r14, rdx                           ; M_val
-    mov r15, rcx                           ; Q_val
+    mov r12, rdi                           ; τ_val
+    mov r13, rsi                           ; χ_val
+    mov r14, rdx                           ; μ_val
+    mov r15, rcx                           ; φ_val
 
     mov rax, 1                             ; accumulator
 
@@ -425,7 +425,7 @@ section .text
     js .write
 
     ; +P (read)
-    mov eax, r12d                          ; T magnitude
+    mov eax, r12d                          ; τ magnitude
     cmp eax, 3
     je .read_byte
     cmp eax, 7
@@ -549,7 +549,7 @@ section .text
 ;
 ;  π∮ = copy (memcpy): rdi=dest, rsi=src, edx=count
 ;  π̄∮̄ = fill (memset): rdi=dest, sil=byte/esi=dword, edx=count
-;  Width from |M|: 1=byte, 3=dword, >=5=qword
+;  Width from |μ|: 1=byte, 3=dword, >=5=qword
 
 ε_copy:
     test r12d, r12d
@@ -668,7 +668,7 @@ section .text
 ;  |Q|=13: +W negate           -W abs
 
 ε_test:
-    mov eax, r15d                          ; Q coordinate
+    mov eax, r15d                          ; φ coordinate
     mov ecx, eax                           ; preserve sign
     test eax, eax
     jns .dispatch
@@ -865,7 +865,7 @@ section .text
 ;  π̄δ̄: add                   π̄δ̄|3: subtract
 
 ε_filter:
-    mov eax, r15d                          ; Q
+    mov eax, r15d                          ; φ
     mov ecx, eax                           ; preserve sign
     test eax, eax
     jns .dispatch
@@ -978,8 +978,8 @@ section .text
 ;  Returns the sub-walk's result.
 
 ε_fold:
-    mov byte [rbx], 0xB8                   ; mov eax, φ
-    mov eax, φ
+    mov byte [rbx], 0xB8                   ; mov eax, λ
+    mov eax, λ
     mov dword [rbx+1], eax
     add rbx, 5
     mov byte [rbx], 0xFF                   ; call rax
@@ -987,7 +987,7 @@ section .text
     add rbx, 2
     ret
 
-φ:
+λ:
     push rbx
     push r12
     mov rbx, rsi                           ; save walk ptr
@@ -1170,8 +1170,8 @@ section .text
 ;  Returns count of nonzero bytes (like strlen).
 
 ε_until:
-    mov byte [rbx], 0xB8                   ; mov eax, τ
-    mov eax, τ
+    mov byte [rbx], 0xB8                   ; mov eax, ω
+    mov eax, ω
     mov dword [rbx+1], eax
     add rbx, 5
     mov byte [rbx], 0xFF                   ; call rax
@@ -1179,7 +1179,7 @@ section .text
     add rbx, 2
     ret
 
-τ:
+ω:
     xor eax, eax                           ; count = 0
 .loop:
     cmp byte [rdi + rax], 0                ; δ: test

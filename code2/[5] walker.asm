@@ -53,53 +53,53 @@ global ψ
 
     lea rax, [decode_table]
 
-    ; T = bits [7:6]  (time / temporal / sequence)
+    ; τ = bits [7:6]  (time / temporal / sequence)
     mov ecx, ebx
     shr ecx, 6
     cmp ecx, 2
-    jne .T
+    jne .τ
     movsx edi, byte [r12]
     inc r12
-    jmp .dec_D
-.T:
+    jmp .dec_χ
+.τ:
     movsx edi, byte [rax + rcx]
 
-.dec_D:
-    ; D = bits [5:4]  (distance / spatial / position)
+.dec_χ:
+    ; χ = bits [5:4]  (distance / spatial / position)
     mov ecx, ebx
     shr ecx, 4
     and ecx, 3
     cmp ecx, 2
-    jne .D
+    jne .χ
     movsx esi, byte [r12]
     inc r12
-    jmp .dec_M
-.D:
+    jmp .dec_μ
+.χ:
     movsx esi, byte [rax + rcx]
 
-.dec_M:
-    ; M = bits [3:2]  (mass / substance / content)
+.dec_μ:
+    ; μ = bits [3:2]  (mass / substance / content)
     mov ecx, ebx
     shr ecx, 2
     and ecx, 3
     cmp ecx, 2
-    jne .M
+    jne .μ
     movsx edx, byte [r12]
     inc r12
-    jmp .dec_Q
-.M:
+    jmp .dec_φ
+.μ:
     movsx edx, byte [rax + rcx]
 
-.dec_Q:
-    ; Q = bits [1:0]  (charge / quality / signal)
+.dec_φ:
+    ; φ = bits [1:0]  (charge / quality / signal)
     mov ecx, ebx
     and ecx, 3
     cmp ecx, 2
-    jne .Q
+    jne .φ
     movsx ecx, byte [r12]
     inc r12
     jmp .flags
-.Q:
+.φ:
     movsx ecx, byte [rax + rcx]
 
     ; ── flags: how arguments are encoded ─────────────────────

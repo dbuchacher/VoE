@@ -4,9 +4,9 @@ How you think. Read this first, always.
 
 ## The Equation
 
-  f(a,b,c,d) = T^a * D^b * M^c * Q^d
+  f(a,b,c,d) = τᵃ·χᵇ·μᶜ·φᵈ
 
-  T = time    D = distance    M = mass    Q = charge
+  τ = time    χ = distance    μ = mass    φ = charge
 
 Even coordinates / 2 = exponent. Odd coordinates = force active.
 Positive exponent = multiply. Negative = divide.
@@ -17,7 +17,7 @@ Same coordinates always produce the same result.
   3² + 4² = 5²    →    gates² + dims² = fill%
   9  + 16 = 25     →    gates² + bonds  = fill%
 
-  3 = gates (AND, OR, NOT). 4 = dimensions (T, D, M, Q).
+  3 = gates (AND, OR, NOT). 4 = dimensions (τ, χ, μ, φ).
   5² = 25 = fill% (Michaelis-Menten + Nyquist + Shannon).
   dims² = bonds because n² = 2ⁿ at n=4. Specific to d=4.
   The first Pythagorean triple IS the lattice identity.
@@ -91,7 +91,7 @@ an NP costume because nobody had the right coordinate system.
 Before the lattice, finding answers meant real-world experiments:
 build it, test it, iterate. Years. Millions of dollars. SEARCHING.
 
-The lattice provides the coordinate system (T, D, M, Q) that
+The lattice provides the coordinate system (τ, χ, μ, φ) that
 turns search into evaluation. Express the constraint as
 coordinates, compute, answer falls out. No search. No experiments.
 One line of C. Minutes.
@@ -188,22 +188,22 @@ tools, not results. Use them.
 ## Formula Is Representation-Invariant
 
 The lattice coordinate is the same whether you look at source, IR,
-assembly, or binary. D²M/T³ is (-6,+4,+2,0) in any language, at
+assembly, or binary. χ²μ/τ³ is (-6,+4,+2,0) in any language, at
 any optimization level, through any obfuscation. Compilation
 preserves the coordinate because the mul/div chain doesn't change.
 
 ## Encoding / Payload Boundary
 
-  Q/M = encoding    (how signals become bytes — baud/byte, 8b10b)
-  M/Q = payload     (how bytes carry meaning — packet payload, MTU)
+  φ/μ = encoding    (how signals become bytes — baud/byte, 8b10b)
+  μ/φ = payload     (how bytes carry meaning — packet payload, MTU)
 
 These are codex atoms — a dual pair, inverses of each other. They
 define the architectural boundary in any system that translates
 between representations.
 
-On x86: the equation and walker are the encoding layer (Q/M).
+On x86: the equation and walker are the encoding layer (φ/μ).
 They translate coordinates into x86 instructions. Everything
-above the walker is the payload layer (M/Q) — walks and loops
+above the walker is the payload layer (μ/φ) — walks and loops
 carrying meaning as coordinates. Encoding must not leak upward.
 
 Test: if a walk contains x86 assumptions (register width, calling
@@ -239,7 +239,7 @@ What would break the framework:
 - A useful operation outside the 16 bond patterns (needs >4 forces)
 - General-purpose 1024-bit SIMD shipping (breaks Cayley-Dickson prediction)
 - A 5th independent boolean gate (needs a 5th dimension)
-- A physical quantity not expressible as T^a D^b M^c Q^d
+- A physical quantity not expressible as τᵃ·χᵇ·μᶜ·φᵈ
 - Stable element 119 (breaks d=4 ceiling)
 - Proton decay observed (breaks confinement = completeness)
 
@@ -290,14 +290,14 @@ pairs. Lane crossing penalty at 128-bit = non-associativity boundary.
 
 GR and QM are the same equation through different channels:
 
-  GR from (T,D) — spacetime curvature, geodesics (T⁴D⁴ in codex)
-  QM from (M,Q) — phase, interference, entanglement
+  GR from (τ,χ) — spacetime curvature, geodesics (τ⁴χ⁴ in codex)
+  QM from (μ,φ) — phase, interference, entanglement
 
 Complex exponents span both regimes:
 
-  T^(½i)           delay line (phase advances with ln(T))
-  T^(½i) * D^(½i)  plane wave = light
-  T^(½+½i)         chirp (radar, sonar, OFDM)
+  τ^(½i)           delay line (phase advances with ln(τ))
+  τ^(½i) * χ^(½i)  plane wave = light
+  τ^(½+½i)         chirp (radar, sonar, OFDM)
 
 Real exponents = classical. Imaginary = quantum. Complex = both.
 Complete in 4D because quaternions are 4D (Cayley-Dickson).
@@ -414,7 +414,7 @@ independent derivation path. See findings/alpha137.md.
 Derived from 25% base fill (Michaelis-Menten + Nyquist + Shannon convergence)
 plus ring buffer parameters. Match within 0.03 percentage points.
 
-Caveat: fan_in=6.4 and Q=0.53 are asserted, not derived from first principles.
+Caveat: fan_in=6.4 and φ=0.53 are asserted, not derived from first principles.
 The 25% base fill IS independently derived (three equations, zero parameters).
 The exact split needs the parameters derived to be fully convincing.
 See findings/fill-ratio.md.
@@ -482,7 +482,7 @@ See findings/chirality.md.
 
 ## DNA / Genetic Code
 
-  4 bases (ACGT) = 4 dimensions (TDMQ)
+  4 bases (ACGT) = 4 dimensions (τχμφ)
   3 bases = 1 codon = 1 bond pattern
   64 codons (4³) ≈ 80 bonds (3⁴-1)
   20 amino acids = C(6,3) = 20 Riemann tensor components
@@ -587,11 +587,11 @@ management, VPNs, zero-trust, DDoS mitigation, NAT-as-security.
 Analogies that broke. The equation wasn't wrong — the story about it was.
 
 - "QM = lazy evaluation" — thunks are local and deterministic, Bell kills
-  it. But QM lives in the equation through complex exponents and (M,Q)
+  it. But QM lives in the equation through complex exponents and (μ,φ)
   dimensions. The framing was wrong, not the physics.
 - "GR = fill gradient" — scalar fill ≠ tensor gravity (Nordstrom: zero
-  light deflection). But GR lives in the equation through (T,D) dimensions
-  and geodesics at T⁴D⁴. The framing was wrong, not the physics.
+  light deflection). But GR lives in the equation through (τ,χ) dimensions
+  and geodesics at τ⁴χ⁴. The framing was wrong, not the physics.
 - Riemann via lattice — dead end. Z⁴ factorization not unique, Epstein
   zeta fails RH (Dahlquist 1952, Terras 1973). Conclusively closed.
 

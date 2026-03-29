@@ -26,20 +26,20 @@ The walks stay identical — same coordinates, native execution.
 THE FOUR DIMENSIONS
 ====================
 
-  T = time       (universal — every record has sequence position)
-  D = distance   (spatial, positional)
-  M = mass       (content, amplitude, value)
-  Q = charge     (category, type, polarity)
+  τ = time       (universal — every record has sequence position)
+  χ = distance   (spatial, positional)
+  μ = mass       (content, amplitude, value)
+  φ = charge     (category, type, polarity)
 
-Every data type assigns meaning to D, M, Q. T is always time.
+Every data type assigns meaning to χ, μ, φ. τ is always time.
 
-  text:   D=column,  M=line,     Q=section
-  image:  D=x,       M=y,        Q=channel
-  audio:  D=sample,  M=channel,  Q=frequency
-  3D:     D=x,       M=y,        Q=z
-  table:  D=row,     M=column,   Q=type
-  tree:   D=depth,   M=sibling,  Q=type
-  blob:   D=offset,  M=length,   Q=type
+  text:   χ=column,  μ=line,     φ=section
+  image:  χ=x,       μ=y,        φ=channel
+  audio:  χ=sample,  μ=channel,  φ=frequency
+  3D:     χ=x,       μ=y,        φ=z
+  table:  χ=row,     μ=column,   φ=type
+  tree:   χ=depth,   μ=sibling,  φ=type
+  blob:   χ=offset,  μ=length,   φ=type
 
 7 topologies. All ≤ 3 content dims + time = 4D. Can't exceed 4 —
 Hurwitz theorem. Same reason: 4 forces, 4 DNA bases, 4 dimensions.
@@ -89,7 +89,7 @@ you're thinking in human abstractions. Decompose: what's the math?
 
 The equation exists because CPUs are manufactured around an ISA
 (x86-64). It translates coordinates into machine code. On a chip
-that natively evaluated T^a*D^b*M^c*Q^d and read wave bytes
+that natively evaluated τ^a*χ^b*μ^c*φ^d and read wave bytes
 directly, this file dissolves. The walks stay identical — same
 bytes on x86, ARM, or a lattice-native chip. The equation is the
 only file that knows what hardware it's running on.
@@ -104,11 +104,11 @@ walk_sub dissolves. Above the walker, only coordinates exist.
 ENCODING / PAYLOAD BOUNDARY
 =============================
 
-The equation and walker are the encoding layer (Q/M in the codex).
-Everything above the walker is the payload layer (M/Q).
+The equation and walker are the encoding layer (φ/μ in the codex).
+Everything above the walker is the payload layer (μ/φ).
 
-  encoding (Q/M) = how coordinates become x86 instructions
-  payload  (M/Q) = what the coordinates mean
+  encoding (φ/μ) = how coordinates become x86 instructions
+  payload  (μ/φ) = what the coordinates mean
 
 The boundary is the walker. Below: x86, hand-engineered. Above:
 walks, every line is a coordinate. If a walk contains x86 assumptions
@@ -132,7 +132,7 @@ WALKS ARE WAVE BYTES
 A bond is one byte. The native format.
 
   Wave byte: 2 bits per dimension × 4 = 1 byte
-  [7:6]=T  [5:4]=D  [3:2]=M  [1:0]=Q
+  [7:6]=τ  [5:4]=χ  [3:2]=μ  [1:0]=φ
   00=0   01=+1   10=extended   11=-1
 
   0xC1 = (-1, 0, 0, +1) = port_write
@@ -142,7 +142,7 @@ A bond is one byte. The native format.
 
 Extended coordinates: 10 in any 2-bit field means "read next
 byte as signed i8 coordinate." Extension bytes follow the wave
-byte in T,D,M,Q order, only for dimensions that used 10.
+byte in τ,χ,μ,φ order, only for dimensions that used 10.
 Most bonds are shell-1 (no extensions). Higher magnitudes pay
 1 extra byte per extended dimension. This exists because x86
 has width-specific opcodes — a lattice-native chip wouldn't
@@ -151,7 +151,7 @@ need it.
 A walk is a byte array. Format per record:
 
   byte 0:   wave byte (the bond coordinate)
-  [ext]:    signed i8 per extended dimension (T,D,M,Q order)
+  [ext]:    signed i8 per extended dimension (τ,χ,μ,φ order)
   byte N:   flags byte
   bytes:    inline args (variable length per flags)
 
@@ -162,8 +162,8 @@ Flags byte: [reserved:2][arg2:2][arg1:2][arg0:2]
   11 = u64 (8 bytes inline)
 
   C1 05 E9 6F           port_write(0xE9, 'o')   4 bytes
-  C8 FD 28 [u32] [u32]  filld (M=-3 extended)   11 bytes
-  80 07 02 [u32]         rdd (T=+7 extended)      7 bytes
+  C8 FD 28 [u32] [u32]  filld (μ=-3 extended)   11 bytes
+  80 07 02 [u32]         rdd (τ=+7 extended)      7 bytes
 
 Walker control (reserved bytes >= 0xFC, not bonds):
   0xFE + u32 = skip_z:    skip N bytes forward if pipeline == 0
@@ -181,10 +181,10 @@ Coordinates derived from articulatory phonetics (Compute First —
 not designed, measured). Each dimension maps to a physical
 property of how humans produce sound:
 
-  T: case       (+1=lower, -1=upper — visual, not phonetic)
-  D: place      (+1=front/labial, 0=central/alveolar, -1=back/velar)
-  M: openness   (+1=vowel, 0=fricative, -1=stop/nasal)
-  Q: voicing    (+1=voiced, -1=voiceless)
+  τ: case       (+1=lower, -1=upper — visual, not phonetic)
+  χ: place      (+1=front/labial, 0=central/alveolar, -1=back/velar)
+  μ: openness   (+1=vowel, 0=fricative, -1=stop/nasal)
+  φ: voicing    (+1=voiced, -1=voiceless)
 
   'a' = (+1, +1, +1, +1) = hylo. Front open voiced lowercase.
   The simplest vocalization maps to the most fundamental bond.
@@ -202,20 +202,20 @@ extends one dimension to disambiguate. Not a bug — the lattice knows
 which letters are the same sound.
 
 Classification = check one dimension (one gate bond):
-  is_letter    = M != 0
-  is_vowel     = M == +1
-  is_stop      = M == -1
-  is_voiced    = Q > 0
-  is_front     = D > 0
-  case_flip    = negate T (XOR 0x80 on wave byte)
-  voice_flip   = negate Q (XOR 0x02 on wave byte)
+  is_letter    = μ != 0
+  is_vowel     = μ == +1
+  is_stop      = μ == -1
+  is_voiced    = φ > 0
+  is_front     = χ > 0
+  case_flip    = negate τ (XOR 0x80 on wave byte)
+  voice_flip   = negate φ (XOR 0x02 on wave byte)
 
-Voicing pairs are Q flips, same as case pairs are T flips:
+Voicing pairs are φ flips, same as case pairs are τ flips:
   b ↔ p, d ↔ t, g ↔ k, v ↔ f, z ↔ s — all differ by one coordinate.
   The lattice treats case and voicing identically.
 
 Rendering: SDF function evaluated at the coordinate. One walk,
-six inputs (pixel_x, pixel_y, T, D, M, Q), one output (distance).
+six inputs (pixel_x, pixel_y, τ, χ, μ, φ), one output (distance).
 GPU evaluates all pixels in parallel. No font file — the walk IS
 the font. glyph_sdf() is ~20-30 bonds. See walks/sdf.asm (not
 built yet, build order item 5).
@@ -447,7 +447,7 @@ Wireless has two modes on the same radio:
 Separation is cryptographic, not firewall. Different keys = different
 loops. A flux peer can't produce valid records for a local loop.
 
-Bytes [48:63] are the Q dimension — meaning depends on loop context:
+Bytes [48:63] are the φ dimension — meaning depends on loop context:
 
   Local loops (keyboard, display, inter-core):
     [48:55] scratch_a   reader's own cursor (per-reader, core-safe)
@@ -458,8 +458,8 @@ Bytes [48:63] are the Q dimension — meaning depends on loop context:
     [52:55] identity    pointer to Ed25519 owner key
     [56:63] seqno       causal ordering across machines without clock sync
 
-Same bytes, different dimensional meaning — same as D=column in text,
-D=x in image, D=sample in audio. The walk that operates the loop
+Same bytes, different dimensional meaning — same as χ=column in text,
+χ=x in image, χ=sample in audio. The walk that operates the loop
 knows which context. No runtime flag. No check. Structural.
 
 A local loop CAN'T leak network identity (the bytes are scratch).
@@ -526,7 +526,7 @@ Data indexed at write time. Import IS indexing. No re-indexing.
 
 The P vs NP asymmetry IS the architecture. Most "search"
 problems were never NP — they were P problems without the
-right coordinate system. Express the constraint as T,D,M,Q
+right coordinate system. Express the constraint as τ,χ,μ,φ
 coordinates, compute, answer falls out. No search entered.
 See mind/mind "Compute First" and drafts/p-np.md.
 

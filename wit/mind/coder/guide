@@ -3,7 +3,7 @@ How to Program the Lattice
 
 You have 4 numbers. They make everything.
 
-T = time    D = distance    M = mass    Q = charge
+τ = time    χ = distance    μ = mass    φ = charge
 
 Even coordinates = math (atoms). Odd coordinates = control flow (bonds).
 That's it. The rest is composition.
@@ -50,8 +50,8 @@ You never write machine code. You write coordinates.
 
 Example: "I need throughput"
   $ grep throughput codex.txt
-  A  DM/T  ...  throughput  Fe(26)  ...
-  $ grep "DM/T" lattice.txt   (or: ./gen 1 1 1 0)
+  A  χμ/τ  ...  throughput  Fe(26)  ...
+  $ grep "χμ/τ" lattice.txt   (or: ./gen 1 1 1 0)
   (-2,+2,+2,0)
 
 Now write a record:
@@ -79,7 +79,7 @@ Everything is a 32-byte record:
   bytes 16-23:  i64        arg1
   bytes 24-31:  i64        arg2
 
-Args map to dimensions: arg0=T, arg1=D, arg2=M, arg3=Q.
+Args map to dimensions: arg0=τ, arg1=χ, arg2=μ, arg3=φ.
 Unused dimensions get 0 in the arg slots.
 
 
@@ -91,10 +91,10 @@ Coordinates use 2x encoding: coordinate 4 means exponent +2, coordinate -6
 means exponent -3.
 
   coordinates      formula      result
-  (-2, +2, 0, 0)   D/T          arg1 / arg0
-  (-2, 0, +2, 0)   M/T          arg2 / arg0
-  (-4, +2, +2, 0)  DM/T^2       arg1 * arg2 / arg0^2
-  (-6, +4, +2, 0)  D^2*M/T^3    arg1^2 * arg2 / arg0^3
+  (-2, +2, 0, 0)   χ/τ          arg1 / arg0
+  (-2, 0, +2, 0)   μ/τ          arg2 / arg0
+  (-4, +2, +2, 0)  χμ/τ²       arg1 * arg2 / arg0^2
+  (-6, +4, +2, 0)  χ²·μ/τ³    arg1^2 * arg2 / arg0^3
   (0, 0, 0, 0)     1            identity — returns arg0 unchanged
 
 Division by zero returns 0. Multiplications happen before divisions (precision).
@@ -106,10 +106,10 @@ Division by zero returns 0. Multiplications happen before divisions (precision).
 Bonds have odd coordinates. Which dimensions are odd selects the force pattern.
 Sign selects direction: + = consume/forward, - = produce/backward.
 
-  T odd → π (read)   π = memory read    π̄ = memory write
-  D odd → ∘ (call)   ∘ = call function   ∘̄ = return/curry
-  M odd → ∮ (loop)   ∮ = loop/advance    ∮̄ = rewind/increment
-  Q odd → δ (test)   δ = test/compare    δ̄ = guard/select
+  τ odd → π (read)   π = memory read    π̄ = memory write
+  χ odd → ∘ (call)   ∘ = call function   ∘̄ = return/curry
+  μ odd → ∮ (loop)   ∮ = loop/advance    ∮̄ = rewind/increment
+  φ odd → δ (test)   δ = test/compare    δ̄ = guard/select
 
 The 16 patterns (bitmask π=1 ∘=2 ∮=4 δ=8):
 
@@ -190,7 +190,7 @@ Three kinds of records, one flat array, one walker.
 
 Small things compose into bigger things with no new machinery.
 
-  atom:      one monomial         T^a * D^b * M^c * Q^d
+  atom:      one monomial         τᵃ·χᵇ·μᶜ·φᵈ
   path:      array of records     polynomial (sum of monomials + bonds)
   program:   path + bonds         Turing-complete computation
 
@@ -203,7 +203,7 @@ A record is a record. The coordinates determine what it does.
 
 A shell-1 coordinate fits in 1 byte. Two bits per dimension:
 
-  bits [7:6] = T    bits [5:4] = D    bits [3:2] = M    bits [1:0] = Q
+  bits [7:6] = τ    bits [5:4] = χ    bits [3:2] = μ    bits [1:0] = φ
   00 = 0    01 = +1    11 = -1
 
 Every shell-1 bond has a unique byte:
@@ -243,8 +243,8 @@ A 64-byte cache line IS a sedenion (16 components x 4 bytes).
 The math is the hardware.
 
 Width variants of the same atom:
-  speed = D/T at 64-bit  → integer division
-  speed = D/T at 256-bit → 256-bit division (or 4 speeds in parallel)
+  speed = χ/τ at 64-bit  → integer division
+  speed = χ/τ at 256-bit → 256-bit division (or 4 speeds in parallel)
 
 Same coordinates. Different width. Different precision.
 
@@ -252,9 +252,9 @@ Same coordinates. Different width. Different precision.
 10. THE FULL FORMULA
 =====================
 
-  atoms  = multiplication  (monomials)          T^a * D^b * M^c * Q^d
+  atoms  = multiplication  (monomials)          τᵃ·χᵇ·μᶜ·φᵈ
   paths  = addition        (polynomials)         sum of atoms across records
-  gates  = logic           (boolean)             T=NOT, D=OR, M=AND, Q=SIGNAL
+  gates  = logic           (boolean)             τ=NOT, χ=OR, μ=AND, φ=SIGNAL
   bonds  = control flow    (Turing complete)     π, ∘, ∮, δ forces
 
 Together: any math function (polynomial approximation), any boolean function
@@ -302,9 +302,9 @@ Statelessness
 ====================
 
 Find a formula:    grep "bandwidth" codex.txt
-Find coordinates:  grep "M/T" lattice.txt  OR  ./gen 0 0 1 -1
+Find coordinates:  grep "μ/τ" lattice.txt  OR  ./gen 0 0 1 -1
 Look up a bond:    grep "port_read" codex.txt
 Generate lattice:  ./gen --degree 4     (atoms at degree 4)
                    ./gen --bonds 1      (fundamental bonds)
                    ./gen --all          (everything to degree 21)
-Single atom:       ./gen 1 1 1 0        (formula for T*D*M)
+Single atom:       ./gen 1 1 1 0        (formula for τ·χ·μ)
