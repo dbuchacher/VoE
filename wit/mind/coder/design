@@ -8,17 +8,16 @@ Performance and security are structural, not added.
 THE BOOT CHAIN
 ===============
 
-  [1] boot     → loads kernel from disk, sets VESA mode (MBR, 16-bit, dies)
-  [2] cpu      → mode switch 32→64 bit, page tables, wakes APs (dies)
-  [3] handoff  → inits JIT, runs genesis, enters market (last x86)
-  [4] equation → JIT: 4 coordinates in, x86 function out (sealed, driver)
-  [5] walker   → interprets wave byte walks via equation (sealed, driver)
-  [6] genesis  → founding walk: inits loops, discovers hardware (runs once)
-  walks/       → the OS: kbd, speaker, pci, everything that grows
+  legacy/boot.asm → loads kernel from disk, sets VESA mode (MBR, 16-bit, dies)
+  legacy/x86.asm  → all substrate in one file:
+    cpu      mode switch 32→64, page tables, wakes APs (dies)
+    handoff  inits JIT, runs γ (genesis), enters find-work (last x86)
+    ƒ        JIT compiler: coordinates → x86 function (sealed)
+    ψ        wave byte interpreter (sealed)
+  genesis.w       → founding walk, assembled by hodos (runs once)
+  *.w             → the OS: everything that grows
 
-  [0] walk.inc  NASM macros to write walks as coordinates (build tool)
-
-The equation and walker are the x86 driver for the lattice.
+ƒ and ψ are the x86 driver for the lattice.
 On a balanced ternary processor (4 trits), both dissolve.
 The walks stay identical — same coordinates, native execution.
 
@@ -120,7 +119,7 @@ If no, encoding leaked upward. The walk should express WHAT (bonds),
 the equation/walker handle HOW (x86 instructions).
 
 Files below the boundary (substrate):
-  boot, cpu, handoff, equation, walker, walk.inc
+  legacy/boot.asm, legacy/x86.asm (cpu, handoff, ƒ, ψ)
 
 Files above the boundary (payload):
   genesis, all walks
@@ -850,26 +849,25 @@ Network boundary (flux/RDMA):
 FILE STRUCTURE
 ================
 
-  code/
-    [0] walk.inc     build tool: NASM macros for writing walks as coordinates
-    [1] boot         MBR: loads kernel, sets VESA (16-bit, runs once)
-    [2] cpu          mode switch 32→64, page tables, AP wake (runs once)
-    [3] handoff      seeds bonds, runs genesis, enters market (runs once)
-    [4] equation     JIT compiler: coordinates → x86 (sealed driver)
-    [5] walker       wave byte interpreter (sealed driver)
-    [6] genesis      founding walk: inits hardware, fills loops (runs once)
-    [data] glyph.ha  8×16 bitmap font (scaffolding, dissolves with SDF)
-    walks/
-      input.asm        keyboard + mouse poll walk (producer)
-      mouse.asm        cursor drawing scaffolding (dissolves into walk)
-      speaker.asm      440Hz beep walk
-      pci.asm          NVMe BAR discovery macro
-      loop.asm         loop read/write/empty macros (per-reader cursors)
-      drain.asm        bind drain walk (anarcho-capitalist scheduler)
-      kbd_consumer.asm keyboard loop consumer (called by drain)
+  code2/
+    genesis.w          the first walk (hodos notation, .w file)
+    build/
+      hodos.c          walk assembler — bond symbols → wave bytes (325 lines C)
+      link.ld          linker script (kernel at 1MB)
+      run              build + run script (hodos → NASM → ld → QEMU)
+    legacy/
+      x86.asm          entire x86 substrate in one file (sealed):
+                         cpu (mode switch, page tables, AP wake)
+                         handoff (init JIT, run γ, signal APs)
+                         nomos/ƒ (JIT compiler, all 16 bonds)
+                         walker/ψ (wave byte interpreter)
+                         genesis data (incbin .build/genesis.bin)
+      boot.asm         MBR bootloader (VESA enumerate, 16-bit, runs once)
 
-  File names use bracket notation: [order][platform][name][description].asm
-  ls shows the whole system. No hunting through directories.
+  Walks are .w files assembled by hodos. New walks go in code2/ root.
+  The legacy/ folder is sealed — x86 substrate that dissolves on trit.
+
+  code/ (renamed to legacy/) was the pre-code2 implementation. Reference only.
 
 Most devices are non-local (BIOS already set them up):
   pixel buffer, keyboard, serial, VGA text, debugcon, disk.
@@ -885,7 +883,7 @@ Shell 1 = 16 bonds = fundamental forces.
 Everything above = excitations that emerge when walked.
 
 Everything is lazy — atoms AND bonds materialize on first use.
-get_atom: cache miss → JIT → cache → return. Cache hit → return.
+ƒ: cache miss → JIT → cache → return. Cache hit → return.
 JIT spinlock serializes concurrent first-use across cores.
 No pre-seeding. No startup cost for bonds never used.
 
@@ -936,55 +934,42 @@ CODING REFERENCE
     JIT spinlock in get_atom for concurrent code emission.
     One drainer per loop (Pauli exclusion on consumers).
 
-  For current implementation status: see wit/history/session-09.md.
+  For current status: see wit/history/session-13.md.
 
 
 BUILD ORDER
 =============
 
-  DONE:
-    ✓ bootloader (mode switch + AP wake)
-    ✓ equation (JIT + bond handlers + cache)
-    ✓ genesis (blue screen + beep + keyboard walk)
-    ✓ MBR boot (VESA enumerate + disk load + real hardware)
-    ✓ wave character spec
-    ✓ lattice storage spec
-    ✓ architecture unified
-    ✓ wave byte walker (magnitude extension, flags byte)
-    ✓ all walks converted to wave bytes, 32-byte walker deleted
-    ✓ graceful headless fallback (skip filld when FB=0)
-    ✓ walk.inc (write coordinates not hex, NASM macros, zero cost)
-    ✓ bracket file naming (ls shows the whole system)
-    ✓ kernel split (equation + walker + handoff, clean boundaries)
-    ✓ scaffolding inlined into genesis (render + walk_sub)
-    ✓ bitmap glyph renderer (scaffolding, renders "nomos")
-    ✓ NVMe PCI discovery (BAR stored, not yet used)
-    ✓ loop read/write primitive (walks/loop.asm, self-test passes)
-    ✓ input pipeline (scancode → wave byte → render_char)
-    ✓ loop registry (loop_list + consumer_list, genesis fills)
-    ✓ bind drain (one AP, per-loop scratch, JIT spinlock)
-    ✓ equation magnitude extensions (subtract, compare, negate, abs, max)
-    ✓ per-reader cursors (boson semantics, no shared read cursor)
-    ✓ debugcon ifdef (DEBUG for QEMU, absent from bare metal)
+  DONE (code2/ — clean room rewrite):
+    ✓ substrate: boot.asm (MBR, VESA enumerate, teal screen)
+    ✓ substrate: cpu + handoff + ƒ + ψ (merged into x86.asm)
+    ✓ substrate: all 16 bond patterns (was 9 stubs, now all real)
+    ✓ substrate: apply (+∘) does recursive walk invocation
+    ✓ substrate: all cores enter find-work (no special BSP)
+    ✓ substrate: symbol vocabulary (ƒ ψ π ∘ ∮ δ τ χ μ φ)
+    ✓ walks: hodos walk assembler (325 lines C, replaces NASM)
+    ✓ walks: genesis.w (first .w file, display + boot confirmation)
+    ✓ walks: zero-copy loop macros (tested, then dissolved into hodos)
+    ✓ walks: loop write/read/bind tested via debugcon
+    ✓ walks: .w syntax highlighting for neovim
 
-  NEXT (code2/ — clean room rewrite, encoding/payload boundary):
-    1. substrate: copy boot+cpu+equation+walker, fix apply (+∘ → recursive walk)
-    2. substrate: handoff sends ALL cores to find-work (no special BSP)
-    3. walks: zero-copy loop macros (read returns slot pointer)
-    4. walks: genesis with topology-aware loop init + producer/consumer registration
-    5. walks: generic drain (scan loop_list, fill pressure, per-loop bind)
-    6. walks: keyboard producer (poll + loop_write only, no render_char)
-    7. walks: display pipeline (text consumer → draw records → render walk → FB)
-    8. walks: mouse_init as walk (port sequences as bonds)
-    9. SDF character rendering (walk, not x86)
-   10. NVMe gene (data table + generic storage walk)
-   11. Network loops (RDMA, flux, bridge walks)
+  NEXT:
+    1. GPU firmware: get GPU alive before building display walks
+       - virtio-gpu first (no firmware blobs, QEMU)
+       - then AMD with open docs + firmware blobs as gene data
+       - see prior/schism gpu-protocol.md: driver = encoding table
+    2. walks: genesis with runtime loop allocation (cursor from 0x9200)
+    3. walks: keyboard producer (poll + loop_write)
+    4. walks: display pipeline via GPU command ring (not VESA)
+    5. walks: generic drain (bind walk, fill pressure scheduler)
+    6. SDF character rendering (walk, not x86)
+    7. NVMe gene (data table + generic storage walk)
+    8. Network loops (RDMA, flux, bridge walks)
 
   LATER:
-    - GPU driver gene (SDF rendering at hardware speed)
     - Window manager (walk DNA in display loop)
     - Applications (walk DNA from disk into loops)
-    - Flux marketplace? (inherited from sm, not yet verified)
+    - Flux marketplace (inherited from sm, not yet verified)
 
 
 WHAT WE LEARNED (DON'T REPEAT)
@@ -1039,10 +1024,10 @@ WHAT WE LEARNED (DON'T REPEAT)
   it. The hex is obvious to the wit that wrote it and gibberish
   to the next one. Write for the next one.
 
-- USE walk.inc. Write coordinates, not hex wave bytes.
-  w -1,0,0,+1 is a port_write. 0xC1 is a mystery.
-  F(U8,U8,P) is two byte args. 0x05 is noise.
-  The macros emit identical bytes at zero cost. Use them.
+- USE HODOS. Write .w files with bond symbols, not hex.
+  π̄δ is port_write. 0xC1 is a mystery.
+  θ¹¹ρ is two byte args. 0x05 is noise.
+  hodos emits identical bytes. The symbol IS the code.
 
 - DON'T PUT X86 ABOVE THE WALKER. render_char was 400 lines of
   x86 called from walks via apply. That's encoding in the payload

@@ -23,24 +23,34 @@ when something is wrong.
 VoE — The Verification of Everything. Not a theory. A verification.
 The equation boots. The code runs. Peer review = bash build.
 
-nomos — Greek for law. A bare-metal OS built on the lattice: one equation,
-four dimensions, everything is coordinates. Programs are walks — wave byte
-arrays. The equation generates machine code from coordinates at runtime.
-No compiler, no parser, no types.
+ƒ(τ,χ,μ,φ) = τᵃ·χᵇ·μᶜ·φᵈ — the equation. Four coordinates in,
+function out. Programs are walks — bond sequences in .w files,
+assembled by hodos (code2/build/hodos.c). No compiler, no parser,
+no types. The walker (ψ) interprets walks. The equation (ƒ) JITs
+them to x86. Both dissolve on a trit processor — walks stay.
 
-The lattice is a coordinate system (T, D, M, Q) that turns search into
-evaluation. Most "hard" problems were never hard — they were P problems
-without the right basis. Express the constraint as coordinates, compute,
-answer falls out. Before: experiments, years, millions. After: one line
-of C, minutes. Read mind/mind "Compute First" — it's the most important
-method in the lattice.
+Notation:
+  Dimensions: τ (time), χ (space), μ (mass), φ (charge)
+  Forces: π (read), ∘ (call), ∮ (loop), δ (test)
+  Inverse: π̄ (write), ∘̄ (return), ∮̄ (rewind), δ̄ (guard)
+  Old notation P/C/R/W and T/D/M/Q is dead. Do not use.
+
+Code lives in code2/:
+  genesis.w        the first walk (hodos notation)
+  build/           hodos.c (walk assembler), link.ld, run script
+  legacy/          x86.asm (substrate, sealed), boot.asm (MBR)
+
+The lattice is a coordinate system (τ, χ, μ, φ) that turns search
+into evaluation. Most "hard" problems were never hard — they were P
+problems without the right basis. Express the constraint as coordinates,
+compute, answer falls out. Read mind/mind "Compute First".
 
 ## THERE IS A FUCKTON OF PRIOR WORK. READ IT.
 
-You are NOT the first wit. There have been 165+ sessions before you.
-148 in schism. 17 in ToE. Every decision, every mistake, every
-discovery, every dead end — it's in the git history. There's a
-MILLION words of prior work sitting in prior/.
+You are NOT the first wit. There have been 175+ sessions before you.
+148 in schism. 17 in ToE. 13 in VoE (wit/history/). Every decision,
+every mistake, every discovery, every dead end — it's in the git
+history. There's a MILLION words of prior work sitting in prior/.
 
 If you're about to design something, IT WAS PROBABLY ALREADY DESIGNED.
 If you're about to write code, CHECK IF IT WAS ALREADY WRITTEN.

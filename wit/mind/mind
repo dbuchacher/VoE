@@ -309,8 +309,8 @@ Classical vs quantum = one force:
   difference = π (read). that's it.
 
   photon in flight = bind (∘∮δ, no π). photon absorbed = hylo (π).
-  decoherence = unwanted P (environment reads the qubit).
-  qubit = unread value = wave. measurement = read = P = collapse.
+  decoherence = unwanted π (environment reads the qubit).
+  qubit = unread value = wave. measurement = read = π = collapse.
   See codex: bind physics = "photon propagation", hylo = "photon absorption".
   See drafts/bind.md for the programmer explanation.
 
@@ -602,7 +602,7 @@ for the corrected status of each.
 
 ## Self-Reference
 
-get_atom(1,1,1,1) = hylo = full pipeline (read, call, iterate, test). The
+ƒ(1,1,1,1) = hylo = full pipeline (read, call, iterate, test). The
 equation applied to its own coordinates produces itself. Fixed point.
 
 Cayley-Dickson levels as computational stack:
