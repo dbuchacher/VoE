@@ -27,12 +27,27 @@
 ²   equ 2
 ³   equ 3
 
-; ── θ(a0, a1, a2) — arg encoding ─────────────────────────────
+; ── θ — arg encoding constants ────────────────────────────────
 ;
-;   packs 3 arg shells into one byte (2 bits each)
-;   bit 7: dereference arg0 (follow pointer)
-;   bit 6: dereference arg1 (follow pointer)
+;   each θ packs 3 arg shells into one byte (2 bits each)
+;   suffix · = dereference (bit 7 for arg0, bit 6 for arg1)
+;
+;   read as: θ{arg0}{arg1}{arg2}
+;   ρ = pipeline  ¹ = 1 byte  ² = 4 bytes  ³ = 8 bytes
 
+θρρρ    equ 0x00
+θ¹ρρ    equ 0x01
+θ¹¹ρ    equ 0x05
+θ²ρρ    equ 0x02
+θ²²ρ    equ 0x0A
+θ²³ρ    equ 0x0E
+θρ¹ρ    equ 0x04
+θρ²ρ    equ 0x08
+θρ²²    equ 0x28
+θ²ρρ·   equ 0x82                ; deref arg0
+θρ²ρ·   equ 0x48                ; deref arg1
+
+; θ macro for unusual combinations (brackets + commas = NASM syntax)
 %define θ(a0,a1,a2) ((a0)|((a1)<<2)|((a2)<<4))
 
 ; ── w τ, χ, μ, φ — wave byte from coordinates ────────────────
