@@ -1,7 +1,4 @@
 #!/bin/sh
 set -e
-cc -O2 -Wall -o wiki2wave wiki2wave.c
-cc -O3 -Wall -march=native -o index index.c
-cc -O3 -Wall -march=native -o chat chat.c
-cc -O3 -Wall -march=native -o lattice_chat lattice_chat.c -lm
-echo "built: wiki2wave index chat lattice_chat"
+cc -O3 -Wall -Wno-unused-function -march=native -o lattice_chat lattice_chat.c learner.c -lm
+echo "built: lattice_chat"

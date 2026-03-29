@@ -744,6 +744,26 @@ void learner_free(Learner *lr) {
     free(lr);
 }
 
+/*
+ * Try morpheme decomposition: strip affixes, look up root,
+ * apply coordinate transform. Returns 1 if successful (root
+ * found in vocabulary), 0 if root not found.
+ */
+static int try_morpheme(Learner *lr, const char *norm, int len,
+                        coord4 *out) {
+    MorphemeResult mr = morpheme_analyze(norm, len);
+    if (!mr.found_affix) return 0;
+
+    /* look up the root in vocabulary */
+    int slot = vocab_find_slot(lr, mr.root, mr.root_len);
+    if (slot < 0) return 0;
+    if (lr->vocab[slot].word[0] == '\0') return 0;
+
+    /* found the root — apply transform */
+    *out = morpheme_apply(lr->vocab[slot].coord, &mr);
+    return 1;
+}
+
 coord4 learner_process_word(Learner *lr,
                             const char *word, int len,
                             const coord4 *context_window, int ctx_len) {
@@ -761,9 +781,8 @@ coord4 learner_process_word(Learner *lr,
 
     int slot = vocab_find_slot(lr, norm, len);
     if (slot < 0) {
-        /* table full — return origin. should never happen. */
-        coord4 zero = { .t = 0, .d = 0, .m = 0, .q = 0 };
-        return zero;
+        /* table full — return char-level prior, not zero. */
+        return char_level_prior(norm, len);
     }
 
     WordEntry *e = &lr->vocab[slot];
@@ -799,23 +818,35 @@ coord4 learner_process_word(Learner *lr,
     }
 
     /*
-     * UNKNOWN WORD — first encounter. Born-index it.
+     * UNKNOWN WORD — first encounter.
      *
-     * 1. Determine the previous word's coordinate (last in context window).
-     * 2. Estimate this word's coordinate from context + bond + position.
-     * 3. Store immediately with confidence = 1.
-     * 4. Store the born_context (first-encounter coordinate, never changes).
+     * Priority chain for initial coordinate estimate:
+     *   1. Morpheme decomposition (strip affixes, look up root)
+     *   2. Context + bond pattern + position bias
+     *   3. Character-level wave byte prior (weak but nonzero)
      *
-     * This is the "born-indexed" property: the word gets a coordinate
-     * the INSTANT it is first seen. No need to wait for more data.
-     * The estimate may be rough, but subsequent encounters will refine it.
+     * All three can contribute. Morpheme gives the best signal
+     * when a root is found. Context gives grammatical constraint.
+     * Char-level ensures we never return (0,0,0,0).
      */
     coord4 prev = { .t = 0, .d = 0, .m = 0, .q = 0 };
     if (ctx_len > 0)
         prev = context_window[ctx_len - 1];
 
-    coord4 est = estimate_coordinate(context_window, ctx_len, prev);
+    coord4 est;
+    int have_morpheme = try_morpheme(lr, norm, len, &est);
 
+    if (!have_morpheme) {
+        /* no affix match or root not found — use context estimate */
+        est = estimate_coordinate(context_window, ctx_len, prev);
+
+        /* if context estimate is all zeros, use char-level prior */
+        if (est.t == 0 && est.d == 0 && est.m == 0 && est.q == 0) {
+            est = char_level_prior(norm, len);
+        }
+    }
+
+    /* born-index: store immediately */
     vocab_insert(lr, slot, norm, len, est, est, 1);
     lr->total_born++;
 
@@ -1024,4 +1055,79 @@ fail_lr:
 fail:
     fclose(f);
     return NULL;
+}
+
+
+/* ================================================================
+ * Reverse lookup — coordinate → word
+ * ================================================================
+ *
+ * Scans the entire vocabulary to find the N closest words to a
+ * target coordinate. Uses coord4_distance from distance.h
+ * (included via wave.h chain).
+ *
+ * This is brute force over 64K slots. At typical occupancy
+ * (~10-50K words), it scans ~50K entries. Each entry is a
+ * distance computation (4 subtractions + 4 multiplies + 1 sqrt).
+ * Total: ~200K arithmetic ops. On modern CPUs: <100μs.
+ *
+ * If generation needs sub-microsecond reverse lookup, add a
+ * spatial index later. For now, brute force is correct and fast
+ * enough.
+ */
+
+/* helper: insert into sorted results array (ascending by dist) */
+static void rr_insert(ReverseResult *results, int *n, int cap,
+                      const char *word, float dist) {
+    if (*n < cap) {
+        results[*n].word = word;
+        results[*n].dist = dist;
+        (*n)++;
+        /* insertion sort the new entry into place */
+        for (int i = *n - 1; i > 0 && results[i].dist < results[i-1].dist; i--) {
+            ReverseResult tmp = results[i];
+            results[i] = results[i-1];
+            results[i-1] = tmp;
+        }
+        return;
+    }
+    /* full — replace worst if this is better */
+    if (dist >= results[cap - 1].dist) return;
+    results[cap - 1].word = word;
+    results[cap - 1].dist = dist;
+    for (int i = cap - 1; i > 0 && results[i].dist < results[i-1].dist; i--) {
+        ReverseResult tmp = results[i];
+        results[i] = results[i-1];
+        results[i-1] = tmp;
+    }
+}
+
+int learner_reverse(const Learner *lr, coord4 target,
+                    ReverseResult *results, int max_results,
+                    const char **exclude, int n_exclude) {
+    int n = 0;
+
+    for (int i = 0; i < LEARNER_VOCAB_SLOTS; i++) {
+        const WordEntry *e = &lr->vocab[i];
+        if (e->word[0] == '\0') continue;
+
+        /* skip single-char entries and pure numbers */
+        if (e->word[1] == '\0') continue;
+        if (e->word[0] >= '0' && e->word[0] <= '9') continue;
+
+        /* skip excluded words */
+        int exc = 0;
+        for (int j = 0; j < n_exclude; j++) {
+            if (exclude[j] && strcmp(e->word, exclude[j]) == 0) {
+                exc = 1;
+                break;
+            }
+        }
+        if (exc) continue;
+
+        float d = coord4_distance(target, e->coord);
+        rr_insert(results, &n, max_results, e->word, d);
+    }
+
+    return n;
 }

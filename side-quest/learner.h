@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "wave.h"
 #include "bonds.h"
+#include "distance.h"
+#include "morpheme.h"
 
 /*
  * learner.h — component 3.1: memetic context learner
@@ -251,6 +253,34 @@ int learner_save(const Learner *lr, const char *path);
  * vocabulary loaded. Returns NULL on failure.
  */
 Learner *learner_load(const char *path);
+
+
+/* ================================================================
+ * Reverse lookup — coordinate → word (for generation)
+ * ================================================================ */
+
+/*
+ * Result of a reverse lookup: word + distance from target.
+ */
+typedef struct {
+    const char *word;    /* pointer into vocab table — do not free */
+    float       dist;    /* distance from target coordinate        */
+} ReverseResult;
+
+/*
+ * learner_reverse — find the N nearest words to a target coordinate.
+ *
+ * Scans the vocabulary and returns up to max_results entries
+ * sorted by distance (ascending). Skips single-char words and
+ * pure numbers. The results array must be caller-allocated.
+ *
+ * exclude/n_exclude: words to skip (recently generated, avoid loops).
+ *
+ * Returns the number of results found (≤ max_results).
+ */
+int learner_reverse(const Learner *lr, coord4 target,
+                    ReverseResult *results, int max_results,
+                    const char **exclude, int n_exclude);
 
 
 #endif /* LEARNER_H */
