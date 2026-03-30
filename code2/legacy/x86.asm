@@ -346,6 +346,10 @@ GPUSTART equ 0
     mov [0x9A48], rax
     lea rax, [font_8x8]
     mov [0x9A50], rax
+    lea rax, [cursor_walk]
+    mov [0x9A58], rax
+    mov eax, [cursor_walk_len]
+    mov [0x9A60], eax
     lea rax, [kbd_walk]
     mov [0x9A38], rax
     mov eax, [kbd_walk_len]
@@ -688,8 +692,15 @@ poll_mouse:
     mov dword [0x9B68], 767
 .pm_y_not_over:
 
-    ; render cursor (erase old, draw new)
-    call render_mouse_cursor
+    ; render cursor walk (erase old triangle, draw new)
+    push r12
+    mov rdi, [0x9A58]                      ; cursor walk ptr
+    mov esi, dword [0x9A60]                ; cursor walk len
+    test rdi, rdi
+    jz .pm_no_cursor
+    call ψ
+.pm_no_cursor:
+    pop r12
 
     ; save current as old
     mov eax, [0x9B60]
@@ -710,109 +721,11 @@ poll_mouse:
 ;
 ; Erases 8x8 block at old position (teal), draws 8x8 at new position (white).
 
-; cursor: 8×8 white block with save/restore + boundary clipping
-; save buffer at 0x81000 (8×8×4 = 256 bytes)
-CURSOR_SAVE equ 0x81000
-CURSOR_SZ equ 8
+; cursor rendering moved to walks/cursor.w — math, not bitmap
 SCREEN_W equ 1024
 SCREEN_H equ 768
 PITCH equ (SCREEN_W * 4)
-
-render_mouse_cursor:
-    push rbx
-    push r12
-    push r13
-    push r14
-    push r15
-
-    mov eax, [0x9100]
-    test eax, eax
-    jz .rmc_done
-    mov r15, rax                           ; r15 = FB base
-
-    ; ── restore old cursor ──────────────────────
-    mov edx, CURSOR_SAVE
-    mov r12d, [0x9B70]                     ; old_x
-    mov r13d, [0x9B78]                     ; old_y
-    xor ecx, ecx                           ; row
-.rmc_restore_row:
-    mov eax, r13d
-    add eax, ecx
-    cmp eax, SCREEN_H
-    jge .rmc_restore_skip_row
-    imul eax, SCREEN_W
-    xor ebx, ebx                           ; col
-.rmc_restore_col:
-    mov r14d, r12d
-    add r14d, ebx
-    cmp r14d, SCREEN_W
-    jge .rmc_restore_next_col
-    lea rsi, [r14 + rax]
-    shl rsi, 2
-    add rsi, r15
-    mov r14d, [rdx]
-    mov [rsi], r14d                        ; restore pixel
-.rmc_restore_next_col:
-    add rdx, 4
-    inc ebx
-    cmp ebx, CURSOR_SZ
-    jb .rmc_restore_col
-    inc ecx
-    cmp ecx, CURSOR_SZ
-    jb .rmc_restore_row
-    jmp .rmc_save_new
-.rmc_restore_skip_row:
-    add rdx, CURSOR_SZ * 4
-    inc ecx
-    cmp ecx, CURSOR_SZ
-    jb .rmc_restore_row
-
-.rmc_save_new:
-    ; ── save + draw new cursor ──────────────────
-    mov edx, CURSOR_SAVE
-    mov r12d, [0x9B60]                     ; mouse_x
-    mov r13d, [0x9B68]                     ; mouse_y
-    xor ecx, ecx
-.rmc_draw_row:
-    mov eax, r13d
-    add eax, ecx
-    cmp eax, SCREEN_H
-    jge .rmc_draw_skip_row
-    imul eax, SCREEN_W
-    xor ebx, ebx
-.rmc_draw_col:
-    mov r14d, r12d
-    add r14d, ebx
-    cmp r14d, SCREEN_W
-    jge .rmc_draw_next_col
-    lea rsi, [r14 + rax]
-    shl rsi, 2
-    add rsi, r15
-    mov r14d, [rsi]
-    mov [rdx], r14d                        ; save pixel
-    mov dword [rsi], 0xFFFFFFFF            ; draw white
-.rmc_draw_next_col:
-    add rdx, 4
-    inc ebx
-    cmp ebx, CURSOR_SZ
-    jb .rmc_draw_col
-    inc ecx
-    cmp ecx, CURSOR_SZ
-    jb .rmc_draw_row
-    jmp .rmc_done
-.rmc_draw_skip_row:
-    add rdx, CURSOR_SZ * 4
-    inc ecx
-    cmp ecx, CURSOR_SZ
-    jb .rmc_draw_row
-
-.rmc_done:
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop rbx
-    ret
+; cursor rendering is now walks/cursor.w — called via ψ from poll_mouse
 
 
 ; ── mouse_init ────────────────────────────────────────────────
@@ -2658,6 +2571,11 @@ global γ, γ_len
 global test_consumer, test_consumer_len
 test_consumer:      incbin ".build/test_loop.bin"
 test_consumer_len:  dd (test_consumer_len - test_consumer)
+
+; cursor walk (triangle from math)
+global cursor_walk, cursor_walk_len
+cursor_walk:      incbin ".build/cursor.bin"
+cursor_walk_len:  dd (cursor_walk_len - cursor_walk)
 
 ; keyboard walk
 global kbd_walk, kbd_walk_len

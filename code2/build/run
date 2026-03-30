@@ -54,6 +54,7 @@ fi
 "$OUT/hodos" genesis.w -o "$OUT/genesis.bin"
 "$OUT/hodos" walks/test_loop.w -o "$OUT/test_loop.bin"
 "$OUT/hodos" walks/kbd.w -o "$OUT/kbd.bin"
+"$OUT/hodos" walks/cursor.w -o "$OUT/cursor.bin"
 
 # firmware follows kernel — compute FWSTART after we know kernel size
 # (preliminary: will be finalized after objcopy, but NASM needs it now)
