@@ -111,3 +111,5 @@ skip_z fill_end
 ; ── cursor init ─────────────────────────────────────────────
 π̄₇    θ²²ρ   0x9B30  0           ; cursor_x = 0
 π̄₇    θ²²ρ   0x9B38  0           ; cursor_y = 0
+
+; mouse init done in x86.asm handoff (needs timeout handling)

@@ -359,6 +359,9 @@ GPUSTART equ 0
     mov dword [0x9318], GPUSTART
     mov dword [0x931C], GPUSECTORS
 
+    ; init PS/2 mouse (with timeout — walks can't timeout)
+    call mouse_init
+
     ; walk genesis
     lea rdi, [γ]
     mov esi, [γ_len]
@@ -440,13 +443,19 @@ find_work:
     cmp r12d, 1
     jne .fw_idle_pause
 
-    ; poll keyboard
+    ; check PS/2 data availability
+    in al, 0x64
+    test al, 0x01
+    jz .fw_idle_pause                      ; no data
+
+    test al, 0x20
+    jnz .fw_mouse                          ; bit 5 set = mouse data
+
+    ; ── keyboard data ──
     mov rdi, [0x9A38]                      ; kbd_walk ptr
     test rdi, rdi
     jz .fw_idle_pause
-    mov esi, dword [0x9A40]                ; kbd_walk len
-    test esi, esi
-    jz .fw_idle_pause
+    mov esi, dword [0x9A40]
     call ψ
 
     ; if kbd produced a character, render it
@@ -454,6 +463,10 @@ find_work:
     je .fw_idle_pause
     mov dword [0x9B58], 0
     call render_char
+    jmp .fw_idle_pause
+
+.fw_mouse:
+    call poll_mouse
 
 .fw_idle_pause:
     pause
@@ -594,6 +607,307 @@ render_char:
 
 
 ; ═══════════════════════════════════════════════════════════════
+; ── poll_mouse ────────────────────────────────────────────────
+;
+; Collects PS/2 mouse 3-byte packets. Called from find_work idle (BSP).
+; State machine at [0x9B80]: byte count (0-2). When 3 bytes collected,
+; processes packet: updates mouse_x/y, renders cursor.
+;
+; Scratch:
+;   0x9B60 mouse_x    0x9B68 mouse_y
+;   0x9B70 old_x      0x9B78 old_y
+;   0x9B80 packet byte count (0, 1, 2)
+;   0x9B84 byte 0 (buttons/signs)
+;   0x9B85 byte 1 (dx)
+;   0x9B86 byte 2 (dy)
+
+poll_mouse:
+    push rbx
+    push r12
+
+    ; skip if mouse init failed
+    cmp dword [0x9B80], 0xFF
+    je .pm_done
+
+    ; check port 0x64: data available AND from mouse?
+    in al, 0x64
+    test al, 0x01
+    jz .pm_done                            ; no data
+    test al, 0x20
+    jz .pm_done                            ; keyboard data, not mouse
+
+    ; read mouse byte
+    in al, 0x60
+    mov ecx, [0x9B80]                     ; packet byte count
+
+    ; store in packet buffer
+    lea rbx, [0x9B84]
+    mov [rbx + rcx], al
+
+    inc ecx
+    cmp ecx, 3
+    jb .pm_save_count
+
+    ; ── 3 bytes collected: process packet ──
+    movzx eax, byte [0x9B84]              ; byte 0: buttons/signs
+    mov r12d, eax                          ; save for sign extension
+
+    ; dx (byte 1, signed via bit 4 of byte 0)
+    movzx ebx, byte [0x9B85]
+    test r12d, 0x10                        ; X sign bit
+    jz .pm_dx_pos
+    or ebx, 0xFFFFFF00                    ; sign extend negative
+.pm_dx_pos:
+
+    ; update mouse_x, clamp to [0, 1023]
+    add [0x9B60], ebx
+    cmp dword [0x9B60], 0
+    jge .pm_x_not_neg
+    mov dword [0x9B60], 0
+.pm_x_not_neg:
+    cmp dword [0x9B60], 1023
+    jle .pm_x_not_over
+    mov dword [0x9B60], 1023
+.pm_x_not_over:
+
+    ; dy (byte 2, signed via bit 5 of byte 0, INVERTED — PS/2 Y is up-positive)
+    movzx ebx, byte [0x9B86]
+    test r12d, 0x20                        ; Y sign bit
+    jz .pm_dy_pos
+    or ebx, 0xFFFFFF00
+.pm_dy_pos:
+    neg ebx                                ; invert: PS/2 up=positive → screen down=positive
+
+    add [0x9B68], ebx
+    cmp dword [0x9B68], 0
+    jge .pm_y_not_neg
+    mov dword [0x9B68], 0
+.pm_y_not_neg:
+    cmp dword [0x9B68], 767
+    jle .pm_y_not_over
+    mov dword [0x9B68], 767
+.pm_y_not_over:
+
+    ; render cursor (erase old, draw new)
+    call render_mouse_cursor
+
+    ; save current as old
+    mov eax, [0x9B60]
+    mov [0x9B70], eax
+    mov eax, [0x9B68]
+    mov [0x9B78], eax
+
+    xor ecx, ecx                           ; reset packet count
+.pm_save_count:
+    mov [0x9B80], ecx
+.pm_done:
+    pop r12
+    pop rbx
+    ret
+
+
+; ── render_mouse_cursor ───────────────────────────────────────
+;
+; Erases 8x8 block at old position (teal), draws 8x8 at new position (white).
+
+; cursor: 8×8 white block with save/restore + boundary clipping
+; save buffer at 0x81000 (8×8×4 = 256 bytes)
+CURSOR_SAVE equ 0x81000
+CURSOR_SZ equ 8
+SCREEN_W equ 1024
+SCREEN_H equ 768
+PITCH equ (SCREEN_W * 4)
+
+render_mouse_cursor:
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov eax, [0x9100]
+    test eax, eax
+    jz .rmc_done
+    mov r15, rax                           ; r15 = FB base
+
+    ; ── restore old cursor ──────────────────────
+    mov edx, CURSOR_SAVE
+    mov r12d, [0x9B70]                     ; old_x
+    mov r13d, [0x9B78]                     ; old_y
+    xor ecx, ecx                           ; row
+.rmc_restore_row:
+    mov eax, r13d
+    add eax, ecx
+    cmp eax, SCREEN_H
+    jge .rmc_restore_skip_row
+    imul eax, SCREEN_W
+    xor ebx, ebx                           ; col
+.rmc_restore_col:
+    mov r14d, r12d
+    add r14d, ebx
+    cmp r14d, SCREEN_W
+    jge .rmc_restore_next_col
+    lea rsi, [r14 + rax]
+    shl rsi, 2
+    add rsi, r15
+    mov r14d, [rdx]
+    mov [rsi], r14d                        ; restore pixel
+.rmc_restore_next_col:
+    add rdx, 4
+    inc ebx
+    cmp ebx, CURSOR_SZ
+    jb .rmc_restore_col
+    inc ecx
+    cmp ecx, CURSOR_SZ
+    jb .rmc_restore_row
+    jmp .rmc_save_new
+.rmc_restore_skip_row:
+    add rdx, CURSOR_SZ * 4
+    inc ecx
+    cmp ecx, CURSOR_SZ
+    jb .rmc_restore_row
+
+.rmc_save_new:
+    ; ── save + draw new cursor ──────────────────
+    mov edx, CURSOR_SAVE
+    mov r12d, [0x9B60]                     ; mouse_x
+    mov r13d, [0x9B68]                     ; mouse_y
+    xor ecx, ecx
+.rmc_draw_row:
+    mov eax, r13d
+    add eax, ecx
+    cmp eax, SCREEN_H
+    jge .rmc_draw_skip_row
+    imul eax, SCREEN_W
+    xor ebx, ebx
+.rmc_draw_col:
+    mov r14d, r12d
+    add r14d, ebx
+    cmp r14d, SCREEN_W
+    jge .rmc_draw_next_col
+    lea rsi, [r14 + rax]
+    shl rsi, 2
+    add rsi, r15
+    mov r14d, [rsi]
+    mov [rdx], r14d                        ; save pixel
+    mov dword [rsi], 0xFFFFFFFF            ; draw white
+.rmc_draw_next_col:
+    add rdx, 4
+    inc ebx
+    cmp ebx, CURSOR_SZ
+    jb .rmc_draw_col
+    inc ecx
+    cmp ecx, CURSOR_SZ
+    jb .rmc_draw_row
+    jmp .rmc_done
+.rmc_draw_skip_row:
+    add rdx, CURSOR_SZ * 4
+    inc ecx
+    cmp ecx, CURSOR_SZ
+    jb .rmc_draw_row
+
+.rmc_done:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+
+; ── mouse_init ────────────────────────────────────────────────
+;
+; Enable PS/2 auxiliary port and mouse data reporting.
+; Uses timeouts (65536 iterations) to avoid hanging if no mouse.
+
+mouse_init:
+    ; flush any stale PS/2 data
+    mov ecx, 256
+.mi_flush:
+    in al, 0x64
+    test al, 0x01
+    jz .mi_flush_done
+    in al, 0x60                            ; discard
+    dec ecx
+    jnz .mi_flush
+.mi_flush_done:
+
+    ; enable auxiliary port: write 0xA8 to command port
+    mov ecx, 65536
+.mi_wait1:
+    in al, 0x64
+    test al, 0x02                          ; input buffer full?
+    jz .mi_cmd1
+    dec ecx
+    jnz .mi_wait1
+    jmp .mi_fail
+.mi_cmd1:
+    mov al, 0xA8
+    out 0x64, al
+
+    ; send "write to mouse" prefix: 0xD4 to command port
+    mov ecx, 65536
+.mi_wait2:
+    in al, 0x64
+    test al, 0x02
+    jz .mi_cmd2
+    dec ecx
+    jnz .mi_wait2
+    jmp .mi_fail
+.mi_cmd2:
+    mov al, 0xD4
+    out 0x64, al
+
+    ; send enable data reporting: 0xF4 to data port
+    mov ecx, 65536
+.mi_wait3:
+    in al, 0x64
+    test al, 0x02
+    jz .mi_cmd3
+    dec ecx
+    jnz .mi_wait3
+    jmp .mi_fail
+.mi_cmd3:
+    mov al, 0xF4
+    out 0x60, al
+
+    ; wait for ACK (0xFA) with timeout
+    mov ecx, 65536
+.mi_wait_ack:
+    in al, 0x64
+    test al, 0x01
+    jz .mi_ack_retry
+    in al, 0x60                            ; read response
+    cmp al, 0xFA
+    je .mi_ok
+.mi_ack_retry:
+    dec ecx
+    jnz .mi_wait_ack
+    jmp .mi_fail
+
+.mi_ok:
+    ; init cursor position to center of screen
+    mov dword [0x9B60], 512                ; mouse_x
+    mov dword [0x9B68], 384                ; mouse_y
+    mov dword [0x9B70], 512                ; old_mouse_x
+    mov dword [0x9B78], 384                ; old_mouse_y
+    mov dword [0x9B80], 0                  ; packet byte count
+%ifdef DEBUG
+    mov al, 'M'
+    out 0xE9, al                           ; 'M' = mouse init OK
+%endif
+    ret
+
+.mi_fail:
+    ; mouse init failed — no cursor. keyboard still works.
+    mov dword [0x9B80], 0xFF               ; sentinel: mouse disabled
+%ifdef DEBUG
+    mov al, '!'
+    out 0xE9, al
+%endif
+    ret
+
+
 ; SECTION 3: NOMOS — ƒ(τ,χ,μ,φ) = τᵃ·χᵇ·μᶜ·φᵈ — the JIT compiler
 ; ═══════════════════════════════════════════════════════════════
 

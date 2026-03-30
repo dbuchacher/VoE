@@ -16,12 +16,7 @@
 ; clear new-char flag
 π̄₇    θ²²ρ   0x9B58  0
 
-; ── poll PS/2 status port ───────────────────────
-πδ̄    θ¹ρρ   0x64                 ; port_read(0x64) → status byte
-δ₃    θρ¹ρ   0x01                 ; AND 0x01 = output buffer full bit
-skip_z kbd_done                    ; no data → return
-
-; ── read scancode ───────────────────────────────
+; ── read scancode (find_work already verified data available + not mouse) ──
 πδ̄    θ¹ρρ   0x60                 ; port_read(0x60) → scancode
 π̄     θ²ρρ   0x9B20               ; save scancode
 
