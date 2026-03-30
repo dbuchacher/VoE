@@ -858,6 +858,7 @@ FILE STRUCTURE
       ata.w            ATA PIO disk read (firmware loading)
       ucode.w          CPU microcode: CPUID → index scan → wrmsr
       gpu_nvidia.w     NVIDIA GPU detect + BAR map + firmware load
+      test_loop.w      test loop consumer (reads bytes, prints to debugcon)
       gsp_boot.w       NVIDIA GSP boot skeleton (radix3, falcon reset)
     firmware/
       cpu/             34 microcode blobs (AMD Zen 1-5, Intel 6th-15th gen)
@@ -899,6 +900,12 @@ FILE STRUCTURE
     0x96C0-96FF  GSP boot scratch (reused per phase)
     0x9700+  parsed firmware: bl/booter/bootloader/gsp addrs+sizes
     0x9750+  booter hs_load_header fields, DMA base addrs
+    0x9A00   &loop_list (set by handoff)
+    0x9A08   &loop_count (set by handoff)
+    0x9A10   &consumer_walk_list (set by handoff)
+    0x9A18   &consumer_wlen_list (set by handoff)
+    0x9A20   test_consumer walk ptr (set by handoff)
+    0x9A28   test_consumer walk len (set by handoff)
 
   Memory layout (RAM):
     0x100000 (1MB)   kernel
@@ -968,7 +975,13 @@ CODING REFERENCE
     JIT spinlock in ƒ for concurrent code emission.
     One drainer per loop (Pauli exclusion on consumers).
 
-  For current status: see wit/history/session-14.md.
+  Loop registry:
+    BSS: loop_list[16], consumer_walk_list[16], consumer_wlen_list[16], loop_count
+    find_work in x86.asm: scans registry, runs consumer of first non-empty loop
+    Genesis registers loops via dereferenced scratch writes (0x9A00+)
+    Consumer walks are separate .w files, incbin'd, addresses at 0x9A20+
+
+  For current status: see wit/history/session-16.md.
 
 
 BUILD ORDER
@@ -995,19 +1008,19 @@ BUILD ORDER
     ✓ firmware: 34 CPU microcode blobs (AMD Zen 1-5, Intel 6th-15th gen)
     ✓ firmware: NVIDIA TU102 GPU firmware (28.8MB, all components)
     ✓ 33MB bootable USB image with kernel + CPU + GPU firmware
+    ✓ walks: NVIDIA GSP full boot pipeline (7 walk files, session 15)
+    ✓ substrate: UEFI bootloader + first bare metal boot (session 15)
+    ✓ walks: loop allocation in genesis + loop registry + find_work
+    ✓ walks: test_loop.w consumer drain — end-to-end loop pipeline proven
 
   NEXT:
-    1. NVIDIA GSP boot: falcon PIO loader → SEC2 boot → message queues
-       - gsp_boot.w skeleton exists with register offsets from nouveau
-       - needs: booter PIO load, message queue polling, CPU sequencer
-       - see walks/gsp_boot.w, history/session-14.md for register map
-    2. walks: genesis with runtime loop allocation (cursor from 0x9200)
-    3. walks: keyboard producer (poll + loop_write)
-    4. walks: display pipeline via GPU command ring (not VESA)
-    5. walks: generic drain (bind walk, fill pressure scheduler)
-    6. SDF character rendering (walk, not x86)
-    7. NVMe gene (data table + generic storage walk)
-    8. Network loops (RDMA, flux, bridge walks)
+    1. Per-core reader cursors (APIC ID indexed, eliminates Pauli violation)
+    2. walks: keyboard producer (poll + loop_write)
+    3. walks: display pipeline via GPU command ring (not VESA)
+    4. SDF character rendering (walk, not x86)
+    5. NVMe gene (data table + generic storage walk)
+    6. Network loops (RDMA, flux, bridge walks)
+    7. NVIDIA GSP: fix REG_MODIFY + REG_POLL (see session 15)
 
   LATER:
     - Window manager (walk DNA in display loop)

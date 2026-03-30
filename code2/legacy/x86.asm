@@ -245,7 +245,7 @@ ap_entry:
     cmp dword [genesis_done], 0
     je .ap_wait
 
-    ; find-work loop (spin for now — walks come later)
+    ; APs spin until per-core cursors exist (Pauli violation on shared scratch)
 .ap_spin:
     pause
     jmp .ap_spin
@@ -317,6 +317,43 @@ GPUSTART equ 0
     lea rax, [loop_region]
     mov [0x9200], rax
 
+    ; store loop registry addresses at scratch for genesis
+    ;   0x9A00 = &loop_list
+    ;   0x9A08 = &loop_count
+    ;   0x9A10 = &consumer_walk_list
+    ;   0x9A18 = &consumer_wlen_list
+    lea rax, [loop_list]
+    mov [0x9A00], rax
+    lea rax, [loop_count]
+    mov [0x9A08], rax
+    lea rax, [consumer_walk_list]
+    mov [0x9A10], rax
+    lea rax, [consumer_wlen_list]
+    mov [0x9A18], rax
+
+    ; store test consumer walk address for genesis to register
+    ;   0x9A20 = test_consumer walk ptr
+    ;   0x9A28 = test_consumer walk len
+    lea rax, [test_consumer]
+    mov [0x9A20], rax
+    mov eax, [test_consumer_len]
+    mov [0x9A28], eax
+
+    ; keyboard: scancode table + walk addresses
+    ;   0x9A30 = scancode_table ptr (read by kbd.w)
+    ;   0x9A38 = kbd_walk ptr
+    ;   0x9A40 = kbd_walk len
+    lea rax, [scancode_table]
+    mov [0x9A30], rax
+    lea rax, [wave_to_ascii]
+    mov [0x9A48], rax
+    lea rax, [font_8x8]
+    mov [0x9A50], rax
+    lea rax, [kbd_walk]
+    mov [0x9A38], rax
+    mov eax, [kbd_walk_len]
+    mov [0x9A40], eax
+
     ; firmware disk locations (read by ATA walks)
     ; CPU: 0x9300 = LBA start, 0x9304 = sector count
     ; GPU: 0x9318 = LBA start, 0x931C = sector count
@@ -333,10 +370,206 @@ GPUSTART equ 0
     ; signal APs: genesis complete
     mov dword [genesis_done], 1
 
-    ; BSP enters find-work (spin for now)
-.spin:
+    ; BSP enters find-work
+    jmp find_work
+
+
+; ── find-work ─────────────────────────────────────────────────
+;
+; Scan loop registry, find a loop with data, run its consumer walk.
+; All cores enter here after genesis.
+;
+; Registry layout (BSS, addresses at scratch 0x9A00+):
+;   loop_list[i]           = loop header pointer
+;   consumer_walk_list[i]  = consumer walk byte pointer
+;   consumer_wlen_list[i]  = consumer walk byte length
+;   loop_count             = number of registered loops
+;
+; Fill check: loop header [+0x00] (write_cursor) != [+0x30] (reader cursor).
+
+find_work:
+    mov rcx, [loop_count]
+    test rcx, rcx
+    jz .idle
+
+    ; scan all loops for one with data
+    xor esi, esi                           ; index = 0
+.scan:
+    mov rdi, [loop_list + rsi*8]
+    test rdi, rdi
+    jz .next
+
+    ; fill check: write_cursor != read_cursor
+    mov rax, [rdi]                         ; write_cursor (header+0)
+    cmp rax, [rdi + 0x30]                  ; scratch_a (reader cursor)
+    jne .found
+.next:
+    inc esi
+    cmp rsi, rcx
+    jb .scan
+
+.idle:
+    ; poll keyboard while idle
+    mov rdi, [0x9A38]                      ; kbd_walk ptr
+    test rdi, rdi
+    jz .no_kbd
+    mov esi, dword [0x9A40]                ; kbd_walk len
+    test esi, esi
+    jz .no_kbd
+    call ψ
+
+    ; if kbd produced a character, render it
+    cmp dword [0x9B58], 0                  ; new-char flag
+    je .no_kbd
+    mov dword [0x9B58], 0                  ; clear flag
+    call render_char
+.no_kbd:
     pause
-    jmp .spin
+    jmp find_work
+
+.found:
+    ; rsi = loop index with data. Run its consumer walk.
+    mov rdi, [consumer_walk_list + rsi*8]
+    test rdi, rdi
+    jz .next                               ; no consumer registered
+    mov esi, dword [consumer_wlen_list + rsi*8]
+    test esi, esi
+    jz find_work
+    call ψ
+    jmp find_work                          ; re-scan after draining
+
+
+; ── render_char ───────────────────────────────────────────────
+;
+; Renders the character at [0x9B28] (wave byte) to the framebuffer.
+; Uses wave_to_ascii for glyph lookup (Latin overlay).
+; 8x8 font bitmap, 2x scaled → 16x16 pixels on screen.
+; Advances cursor. Handles enter (0x40) as newline.
+;
+; Reads: [0x9100] FB addr, [0x9B28] wave byte,
+;        [0x9B30] cursor_x, [0x9B38] cursor_y
+;        [0x9A48] wave_to_ascii, [0x9A50] font_8x8
+
+render_char:
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+
+    ; check framebuffer exists
+    mov eax, [0x9100]
+    test eax, eax
+    jz .rc_done
+    mov r15, rax                           ; r15 = FB base
+
+    ; load wave byte
+    movzx eax, byte [0x9B28]
+
+    ; handle enter (0x40 = π)
+    cmp eax, 0x40
+    jne .rc_not_enter
+    mov dword [0x9B30], 0                  ; cursor_x = 0
+    add dword [0x9B38], 16                 ; cursor_y += 16
+    jmp .rc_done
+.rc_not_enter:
+
+    ; handle backspace (0x08)
+    cmp eax, 0x08
+    jne .rc_not_bs
+    cmp dword [0x9B30], 0
+    je .rc_done                            ; already at column 0
+    sub dword [0x9B30], 16                 ; cursor_x -= 16
+    ; erase: fill 16x16 area with background color (teal 0x00008080)
+    mov eax, [0x9B38]
+    shl eax, 12
+    mov r13d, [0x9B30]
+    shl r13d, 2
+    add eax, r13d
+    lea r14, [r15 + rax]
+    xor ecx, ecx
+.rc_erase:
+    mov edx, 0x00008080
+    %assign ei 0
+    %rep 16
+        mov dword [r14 + ei*4], edx
+    %assign ei ei+1
+    %endrep
+    add r14, 4096
+    inc ecx
+    cmp ecx, 16
+    jb .rc_erase
+    jmp .rc_done
+.rc_not_bs:
+
+    ; handle space (0x00 = silence) — advance cursor, no glyph
+    test eax, eax
+    jz .rc_advance
+
+    ; wave → ASCII for glyph lookup
+    mov rbx, [0x9A48]                      ; wave_to_ascii table
+    movzx eax, byte [rbx + rax]           ; ASCII char
+    cmp eax, 0x3F
+    je .rc_advance                         ; '?' = no glyph, just advance
+
+    ; font bitmap: font_8x8 + ascii * 8
+    mov rbx, [0x9A50]                      ; font base
+    shl eax, 3                             ; ascii * 8
+    lea r12, [rbx + rax]                  ; r12 = glyph ptr (8 bytes)
+
+    ; compute FB dest: FB + cursor_y * pitch + cursor_x * 4
+    ; pitch = 4 * display_width. assume 1024 → pitch = 4096
+    mov eax, [0x9B38]                      ; cursor_y
+    shl eax, 12                            ; * 4096 (pitch)
+    mov r13d, [0x9B30]                     ; cursor_x
+    shl r13d, 2                            ; * 4 (bytes per pixel)
+    add eax, r13d
+    lea r14, [r15 + rax]                  ; r14 = top-left pixel addr
+
+    ; render 8 font rows, each 2x scaled → 16 screen rows
+    xor ecx, ecx                           ; row = 0
+.rc_row:
+    movzx ebx, byte [r12 + rcx]          ; font byte for this row
+
+    ; expand 8 bits to 16 pixels (2x horizontal), write to FB
+    mov r13d, 7                            ; bit index (MSB first)
+.rc_bit:
+    bt ebx, r13d                           ; test bit
+    jnc .rc_skip_pixel
+    ; write 2x2 white block (2 pixels on this row + 2 on next)
+    mov eax, r13d
+    sub eax, 7
+    neg eax                                ; bit 7→offset 0, bit 0→offset 7
+    shl eax, 3                             ; * 8 bytes (2 pixels * 4 bytes each)
+    mov dword [r14 + rax], 0xFFFFFFFF     ; pixel (x, y)
+    mov dword [r14 + rax + 4], 0xFFFFFFFF ; pixel (x+1, y)
+    mov dword [r14 + rax + 4096], 0xFFFFFFFF  ; pixel (x, y+1)
+    mov dword [r14 + rax + 4100], 0xFFFFFFFF  ; pixel (x+1, y+1)
+.rc_skip_pixel:
+    dec r13d
+    jns .rc_bit
+
+    ; advance to next font row (2 screen rows down)
+    add r14, 4096 * 2                     ; skip 2 screen rows
+    inc ecx
+    cmp ecx, 8
+    jb .rc_row
+
+.rc_advance:
+    ; advance cursor
+    add dword [0x9B30], 16                 ; cursor_x += 16 (2x scaled)
+    cmp dword [0x9B30], 1024
+    jb .rc_done
+    mov dword [0x9B30], 0                  ; wrap: cursor_x = 0
+    add dword [0x9B38], 16                 ; cursor_y += 16
+
+.rc_done:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
 
 
 ; ═══════════════════════════════════════════════════════════════
@@ -370,7 +603,17 @@ align 4096
 code_base: resb 262144                    ; 256KB JIT code buffer
 
 align 64
-loop_region: resb 8192                    ; 8KB for loop headers + buffers
+loop_region: resb 65536                   ; 64KB for loop headers + buffers
+
+; ── loop registry ─────────────────────────────────────────────
+; Parallel arrays. Genesis fills them. find_work reads them.
+; Each loop has a header pointer and producer/consumer walks.
+MAX_LOOPS equ 16
+align 64
+loop_list:      resq MAX_LOOPS             ; loop header pointers
+consumer_walk_list:  resq MAX_LOOPS        ; consumer walk pointers
+consumer_wlen_list:  resq MAX_LOOPS        ; consumer walk lengths
+loop_count:     resq 1
 
 
 ; ── text ──────────────────────────────────────────────────────
@@ -2074,5 +2317,151 @@ section .rodata
 global γ, γ_len
 γ:      incbin ".build/genesis.bin"
 γ_len:  dd (γ_len - γ)
+
+; test loop consumer walk
+global test_consumer, test_consumer_len
+test_consumer:      incbin ".build/test_loop.bin"
+test_consumer_len:  dd (test_consumer_len - test_consumer)
+
+; keyboard walk
+global kbd_walk, kbd_walk_len
+kbd_walk:      incbin ".build/kbd.bin"
+kbd_walk_len:  dd (kbd_walk_len - kbd_walk)
+
+; PS/2 scan code set 1 → wave byte (256 bytes, 0x00 = silence/unmapped)
+;
+; v2 encoding (char-encoding-v2.md):
+;   [T:2][D:2][M:2][Q:2]  00=0 01=+1 10=ext 11=-1
+;   T=duration  D=place  M=openness  Q=voicing
+;
+; Stops (T=-1,M=-1):   p=0xDF b=0xDD  t=0xCF d=0xCD  k=0xFF g=0xFD
+; Nasals (T=+1,M=-1):  m=0x5D  n=0x4D  ng=0x7D
+; Fricatives (T=+1,M=0): f=0x53 v=0x51  s=0x43 z=0x41  sh/h=0x73
+; Glides (T=0):         w=0x15  y=0x35  l=0x01 r=0x01
+; Vowels (T=+1,M=+1):  a=0x55  e=0x45  i=0x55  o=0x75  u=0x75
+; Collisions: l=r, a=i, o=u, k=ch, g=j, sh=h, f=th, v=dh (all correct at shell 1)
+; No case in wave byte. 'A'='a'. Case is walk-level metadata.
+; Space = 0x00 (silence). Enter = 0x40 (π bond = temporal action).
+;
+align 16
+scancode_table:
+    ;       0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
+    ;                 1     2     3     4     5     6     7     8     9     0     -     =    BS   TAB
+    db   0x00, 0x00, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x2D, 0x3D, 0x08, 0x00
+    ;     q     w     e     r     t     y     u     i     o     p     [     ]    RET   .     a     s
+    db   0xFF, 0x15, 0x45, 0x01, 0xCF, 0x35, 0x75, 0x55, 0x75, 0xDF, 0x5B, 0x5D, 0x40, 0x00, 0x55, 0x43
+    ;     d     f     g     h     j     k     l     ;     '     `     .     \     z     x     c     v
+    db   0xCD, 0x53, 0xFD, 0x73, 0xFD, 0xFF, 0x01, 0x3B, 0x27, 0x00, 0x00, 0x5C, 0x41, 0xFF, 0xFF, 0x51
+    ;     b     n     m     ,     .     /     .     *     .    SPC
+    db   0xDD, 0x4D, 0x5D, 0x2C, 0x2E, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    times (256 - 64) db 0x00
+
+; wave byte → ASCII (256 bytes, boundary converter for debugcon/terminal)
+; v2: T=duration, no case. Stops at T=-1 (0xC0+), nasals/fric at T=+1 (0x40+), glides T=0 (0x00+)
+align 16
+wave_to_ascii:
+    ;       0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
+    db   0x20, 0x6C, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x08, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F  ; 0x00: SPC l  .  .  .  .  .  . BS  .  .  .  .  .  .  .
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x77, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F  ; 0x10: .  .  .  .  .  w  .  .  .  .  .  .  .  .  .  .
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x27, 0x3F, 0x3F, 0x3F, 0x3F, 0x2C, 0x2D, 0x2E, 0x2F  ; 0x20: .  .  .  .  .  .  .  '  .  .  .  .  ,  -  .  /
+    db   0x30, 0x31, 0x32, 0x33, 0x34, 0x79, 0x36, 0x37, 0x38, 0x39, 0x3F, 0x3B, 0x3F, 0x3D, 0x3F, 0x3F  ; 0x30: 0  1  2  3  4  y  6  7  8  9  .  ;  .  =  .  .
+    db   0x0A, 0x7A, 0x3F, 0x73, 0x3F, 0x65, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x6E, 0x3F, 0x3F  ; 0x40: \n z  .  s  .  e  .  .  .  .  .  .  .  n  .  .
+    db   0x3F, 0x76, 0x3F, 0x66, 0x3F, 0x61, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x5B, 0x5C, 0x6D, 0x3F, 0x3F  ; 0x50: .  v  .  f  .  a  .  .  .  .  .  [  \  m  .  .
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F  ; 0x60
+    db   0x3F, 0x3F, 0x3F, 0x68, 0x3F, 0x6F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F  ; 0x70: .  .  .  h  .  o  .  .  .  .  .  .  .  .  .  .
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F  ; 0x80
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F  ; 0x90
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F  ; 0xA0
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F  ; 0xB0
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x64, 0x3F, 0x74  ; 0xC0: .  .  .  .  .  .  .  .  .  .  .  .  .  d  .  t
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x62, 0x3F, 0x70  ; 0xD0: .  .  .  .  .  .  .  .  .  .  .  .  .  b  .  p
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F  ; 0xE0
+    db   0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x67, 0x3F, 0x6B  ; 0xF0: .  .  .  .  .  .  .  .  .  .  .  .  .  g  .  k
+
+; 8x8 bitmap font indexed by ASCII (128 chars × 8 bytes = 1024 bytes)
+; rendered at 2x scale → 16x16 pixels on screen. Latin overlay.
+align 16
+font_8x8:
+    times (8 * 32) db 0       ; 0x00-0x1F: control chars (blank)
+    ; 0x20 = space
+    db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    times (8 * 7) db 0        ; 0x21-0x27: ! " # $ % & (blank)
+    ; 0x27 = '  (apostrophe) — overwrites slot above
+    ; actually 0x27 is within the times block, need separate
+    ; skip to 0x2C
+    times (8 * 4) db 0        ; 0x28-0x2B: ( ) * + (blank)
+    ; 0x2C = ','
+    db 0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x30
+    ; 0x2D = '-'
+    db 0x00,0x00,0x00,0x7E,0x00,0x00,0x00,0x00
+    ; 0x2E = '.'
+    db 0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x00
+    ; 0x2F = '/'
+    db 0x02,0x06,0x0C,0x18,0x30,0x60,0x40,0x00
+    ; 0x30 = '0'
+    db 0x3C,0x66,0x6E,0x7E,0x76,0x66,0x3C,0x00
+    ; 0x31 = '1'
+    db 0x18,0x38,0x18,0x18,0x18,0x18,0x7E,0x00
+    ; 0x32 = '2'
+    db 0x3C,0x66,0x06,0x0C,0x18,0x30,0x7E,0x00
+    ; 0x33 = '3'
+    db 0x3C,0x66,0x06,0x1C,0x06,0x66,0x3C,0x00
+    ; 0x34 = '4'
+    db 0x0C,0x1C,0x3C,0x6C,0x7E,0x0C,0x0C,0x00
+    ; 0x35 = '5'
+    db 0x7E,0x60,0x7C,0x06,0x06,0x66,0x3C,0x00
+    ; 0x36 = '6'
+    db 0x1C,0x30,0x60,0x7C,0x66,0x66,0x3C,0x00
+    ; 0x37 = '7'
+    db 0x7E,0x06,0x0C,0x18,0x30,0x30,0x30,0x00
+    ; 0x38 = '8'
+    db 0x3C,0x66,0x66,0x3C,0x66,0x66,0x3C,0x00
+    ; 0x39 = '9'
+    db 0x3C,0x66,0x66,0x3E,0x06,0x0C,0x38,0x00
+    ; 0x3A = ':'
+    db 0x00,0x18,0x18,0x00,0x18,0x18,0x00,0x00
+    ; 0x3B = ';'
+    db 0x00,0x18,0x18,0x00,0x18,0x18,0x30,0x00
+    times (8 * 1) db 0        ; 0x3C = '<' (blank)
+    ; 0x3D = '='
+    db 0x00,0x00,0x7E,0x00,0x7E,0x00,0x00,0x00
+    times (8 * 2) db 0        ; 0x3E-0x3F: > ? (blank)
+    times (8 * 1) db 0        ; 0x40 = @ (blank)
+    times (8 * 26) db 0       ; 0x41-0x5A: uppercase (blank)
+    ; 0x5B = '['
+    db 0x3C,0x30,0x30,0x30,0x30,0x30,0x3C,0x00
+    ; 0x5C = '\'
+    db 0x40,0x60,0x30,0x18,0x0C,0x06,0x02,0x00
+    ; 0x5D = ']'
+    db 0x3C,0x0C,0x0C,0x0C,0x0C,0x0C,0x3C,0x00
+    times (8 * 3) db 0        ; 0x5E-0x60: ^ _ ` (blank)
+    ; 0x61 'a' through 0x7A 'z'
+    db 0x00,0x00,0x3C,0x06,0x3E,0x66,0x3E,0x00  ; a
+    db 0x60,0x60,0x7C,0x66,0x66,0x66,0x7C,0x00  ; b
+    db 0x00,0x00,0x3C,0x60,0x60,0x60,0x3C,0x00  ; c
+    db 0x06,0x06,0x3E,0x66,0x66,0x66,0x3E,0x00  ; d
+    db 0x00,0x00,0x3C,0x66,0x7E,0x60,0x3C,0x00  ; e
+    db 0x1C,0x30,0x30,0x7C,0x30,0x30,0x30,0x00  ; f
+    db 0x00,0x00,0x3E,0x66,0x66,0x3E,0x06,0x3C  ; g
+    db 0x60,0x60,0x7C,0x66,0x66,0x66,0x66,0x00  ; h
+    db 0x18,0x00,0x38,0x18,0x18,0x18,0x3C,0x00  ; i
+    db 0x0C,0x00,0x0C,0x0C,0x0C,0x0C,0x6C,0x38  ; j
+    db 0x60,0x60,0x66,0x6C,0x78,0x6C,0x66,0x00  ; k
+    db 0x38,0x18,0x18,0x18,0x18,0x18,0x3C,0x00  ; l
+    db 0x00,0x00,0x76,0x7F,0x6B,0x63,0x63,0x00  ; m
+    db 0x00,0x00,0x7C,0x66,0x66,0x66,0x66,0x00  ; n
+    db 0x00,0x00,0x3C,0x66,0x66,0x66,0x3C,0x00  ; o
+    db 0x00,0x00,0x7C,0x66,0x66,0x7C,0x60,0x60  ; p
+    db 0x00,0x00,0x3E,0x66,0x66,0x3E,0x06,0x06  ; q
+    db 0x00,0x00,0x7C,0x66,0x60,0x60,0x60,0x00  ; r
+    db 0x00,0x00,0x3E,0x60,0x3C,0x06,0x7C,0x00  ; s
+    db 0x30,0x30,0x7C,0x30,0x30,0x30,0x1C,0x00  ; t
+    db 0x00,0x00,0x66,0x66,0x66,0x66,0x3E,0x00  ; u
+    db 0x00,0x00,0x66,0x66,0x66,0x3C,0x18,0x00  ; v
+    db 0x00,0x00,0x63,0x63,0x6B,0x7F,0x36,0x00  ; w
+    db 0x00,0x00,0x66,0x3C,0x18,0x3C,0x66,0x00  ; x
+    db 0x00,0x00,0x66,0x66,0x66,0x3E,0x06,0x3C  ; y
+    db 0x00,0x00,0x7E,0x0C,0x18,0x30,0x7E,0x00  ; z
+    times (8 * 5) db 0        ; 0x7B-0x7F
 
 section .data

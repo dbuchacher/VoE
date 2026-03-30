@@ -52,6 +52,8 @@ fi
 # ── assemble walks (hodos → raw bytes) ───────────────────────
 
 "$OUT/hodos" genesis.w -o "$OUT/genesis.bin"
+"$OUT/hodos" walks/test_loop.w -o "$OUT/test_loop.bin"
+"$OUT/hodos" walks/kbd.w -o "$OUT/kbd.bin"
 
 # firmware follows kernel — compute FWSTART after we know kernel size
 # (preliminary: will be finalized after objcopy, but NASM needs it now)
@@ -64,6 +66,7 @@ fi
 
 nasm $DBGFLAG -DFWSECTORS=$FWSECTORS -DFWSTART=$FWSTART \
     -DGPUSECTORS=$GPUSECTORS -DGPUSTART=$GPUSTART \
+    -w-zext-reloc -w-implicit-abs-deprecated -w-number-overflow \
     -f elf32 "legacy/x86.asm" -o "$OUT/x86.o"
 
 # ── link ─────────────────────────────────────────────────────
@@ -186,14 +189,13 @@ fi
 QEMU_HW="-smp ${2:-4}"
 
 if [ "$1" = "kvm" ]; then
-    qemu-system-x86_64 -hda "$OUT/nomos.img" -m 128M -no-reboot \
+    qemu-system-x86_64 -drive format=raw,file="$OUT/nomos.img" -m 128M -no-reboot \
         -debugcon stdio -serial file:/dev/stderr $QEMU_HW \
         -enable-kvm -cpu host -display none
 else
     KVM=""
     [ -w /dev/kvm ] && KVM="-enable-kvm -cpu host"
-    qemu-system-x86_64 -hda "$OUT/nomos.img" -m 128M -no-reboot \
+    qemu-system-x86_64 -drive format=raw,file="$OUT/nomos.img" -m 128M -no-reboot \
         -serial file:/dev/null -debugcon stdio $QEMU_HW \
-        ${KVM:-"-cpu Skylake-Server"} -vga std \
-        -device virtio-gpu-pci
+        ${KVM:-"-cpu Skylake-Server"} -vga std
 fi
