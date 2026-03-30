@@ -490,6 +490,29 @@ If this is a personal or place name, the suffixes may indicate case
 relationships ("of U-NA-KA-NA", "to U-NA-KA-NA", etc.).
 Confidence: MEDIUM.
 
+### Notable Final Bigram: -NA-SI (MEASURED)
+
+The bigram -NA-SI appears in 12 words across both registers, but the
+long form U-NA-KA-NA-SI is EXCLUSIVELY religious (6 occurrences, all
+stone vessels). Shorter -NA-SI words (DA-NA-SI, E-NA-SI) appear in
+admin contexts.
+
+  U-NA-KA-NA-SI         x4  (all religious — stone vessels)
+  U-NA-RU-KA-NA-SI      x1  (religious — stone vessel, expanded form)
+  JA-SA-U-NA-KA-NA-SI   x1  (religious — stone vessel, with JA-SA- prefix)
+  SE-KA-NA-SI           x1  (religious)
+  U-NA-KA-NA-SI-OLE     x1  (religious — with commodity sign OLE = olive oil)
+  U-MI-NA-SI            x2  (admin — tablets)
+  DA-NA-SI              x1  (admin)
+  E-NA-SI               x1  (admin)
+  RA-KI-TA-NA-SI        x1  (admin)
+
+The U-NA-KA-NA-SI form is a religious term or name. It appears alongside
+A-TA-I-*301-WA-JA and JA-SA-SA-RA-ME on the same libation tables.
+One occurrence has the OLE commodity logogram suffixed, suggesting it
+might name a specific offering or ritual object. Confidence: STRONG
+that this is a religious-register word, LOW for specific meaning.
+
 ### Most Common Initial Signs (MEASURED)
 
   A    153 words (11.8%)
