@@ -33,7 +33,7 @@ A27: 23-19-35/          A28: 10-03-38          A29: 02-12-27-27-35-37-21
 A30: 13-01              A31: 10-03-38
 ```
 
-### Side B (30 groups, 120 signs)
+### Side B (30 groups, 119 signs)
 
 ```
 B1:  02-12-22-40-07     B2:  27-45-07-35       B3:  02-37-23-05/
@@ -45,7 +45,7 @@ B16: 06-35-32-39-33     B17: 02-09-27-01       B18: 29-36-07-08/
 B19: 29-08-13           B20: 29-45-07/         B21: 22-29-36-07-08/
 B22: 27-34-23-25        B23: 07-18-35          B24: 07-45-07/
 B25: 07-23-18-24        B26: 22-29-36-07-08/   B27: 09-30-39-18-07
-B28: 02-06-35-23-07     B29: 29-34-23-25       B30: 07-45-07/
+B28: 02-06-35-23-07     B29: 29-34-23-25       B30: 45-07/
 ```
 
 "/" marks oblique stroke (hand-incised, not stamped) on last sign of that
@@ -512,7 +512,8 @@ for reliable coordinates.)
 10-03-38:                A28 = A31        (2x — coda)
 29-45-07:                A3 = B20         (2x — cross-side match!)
 22-29-36-07-08:          B21 = B26        (2x)
-07-45-07:                B24 = B30        (2x — B closing formula)
+07-45-07:                B24             (1x — B closing formula)
+45-07:                   B30             (1x — reduced closing, subset of 29-45-07)
 ```
 
 The cross-side repetition (A3 = B20 = "29-45-07") is notable. Both carry
