@@ -245,10 +245,7 @@ ap_entry:
     cmp dword [genesis_done], 0
     je .ap_wait
 
-    ; APs spin until per-core cursors exist (Pauli violation on shared scratch)
-.ap_spin:
-    pause
-    jmp .ap_spin
+    jmp find_work
 
 
 ; ══════════════════════════════════════════════════════════════
@@ -376,67 +373,91 @@ GPUSTART equ 0
 
 ; ── find-work ─────────────────────────────────────────────────
 ;
-; Scan loop registry, find a loop with data, run its consumer walk.
-; All cores enter here after genesis.
+; All cores enter here after genesis. Each core:
+;   1. Scans loop registry for non-empty, unclaimed loops
+;   2. Atomically claims one (lock cmpxchg on drainer_list)
+;   3. Runs consumer walk
+;   4. Unclaims when done
+;   5. BSP also polls keyboard during idle
 ;
-; Registry layout (BSS, addresses at scratch 0x9A00+):
-;   loop_list[i]           = loop header pointer
-;   consumer_walk_list[i]  = consumer walk byte pointer
-;   consumer_wlen_list[i]  = consumer walk byte length
-;   loop_count             = number of registered loops
-;
-; Fill check: loop header [+0x00] (write_cursor) != [+0x30] (reader cursor).
+; One drainer per loop = Pauli exclusion on consumers.
+; No shared mutable state between cores.
 
 find_work:
+    ; cache this core's APIC ID + 1 (used as drainer token, 0 = unclaimed)
+    mov r10, 0xFEE00000
+    mov eax, [r10 + 0x20]
+    shr eax, 24
+    and eax, 0xFF
+    inc eax                                ; r12d = APIC ID + 1 (nonzero token)
+    mov r12d, eax
+
+.fw_scan:
     mov rcx, [loop_count]
     test rcx, rcx
-    jz .idle
+    jz .fw_idle
 
-    ; scan all loops for one with data
     xor esi, esi                           ; index = 0
-.scan:
+.fw_loop:
     mov rdi, [loop_list + rsi*8]
     test rdi, rdi
-    jz .next
+    jz .fw_next
 
     ; fill check: write_cursor != read_cursor
     mov rax, [rdi]                         ; write_cursor (header+0)
     cmp rax, [rdi + 0x30]                  ; scratch_a (reader cursor)
-    jne .found
-.next:
+    je .fw_next                            ; empty
+
+    ; try to claim (atomic CAS: expected=0, desired=our token)
+    xor eax, eax                           ; expected = 0 (unclaimed)
+    lock cmpxchg [drainer_list + rsi*8], r12
+    jne .fw_next                           ; someone else has it
+
+    ; ── claimed: run consumer walk ──
+    push r12                               ; save APIC token
+    push rsi                               ; save loop index
+    mov rdi, [consumer_walk_list + rsi*8]
+    test rdi, rdi
+    jz .fw_unclaim
+    mov esi, dword [consumer_wlen_list + rsi*8]
+    test esi, esi
+    jz .fw_unclaim
+    call ψ
+
+.fw_unclaim:
+    pop rsi
+    pop r12
+    mov qword [drainer_list + rsi*8], 0   ; release claim
+    jmp .fw_scan                           ; re-scan
+
+.fw_next:
     inc esi
     cmp rsi, rcx
-    jb .scan
+    jb .fw_loop
 
-.idle:
-    ; poll keyboard while idle
+.fw_idle:
+    ; only BSP (APIC ID 0 → token 1) polls keyboard + renders
+    cmp r12d, 1
+    jne .fw_idle_pause
+
+    ; poll keyboard
     mov rdi, [0x9A38]                      ; kbd_walk ptr
     test rdi, rdi
-    jz .no_kbd
+    jz .fw_idle_pause
     mov esi, dword [0x9A40]                ; kbd_walk len
     test esi, esi
-    jz .no_kbd
+    jz .fw_idle_pause
     call ψ
 
     ; if kbd produced a character, render it
-    cmp dword [0x9B58], 0                  ; new-char flag
-    je .no_kbd
-    mov dword [0x9B58], 0                  ; clear flag
+    cmp dword [0x9B58], 0
+    je .fw_idle_pause
+    mov dword [0x9B58], 0
     call render_char
-.no_kbd:
-    pause
-    jmp find_work
 
-.found:
-    ; rsi = loop index with data. Run its consumer walk.
-    mov rdi, [consumer_walk_list + rsi*8]
-    test rdi, rdi
-    jz .next                               ; no consumer registered
-    mov esi, dword [consumer_wlen_list + rsi*8]
-    test esi, esi
-    jz find_work
-    call ψ
-    jmp find_work                          ; re-scan after draining
+.fw_idle_pause:
+    pause
+    jmp .fw_scan
 
 
 ; ── render_char ───────────────────────────────────────────────
@@ -614,6 +635,7 @@ loop_list:      resq MAX_LOOPS             ; loop header pointers
 consumer_walk_list:  resq MAX_LOOPS        ; consumer walk pointers
 consumer_wlen_list:  resq MAX_LOOPS        ; consumer walk lengths
 loop_count:     resq 1
+drainer_list:   resq MAX_LOOPS             ; APIC ID+1 of drainer (0 = unclaimed)
 
 
 ; ── text ──────────────────────────────────────────────────────
