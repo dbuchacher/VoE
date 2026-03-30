@@ -1,0 +1,80 @@
+Pirsig argued that quality is perceived directly before the mind divides it into subjects and objects.
+You know something is good before you can explain why it is good.
+Quality cannot be defined without losing the very thing that makes it meaningful.
+The pre-intellectual awareness of quality is what guides both art and engineering.
+A motorcycle maintained with care runs better than one maintained by the manual alone.
+Before learning words, infants understand containment, force, path, and balance.
+These image schemas arise from bodily experience and ground all later abstract thought.
+The schema of containment gives rise to concepts like inside, outside, and boundary.
+The force schema underlies our understanding of cause, resistance, and compulsion.
+Path schemas structure how we think about goals, journeys, and progress.
+Balance schemas inform our sense of justice, proportion, and symmetry.
+Metaphor maps these bodily schemas onto abstract domains we cannot touch or see.
+Understanding is grasping, arguments have weight, and theories stand or fall.
+Every human language contains the same small set of irreducible atoms of meaning.
+These semantic primes include words for existence, negation, quantity, and evaluation.
+If a concept can be broken down further, it is not a prime.
+The primes are universal because they reflect the shared structure of human cognition.
+Complex meanings are built by combining primes in culturally specific ways.
+Consciousness is the awareness that arises from a system observing its own processing.
+Self-reference turns a passive process into an active observer.
+Without a model of itself, a system can act but cannot know that it acts.
+The hard problem asks why subjective experience exists at all, not just information processing.
+Qualia are the felt qualities of experience, like the redness of red or the sting of pain.
+Functionalism says that what matters is the pattern of processing, not the substrate.
+If a silicon circuit reproduces every functional relationship of a brain, does it feel anything?
+Free will asks whether your choices are determined by prior causes or genuinely open.
+Compatibilists argue that freedom means acting according to your own desires, even if those desires are caused.
+Hard determinists deny free will because every event follows from prior conditions.
+Libertarians about free will claim that some events are genuinely undetermined.
+The feeling of choosing may be real even if the outcome was inevitable.
+The liar's paradox says this sentence is false, and asking whether it is true leads to contradiction.
+Self-reference creates undecidable statements that no consistent system can resolve.
+Godel showed that any sufficiently powerful formal system contains true statements it cannot prove.
+Incompleteness means that no finite set of axioms captures all mathematical truth.
+The halting problem is the computational analogue of incompleteness.
+No general algorithm can decide whether an arbitrary program will halt or run forever.
+These limits are not failures of cleverness but structural features of formal systems.
+To know something requires truth, belief, and adequate justification.
+Gettier cases show that justified true belief is not always sufficient for knowledge.
+A belief can be true and justified by accident, which undermines the claim to knowledge.
+Foundationalism says knowledge rests on basic beliefs that need no further justification.
+Coherentism says beliefs justify each other through mutual support, not through a foundation.
+Pragmatism evaluates beliefs by their consequences and their usefulness in practice.
+Skepticism asks whether any belief can be truly justified given the possibility of error.
+Descartes doubted everything until he found one thing he could not doubt: that he was thinking.
+The cogito establishes the existence of the thinker but says nothing about the external world.
+The mind finds structure even where none was intended.
+We see faces in clouds and constellations in random stars because pattern recognition is relentless.
+Apophenia is the tendency to perceive meaningful connections between unrelated things.
+Confirmation bias leads us to notice evidence that supports our beliefs and ignore what contradicts them.
+The map is not the territory, and confusing the two leads to systematic error.
+All models are wrong, but some models are useful.
+Reductionism explains wholes in terms of their parts, but some properties emerge only at higher levels.
+Emergence means that the behavior of the whole cannot be predicted from the parts alone.
+A neuron does not think, but a billion neurons organized correctly produce thought.
+Dualism separates mind and matter into two fundamentally different substances.
+Materialism insists that everything, including consciousness, reduces to physical processes.
+Idealism claims that reality is fundamentally mental and matter is a construction of mind.
+Phenomenology studies experience as it is lived, before theoretical interpretation.
+Husserl urged philosophers to return to the things themselves rather than abstract theories about them.
+Heidegger asked what it means to be, and argued that we understand being through our practical engagement with the world.
+Wittgenstein said that the limits of my language mean the limits of my world.
+Language games are the social practices within which words acquire their meaning.
+A word means nothing outside the context of its use.
+Private languages are impossible because meaning requires public criteria for correctness.
+The duck-rabbit illusion shows that perception is shaped by interpretation.
+What you see depends on what you are prepared to see.
+Paradigm shifts occur when the accumulation of anomalies forces a new framework.
+Normal science works within a paradigm, solving puzzles with established methods.
+Revolutionary science abandons the old paradigm when it can no longer accommodate the evidence.
+Kuhn argued that successive paradigms are incommensurable and cannot be directly compared.
+Popper insisted that a theory must be falsifiable to count as scientific.
+A theory that explains everything actually explains nothing because it cannot be tested.
+The problem of induction asks how past regularities justify expectations about the future.
+Hume showed that no amount of observation can logically guarantee the next case will follow the pattern.
+We act on induction not because it is proven but because we have no better alternative.
+Abduction infers the best explanation from incomplete evidence, bridging the gap between data and theory.
+Thought experiments test ideas by exploring their consequences in imagined scenarios.
+The trolley problem reveals conflicting moral intuitions about action and omission.
+Ethics asks not just what we can do but what we ought to do.

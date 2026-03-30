@@ -1,0 +1,5 @@
+# compiled binaries — rebuild with: cc -O2 -o name name.c -lm
+*
+!*/
+!*.c
+!.gitignore

@@ -1,0 +1,65 @@
+# Deep Predictions (18-30)
+
+Extended from the 17 predictions in mind/evidence. Forward-looking
+architectural implications. Not yet validated.
+
+
+## 18. Pipeline IS the Polynomial
+
+ρ (pipeline register) accumulates the walk's polynomial. Each bond
+adds a term. ρ after N bonds = Σ of N coordinate evaluations.
+Attention over the walk = reading ρ. O(1), not O(N²).
+
+
+## 19. Walks Self-Describe
+
+A walk's coordinates ARE its tokens, embeddings, and positional
+encoding simultaneously. No separate tokenizer, no embedding matrix,
+no positional encoding. The wave byte IS all three.
+
+
+## 20. JIT Cache IS Born-Index
+
+The equation's JIT cache (ƒ results for seen coordinates) IS the
+born-index (coordinate → content map). Sparse, 3-tier:
+  L1: 2401 entries (7⁴, shell 3)
+  L2: 14641 entries (11⁴, shell 5)
+  L3: disk (unlimited)
+
+
+## 21. Bond Composition IS Parsing
+
+Bond dispatch on walk bytes IS parsing. "The big dog" → bonds between
+words = grammar. No separate parser. The 16 relationship types ARE
+the parse tree.
+
+
+## 22. Walk Format Universal
+
+Seven content topologies (text, code, music, image, graph, table,
+signal) all fit one walk format. The coordinates change, the format
+doesn't. No modality-specific architectures.
+
+
+## 23. Generation = Walk Extension
+
+Generating the next token = extending the polynomial by one term.
+O(1) per token (evaluate equation at residual coordinate). Not
+O(N²) per token like transformer attention.
+
+
+## 24-30 (Sketched)
+
+24. Task composition: complex tasks = walks composed with ∘ (call)
+25. LSTM gates map to forces (forget=∮, input=π, output=∘, cell=δ)
+26. Type systems = coordinate constraints (well-typed = valid region)
+27. Grammar = bond algebra (valid sentences = walks with consistent forces)
+28. Context window = ring buffer depth (not arbitrary, structural)
+29. Fine-tuning = density map update (not weight surgery)
+30. Alignment = coordinate rotation (value alignment = basis change)
+
+
+## Status
+
+Predictions 18-23 are architectural (testable when walker runs language).
+24-30 are structural (testable by analysis). None validated yet.

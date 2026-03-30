@@ -1,0 +1,310 @@
+How to Program the Lattice
+==========================
+
+You have 4 numbers. They make everything.
+
+τ = time    χ = distance    μ = mass    φ = charge
+
+Even coordinates = math (atoms). Odd coordinates = control flow (bonds).
+That's it. The rest is composition.
+
+
+1. COORDINATES
+===============
+
+Every coordinate is an integer. One rule splits the lattice in two:
+
+  even ÷ 2 = exponent.    Coordinate -6 means exponent -3.
+  odd = force is active.   Coordinate +1 means that dimension is a force.
+
+If ALL coordinates in a tuple are even, it's an atom (math).
+If ANY coordinate is odd, it's a bond (control flow).
+
+This is the only rule. Everything else follows from it.
+
+Degree is the maximum absolute exponent in a tuple. It determines which
+shell the atom or bond lives in:
+
+  degree 0   (0,0,0,0)           identity (wave)
+  degree 1   max |coord| = 1-2   fundamentals: quarks, basic forces
+  degree 2   max |coord| = 3-4   quadratic: energy, acceleration, pressure
+  degree 3   max |coord| = 5-6   cubic: power, jerk, intensity
+  degree 4   max |coord| = 7-8   quartic: snap, geodesic
+  degree N   max |coord| = 2N    Nth-order Taylor term
+
+Higher degree = higher-order math. Each degree adds atoms the previous
+degree can't express. The lattice grows outward from the origin.
+
+gen.c outputs atoms and bonds by degree:
+  ./gen --degree 2       all atoms at degree 2
+  ./gen --degree 6 2     degree 6, 2-dimensional atoms only
+  ./gen --bonds 1        fundamental bonds (magnitude 1)
+
+
+2. THE WORKFLOW
+===============
+
+You never write machine code. You write coordinates.
+
+  Intent → grep codex.txt → get formula → grep lattice.txt → get coordinates → write record
+
+Example: "I need throughput"
+  $ grep throughput codex.txt
+  A  χμ/τ  ...  throughput  Fe(26)  ...
+  $ grep "χμ/τ" lattice.txt   (or: ./gen 1 1 1 0)
+  (-2,+2,+2,0)
+
+Now write a record:
+  coordinates: (-2, +2, +2, 0)
+  args: [ticks, slots, bytes]
+
+At runtime: slots * bytes / ticks. Exact integer math.
+
+For bonds:
+  $ grep "port_read" codex.txt
+  B  πδ̄  ...  port_read  ...
+  Coordinates: (+1, 0, 0, -1)
+
+  coordinates: (+1, 0, 0, -1)
+  args: [port_number, 0, 0]
+
+
+3. RECORDS
+==========
+
+Everything is a 32-byte record:
+
+  bytes 0-7:    4 x i16    coordinates (t, d, m, q)
+  bytes 8-15:   i64        arg0
+  bytes 16-23:  i64        arg1
+  bytes 24-31:  i64        arg2
+
+Args map to dimensions: arg0=τ, arg1=χ, arg2=μ, arg3=φ.
+Unused dimensions get 0 in the arg slots.
+
+
+4. ATOMS — MATH
+================
+
+Atoms are monomials. Positive exponents multiply, negative divide.
+Coordinates use 2x encoding: coordinate 4 means exponent +2, coordinate -6
+means exponent -3.
+
+  coordinates      formula      result
+  (-2, +2, 0, 0)   χ/τ          arg1 / arg0
+  (-2, 0, +2, 0)   μ/τ          arg2 / arg0
+  (-4, +2, +2, 0)  χμ/τ²       arg1 * arg2 / arg0^2
+  (-6, +4, +2, 0)  χ²·μ/τ³    arg1^2 * arg2 / arg0^3
+  (0, 0, 0, 0)     1            identity — returns arg0 unchanged
+
+Division by zero returns 0. Multiplications happen before divisions (precision).
+
+
+5. BONDS — CONTROL FLOW
+========================
+
+Bonds have odd coordinates. Which dimensions are odd selects the force pattern.
+Sign selects direction: + = consume/forward, - = produce/backward.
+
+  τ odd → π (read)   π = memory read    π̄ = memory write
+  χ odd → ∘ (call)   ∘ = call function   ∘̄ = return/curry
+  μ odd → ∮ (loop)   ∮ = loop/advance    ∮̄ = rewind/increment
+  φ odd → δ (test)   δ = test/compare    δ̄ = guard/select
+
+The 16 patterns (bitmask π=1 ∘=2 ∮=4 δ=8):
+
+  mask  forces   name        what it does                               coords
+  1     π        read/write  load or store pointer                      (+/-1, 0, 0, 0)
+  2     ∘        apply       tail call function                         (0, +1, 0, 0)
+  3     π∘       fold        load value then call function              (+1, +1, 0, 0)
+  4     ∮        drain/inc   countdown loop or add 1                    (0, 0, +/-1, 0)
+  5     π∮       slurp/fill  copy memory (π∮) or fill (π̄∮̄)         (+1, 0, +1, 0)
+  6     ∘∮       fix/retry   call fn N times                            (0, +1, +1, 0)
+  7     π∘∮      foldl       left fold over array                       (+1, +1, +1, 0)
+  8     δ        test/guard  compare eq or conditional value            (0, 0, 0, +/-1)
+  9     πδ       filter/io   min(a,b) or port read/write or add        see below
+  10    ∘δ       maybe       conditional function call                  (0, +1, 0, +1)
+  11    π∘δ      map         apply fn to each element                   (+1, +1, 0, +1)
+  12    ∮δ       take_while  scan until null                            (0, 0, +1, +1)
+  13    π∮δ      scan        running prefix accumulation                (+1, 0, +1, +1)
+  14    ∘∮δ      bind        monadic chain — THE event loop             (0, +1, +1, +1)
+  15    π∘∮δ     hylo        full pipeline: unfold+xform+fold           (+1, +1, +1, +1)
+
+Pattern 8 (δ) has magnitude variants on |Q|:
+  |Q|=1   δ test (== compare)       δ̄ guard (conditional select)
+  |Q|=3   δ AND                     δ̄ OR
+  |Q|=5   δ XOR                     δ̄ NOT
+  |Q|=7   δ SHL                     δ̄ SHR
+  |Q|=9   δ BSWAP32                 δ̄ BSWAP64
+  |Q|=11  δ less-than (signed)      δ̄ greater-than (signed)
+  |Q|=13  δ negate (-a)             δ̄ absolute value (|a|)
+
+Pattern 9 (πδ) has sign variants, each with magnitude extensions:
+  π δ  (+1, 0, 0, +1)  filter     min(a, b)
+  π δ  (+1, 0, 0, +3)  filter     max(a, b)        [|Q|=3]
+  π δ̄  (+1, 0, 0, -1)  port_read  read hardware port
+  π̄ δ  (-1, 0, 0, +1)  port_write write hardware port
+  π̄ δ̄  (-1, 0, 0, -1)  add        a + b
+  π̄ δ̄  (-1, 0, 0, -3)  subtract   a - b             [|Q|=3]
+
+Pattern 5 (π∮) has width variants based on |R| magnitude:
+  |R|=1  byte width
+  |R|=3  dword width (32-bit)
+  |R|>=5 qword width (64-bit)
+
+
+6. PATHS — PROGRAMS
+====================
+
+A path is an array of records. A walker executes them top to bottom.
+Each record is one computation. A path IS a program.
+
+Paths are polynomials. Each atom is a monomial (one term). The sum across
+records approximates any continuous function (Stone-Weierstrass theorem).
+
+  sin(x) ~ x - x^3/6 + x^5/120 - x^7/5040
+
+  record 0: degree 1 atom  → x           (shell 1)
+  record 1: degree 3 atom  → x^3/6       (shell 3)
+  record 2: degree 5 atom  → x^5/120     (shell 5)
+  record 3: degree 7 atom  → x^7/5040    (shell 7)
+
+More records = more precision. Higher shells = higher-order terms.
+
+Bonds in a path create structure:
+  - fold records set up function calls on data
+  - bind records create event loops
+  - slurp/fill records move memory
+  - port_write records talk to hardware
+
+A complete interactive app is just a path:
+  1. port_write bonds for hardware setup
+  2. fold bonds for one-time init calls
+  3. one bind bond at the end for the event loop
+
+Three kinds of records, one flat array, one walker.
+
+
+7. COMPOSITION
+==============
+
+Small things compose into bigger things with no new machinery.
+
+  atom:      one monomial         τᵃ·χᵇ·μᶜ·φᵈ
+  path:      array of records     polynomial (sum of monomials + bonds)
+  program:   path + bonds         Turing-complete computation
+
+There is no type system, no classes, no inheritance.
+A record is a record. The coordinates determine what it does.
+
+
+8. WAVE ENCODING
+=================
+
+A shell-1 coordinate fits in 1 byte. Two bits per dimension:
+
+  bits [7:6] = τ    bits [5:4] = χ    bits [3:2] = μ    bits [1:0] = φ
+  00 = 0    01 = +1    11 = -1
+
+Every shell-1 bond has a unique byte:
+
+  0xC0 = (-1, 0, 0, 0) = π̄ = write
+  0x40 = (+1, 0, 0, 0) = π = read
+  0xC1 = (-1, 0, 0,+1) = π̄δ = port write
+  0x41 = (+1, 0, 0,-1) = πδ̄ = port read
+  0x10 = (0, +1, 0, 0) = ∘ = apply
+  0x44 = (+1, 0,+1, 0) = π∮ = slurp
+  0x01 = (0, 0, 0,+1)  = δ = test
+
+The wave byte IS the instruction. Not an opcode, not a compression —
+the coordinate itself, encoded in the minimum physical unit (1 byte).
+A walk is a byte array of wave bytes. The walker reads bytes, not records.
+
+
+9. SIMD — WIDTH AS PRECISION
+==============================
+
+Same coordinates, wider registers = higher precision. Not just parallelism.
+
+  64-bit    max ~10^19   everyday integer math
+  128-bit   max ~10^38   extended precision
+  256-bit   max ~10^77   elliptic curve field arithmetic
+  512-bit   max ~10^154  RSA, everything fits
+
+The algebraic structure maps to Cayley-Dickson construction:
+
+  64-bit  = real numbers  (commutative, associative)
+  128-bit = quaternion     (non-commutative: a*b != b*a)
+  256-bit = octonion       (non-associative: (a*b)*c != a*(b*c))
+  512-bit = sedenion       (has zero divisors: a*b=0 where a,b != 0)
+
+A 32-byte record IS an octonion (8 components x 4 bytes).
+A 64-byte cache line IS a sedenion (16 components x 4 bytes).
+The math is the hardware.
+
+Width variants of the same atom:
+  speed = χ/τ at 64-bit  → integer division
+  speed = χ/τ at 256-bit → 256-bit division (or 4 speeds in parallel)
+
+Same coordinates. Different width. Different precision.
+
+
+10. THE FULL FORMULA
+=====================
+
+  atoms  = multiplication  (monomials)          τᵃ·χᵇ·μᶜ·φᵈ
+  paths  = addition        (polynomials)         sum of atoms across records
+  gates  = logic           (boolean)             τ=NOT, χ=OR, μ=AND, φ=SIGNAL
+  bonds  = control flow    (Turing complete)     π, ∘, ∮, δ forces
+
+Together: any math function (polynomial approximation), any boolean function
+(NOT + OR + AND = functional completeness), any program (bonds are Turing
+complete). From 4 numbers.
+
+The shells are Taylor series orders:
+  shell 0   = x^0  = constant (wave/identity)
+  shell 1-2 = x^1  = linear (speed, density, bandwidth)
+  shell 3-4 = x^2  = quadratic (energy, acceleration, pressure)
+  shell 5-6 = x^3  = cubic (power, jerk, intensity)
+  shell 7-8 = x^4  = quartic (snap, geodesic)
+  shell 9+  = x^n  = perturbation theory (higher-order corrections)
+
+
+11. PROPERTIES
+===============
+
+Addition
+  Addition is the π̄δ̄ bond. Increment is the ∮̄ bond (+1).
+  Subtraction is add(a, -b) — composition, not a new operation.
+
+Identity
+  Same coordinates always produce the same result. (0,0,0,0) is
+  the identity — returns its input unchanged.
+
+Precision
+  The lattice is integer math. Precision scales with register width.
+  Higher shells give higher exponents. Wider registers extend the range.
+  Floats are a representation choice outside the lattice.
+
+Completeness
+  Atoms = multiplication (monomials). Paths = addition (polynomials).
+  Polynomials approximate any continuous function (Stone-Weierstrass).
+  Gates = NOT + OR + AND = boolean functional completeness.
+  Bonds = read + write + call + loop + test = Turing complete.
+
+Statelessness
+  The lattice is stateless. Coordinates in, result out.
+  State lives in memory. Bonds read and write it. The lattice doesn't
+  know what's stored — it just moves values between addresses.
+
+
+12. QUICK REFERENCE
+====================
+
+Find a formula:    grep "bandwidth" codex.txt
+Find coordinates:  grep "μ/τ" lattice.txt  OR  ./gen 0 0 1 -1
+Look up a bond:    grep "port_read" codex.txt
+Generate lattice:  ./gen --degree 4     (atoms at degree 4)
+                   ./gen --bonds 1      (fundamental bonds)
+                   ./gen --all          (everything to degree 21)
+Single atom:       ./gen 1 1 1 0        (formula for τ·χ·μ)

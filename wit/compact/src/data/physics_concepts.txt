@@ -1,0 +1,78 @@
+Quarks combine in groups of three to form protons and neutrons inside the atomic nucleus.
+There are six flavors of quark: up, down, charm, strange, top, and bottom.
+A proton contains two up quarks and one down quark held together by the strong force.
+Gluons mediate the strong force that binds quarks together within hadrons.
+The strong force grows stronger with distance, which is why isolated quarks are never observed.
+Gravity is the weakest of the four fundamental forces but acts over the greatest distance.
+Electromagnetism governs the interaction between charged particles and produces light.
+The weak force is responsible for radioactive beta decay and neutrino interactions.
+Every particle has a corresponding antiparticle with opposite charge and quantum numbers.
+When a particle meets its antiparticle they annihilate and release energy as photons.
+Positrons are the antimatter counterpart of electrons and carry positive charge.
+Energy cannot be created or destroyed, only converted from one form to another.
+Momentum is conserved in every collision, whether elastic or inelastic.
+Angular momentum is conserved when no external torque acts on the system.
+Charge is conserved in every physical process without exception.
+A particle exists in superposition until a measurement forces it into a definite state.
+The act of measurement collapses the wave function to one of its eigenstates.
+Entangled particles share correlated states regardless of the distance between them.
+The uncertainty principle says you cannot know both position and momentum with arbitrary precision.
+Planck's constant sets the scale at which quantum effects become significant.
+The double slit experiment shows that individual particles create an interference pattern over time.
+Light behaves as a wave when it diffracts and as a particle when it strikes a detector.
+The photoelectric effect demonstrated that light carries energy in discrete quanta called photons.
+Each photon has energy proportional to its frequency, following Planck's relation.
+Time passes more slowly near massive objects, an effect predicted by general relativity.
+A clock at sea level ticks slightly slower than an identical clock on a mountaintop.
+GPS satellites must correct for relativistic time dilation to maintain accuracy.
+Mass and energy are equivalent, related by the equation E equals mc squared.
+Nothing can travel faster than light in a vacuum, which is the universal speed limit.
+Special relativity shows that simultaneity depends on the observer's frame of reference.
+The Higgs field gives mass to elementary particles through their interaction with it.
+Neutrinos are nearly massless particles that rarely interact with ordinary matter.
+Dark matter accounts for roughly a quarter of the total energy content of the universe.
+Dark energy drives the accelerating expansion of the universe and remains poorly understood.
+The standard model describes all known fundamental particles and three of the four forces.
+Gravity is not included in the standard model and resists quantization.
+String theory proposes that particles are vibrations of tiny one-dimensional strings.
+Thermodynamics governs the flow of heat and the concept of entropy.
+Entropy measures the number of microscopic arrangements consistent with a macroscopic state.
+The second law of thermodynamics says entropy in a closed system never decreases.
+Heat flows spontaneously from hot objects to cold ones, never the reverse.
+Absolute zero is the lowest possible temperature where all thermal motion ceases.
+Superconductors carry electric current with zero resistance below a critical temperature.
+Superfluids flow without viscosity and can climb the walls of their container.
+Bose-Einstein condensates form when particles are cooled to near absolute zero and behave as one.
+Fermions obey the Pauli exclusion principle and cannot occupy the same quantum state.
+Bosons can occupy the same state, which is why lasers produce coherent light.
+The electromagnetic spectrum spans radio waves through gamma rays with visible light in between.
+Higher frequency radiation carries more energy per photon.
+X-rays penetrate soft tissue because their wavelength is shorter than atomic spacing.
+Blackbody radiation follows a spectrum that depends only on temperature.
+The cosmic microwave background is the remnant radiation from the early universe.
+Redshift tells us that distant galaxies are moving away and the universe is expanding.
+Nuclear fusion powers stars by combining light nuclei into heavier ones and releasing energy.
+Fission splits heavy nuclei and releases energy exploited in reactors and weapons.
+The half-life of a radioactive isotope is the time for half the atoms to decay.
+Tunneling allows particles to pass through barriers that classical physics forbids.
+Quantum tunneling is essential for nuclear fusion in stars and for semiconductor devices.
+Virtual particles appear briefly from the vacuum and mediate fundamental forces.
+The Casimir effect demonstrates that vacuum fluctuations exert measurable forces between plates.
+Symmetry breaking explains how the early universe transitioned from a uniform state to diverse particles.
+Noether's theorem connects every continuous symmetry to a conserved quantity.
+Translational symmetry in time leads to conservation of energy.
+Translational symmetry in space leads to conservation of momentum.
+Rotational symmetry leads to conservation of angular momentum.
+Gauge symmetry underlies the mathematical structure of all fundamental interactions.
+Phase transitions occur when a system changes state, such as water freezing into ice.
+Critical phenomena near phase transitions exhibit universal scaling behavior.
+Chaos theory shows that deterministic systems can be practically unpredictable.
+Sensitive dependence on initial conditions means tiny differences grow exponentially over time.
+The arrow of time points from low entropy past to high entropy future.
+Information is physical and erasing a bit costs a minimum amount of energy.
+Landauer's principle connects thermodynamics directly to computation.
+Wheeler proposed that every physical quantity derives from information, summarized as it from bit.
+The holographic principle suggests that a volume of space can be encoded on its boundary.
+Quantum computing exploits superposition and entanglement to solve certain problems exponentially faster.
+A qubit can be zero, one, or any coherent combination of both.
+Decoherence destroys quantum information as a system interacts with its environment.

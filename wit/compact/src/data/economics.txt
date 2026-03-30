@@ -1,0 +1,76 @@
+The value of a good depends on the individual buyer's needs, not on the labor it took to produce.
+Two people can look at the same object and assign it very different values.
+A glass of water is worth little in a rainstorm but everything in a desert.
+Marginal utility declines as you consume more of the same good.
+The first slice of bread satisfies hunger, but the tenth adds almost nothing.
+Prices carry information about scarcity and demand that no central planner can replicate.
+When the price of a resource rises, it signals producers to supply more and consumers to use less.
+Falling prices tell producers to redirect effort toward more valued goods.
+The price system coordinates millions of decisions without anyone being in charge.
+Spontaneous order arises when complex systems emerge from simple individual rules.
+No one designed the English language, yet it has grammar, vocabulary, and coherent structure.
+Markets are an example of spontaneous order where buyers and sellers coordinate through prices.
+Incentives shape behavior more reliably than commands or intentions.
+People respond to rewards and punishments, adjusting their actions accordingly.
+A subsidy encourages more of an activity, while a tax discourages it.
+Unintended consequences arise when incentives push behavior in directions the rule-maker did not foresee.
+Both parties benefit from voluntary exchange because each values what they receive more than what they give.
+Trade creates value even when one party is more efficient at producing everything.
+Comparative advantage explains why specialization and trade make everyone better off.
+The division of labor multiplies productivity by letting each person focus on what they do best.
+Without prices, central planners cannot calculate which allocation of resources is most efficient.
+The economic calculation problem shows that socialism lacks the feedback mechanism that markets provide.
+Prices aggregate dispersed knowledge that no single mind could ever possess.
+Hayek argued that the knowledge needed for economic decisions is scattered across millions of individuals.
+Competition drives prices toward the cost of production over time.
+Firms that produce more efficiently earn profits and grow, while inefficient ones shrink.
+Monopolies restrict output and raise prices above the competitive level.
+Barriers to entry protect incumbents and reduce the pressure to innovate.
+Property rights give people the incentive to maintain and improve what they own.
+Without secure property rights, investment and long-term planning collapse.
+The tragedy of the commons occurs when no one owns a resource and everyone overuses it.
+Assigning clear ownership converts a commons into a managed asset.
+Externalities arise when a transaction imposes costs or benefits on third parties.
+Pollution is a negative externality because the polluter does not bear the full cost.
+Coase showed that clear property rights and low transaction costs can resolve externalities through bargaining.
+Taxation transfers resources from private use to public use and always has a deadweight loss.
+Deadweight loss represents value that is destroyed by the distortion of incentives.
+Inflation erodes the purchasing power of money and distorts price signals.
+Deflation discourages spending because buyers expect prices to fall further.
+Sound money preserves its value over time and supports reliable economic calculation.
+Savings channel current production into future investment.
+Capital accumulation is the engine of long-run economic growth.
+Interest rates coordinate the allocation of resources between present consumption and future production.
+Artificially low interest rates encourage malinvestment in projects that cannot sustain themselves.
+The business cycle alternates between booms fueled by credit expansion and busts that correct the errors.
+Entrepreneurship drives innovation by discovering new ways to serve consumers.
+Profit tells an entrepreneur that resources are being used to create more value than they cost.
+Loss tells an entrepreneur to stop and redirect resources elsewhere.
+Creative destruction replaces old industries with new ones that serve consumers better.
+Opportunity cost is the value of the best alternative you gave up when you made a choice.
+Every decision involves a tradeoff because resources are finite.
+Sunk costs should not influence future decisions because they cannot be recovered.
+Diminishing returns mean that adding more of one input eventually yields smaller increases in output.
+Economies of scale reduce the average cost of production as output grows.
+Diseconomies of scale set in when an organization becomes too large to manage effectively.
+Public goods are nonrival and nonexcludable, which means markets tend to underprovide them.
+Free riding occurs when individuals benefit from a public good without contributing to its cost.
+Rent seeking diverts effort from creating value to capturing existing value through political means.
+Regulatory capture happens when the regulated industry controls the regulator.
+Moral hazard arises when someone takes greater risks because another party bears the consequences.
+Adverse selection occurs when one side of a transaction knows more than the other.
+Insurance markets struggle with adverse selection because high-risk buyers are most eager to insure.
+Contracts reduce uncertainty by specifying obligations and remedies in advance.
+Trust lowers transaction costs and makes complex exchanges possible.
+Institutions are the rules of the game that shape how people interact.
+Good institutions reward productive behavior and penalize predatory behavior.
+Rules must align individual incentives with collective outcomes to produce social benefit.
+Decentralized systems distribute decision-making and adapt faster to local conditions.
+Centralized systems can coordinate large-scale action but suffer from information bottlenecks.
+The knowledge problem limits what any central authority can know and control.
+Feedback loops in markets correct errors automatically as prices adjust to new information.
+Delayed feedback allows errors to compound before they become visible.
+Resilient systems absorb shocks and recover without catastrophic failure.
+Fragile systems appear stable until a small disturbance causes sudden collapse.
+Redundancy is costly in the short run but essential for surviving unexpected events.
+Diversification spreads risk across many assets so that no single failure is catastrophic.

@@ -1,4 +1,0 @@
-#!/bin/sh
-set -e
-cc -O3 -Wall -Wno-unused-function -march=native -o lattice_chat lattice_chat.c learner.c -lm
-echo "built: lattice_chat"

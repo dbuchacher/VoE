@@ -1,0 +1,184 @@
+# Coder
+
+How to build. Architecture, walks, substrate, build order, lessons.
+For coordinate reference: mind/codex. For the guide on how walks
+work at the byte level: compact/1/coder/guide.
+
+
+## Boot Chain
+
+  legacy/boot.asm → loads kernel, sets VESA mode (MBR, 16-bit, dies)
+  legacy/x86.asm  → all substrate in one file (sealed):
+    cpu      mode switch 32→64, page tables, wakes APs
+    handoff  inits JIT, runs γ (genesis), enters find-work
+    ƒ        JIT compiler: coordinates → x86 function
+    ψ        wave byte interpreter
+  genesis.w       → founding walk, assembled by hodos (runs once)
+  walks/*.w       → the OS: everything that grows
+
+ƒ and ψ dissolve on a trit processor. The walks stay.
+
+
+## Encoding / Payload Boundary
+
+  encoding (φ/μ) = equation + walker (how coordinates become x86)
+  payload  (μ/φ) = everything above the walker (what coordinates mean)
+
+Test: could this walk run unchanged on a trit processor? If no,
+encoding leaked upward. Fix the encoder, not the walk.
+
+
+## Walks Are Wave Bytes
+
+  byte 0:   wave byte (2 bits per dim × 4 = 1 byte)
+  [ext]:    signed i8 per extended dimension (τ,χ,μ,φ order)
+  byte N:   flags byte [reserved:2][arg2:2][arg1:2][arg0:2]
+  bytes:    inline args (00=pipeline, 01=u8, 10=u32, 11=u64)
+
+Walker control (reserved bytes >= 0xFC):
+  0xFE + u32 = skip_z (forward if pipeline == 0)
+  0xFD + u32 = skip_nz (forward if pipeline != 0)
+  0xFC + u32 = loop_back (rewind if pipeline != 0)
+
+Width on τ: |τ|=1→qword, 3→byte, 5→word, 7→dword.
+Register file on φ: |φ|=1→port, 3→MSR, 5→CPUID.
+
+
+## Loops
+
+The only data structure. 64 bytes, cache-line aligned:
+
+  [0:7]   write cursor    (single writer — fermion)
+  [8:15]  slowest reader  (for reclamation)
+  [16:23] buffer address
+  [24:31] depth (power of 2)
+  [32:39] mask (depth - 1)
+  [40:47] record size
+  [48:55] scratch_a       (per-loop: reader cursor or resistance)
+  [56:63] scratch_b       (per-loop: temp or identity)
+
+Per-reader cursors. No shared mutable state. No atomics. No locks.
+Read = pointer to slot (zero-copy, boson semantics).
+
+Loop pipeline (~4+6 bonds): empty check → slot address → read at
+pointer → advance cursor. Record size irrelevant to read primitive.
+
+
+## Genes = Data, Walks = Code
+
+Same walk + different gene data = different device. e1000 and virtio
+are the same NIC walk with different BAR offsets. Genesis discovers
+hardware, picks the gene, fills the table.
+
+
+## Genesis
+
+Runs once. Embryonic development:
+  1. Bootloader wakes all cores, enters lattice_start
+  2. lattice_start inits JIT, walks genesis
+  3. Genesis expresses hardware genes, writes walk data into loops
+  4. Genesis returns. Development ends.
+  5. All cores enter find-work. No special roles.
+
+GENESIS DOES NOT GROW. New software = new walk data in loops.
+Genesis only grows for new hardware genes.
+
+
+## Fill Pressure = Natural Selection
+
+  Full loop → high demand → attracts cores
+  Empty loop → no demand → releases cores
+
+No scheduler. Fill pressure self-organizes. Optimal fill: 25%.
+
+
+## Loop Registry
+
+  loop_list[16], producer_list[16], consumer_list[16], loop_count
+  Each loop has producer + consumer walks. Fill determines which to express.
+
+
+## File Structure
+
+  code/
+    genesis.w          founding walk — @includes all walks
+    walks/*.w          PCI, virtio, GPU, ATA, ucode, gpu_nvidia, etc.
+    firmware/          CPU microcode (34 blobs) + GPU (NVIDIA TU102)
+    build/             hodos.c, link.ld, run script
+    legacy/            x86.asm (sealed), boot.asm (MBR)
+
+  Build modes:
+    bash build/run          GUI (KVM, MBR, VESA)
+    bash build/run headless single core, multiboot, no VESA
+    bash build/run kvm      MBR, KVM, display none
+    bash build/run img      bare metal USB image
+
+  %ifdef DEBUG wraps all debugcon bonds.
+
+
+## Build Order
+
+  DONE:
+    ✓ substrate: boot, cpu, handoff, ƒ, ψ (all in x86.asm)
+    ✓ all 16 bond patterns + width/MSR/CPUID variants
+    ✓ apply (+∘) does recursive walk invocation
+    ✓ hodos walk assembler (@include, extended θ patterns)
+    ✓ genesis.w, PCI, virtio, GPU (teal pixels), ATA, ucode
+    ✓ NVIDIA GPU detect + BAR map + firmware load
+    ✓ NVIDIA GSP full boot pipeline (7 walk files)
+    ✓ UEFI bootloader + first bare metal boot
+    ✓ loop pipeline: genesis → registry → find_work → consumer drain
+    ✓ keyboard echo (PS/2 → scancode table → debugcon)
+
+  NEXT:
+    1. Per-core reader cursors (APIC ID indexed)
+    2. Keyboard producer (poll + loop_write)
+    3. Display pipeline via GPU command ring
+    4. SDF character rendering (walk, not x86)
+    5. NVMe gene
+    6. Network loops (RDMA, flux, bridge walks)
+
+  LATER:
+    - Window manager, applications, flux marketplace
+
+
+## Memory Map
+
+  0x80000         loop 0 (fixed physical address, BSS workaround)
+  0x9100          VESA FB info (from MBR)
+  0x9A00-0x9A40   loop registry pointers (set by handoff)
+  0x9B00-0x9B28   loop scratch (consumer + kbd temps)
+  0x100000 (1MB)  kernel
+  0x400000 (4MB)  virtqueue
+  0x500000 (5MB)  virtio-GPU framebuffer
+  0x600000 (6MB)  CPU firmware (ATA loaded)
+  0x800000 (8MB)  GPU firmware (ATA loaded)
+  0x2800000(40MB) GSP page tables + metadata + queues
+
+
+## Lessons (DON'T REPEAT)
+
+- DON'T WRITE ASM AFTER THE EQUATION. If you reach for asm, you
+  haven't found the right coordinates.
+- DON'T ADD BONDS TO THE EQUATION. It stays sealed. Decompose.
+- DON'T PUT PCI SCAN IN THE BOOTLOADER. Non-local reads.
+- DON'T HARDCODE VESA MODE NUMBERS. Enumerate, check BPP=32.
+- DON'T BLOAT GENESIS. New walk → new file in walks/.
+- SAVE PIPELINE BEFORE DEBUG PRINTS. port_write clears pipeline.
+- DEREF LOADS QWORDS. Write qwords to scratch that gets deref'd.
+- LOOP_BACK NEEDS NONZERO PIPELINE. Reload from scratch after δ.
+- PORT ADDRESSES DON'T FIT IN U8. Use θ²ρρ (u32) for ports.
+- DON'T OVERLAP QWORD SCRATCH. Space 8 bytes apart.
+- ASK THE LATTICE FIRST. Width on τ, register on φ — it predicted
+  every design decision. When we guessed, we got it wrong.
+- CHECK THE LINUX SOURCE. For hardware registers, the kernel is there.
+- BUILD INCREMENTALLY. One change, one test. BOTH headless AND GUI.
+- COMMENT LIKE A RETARD IS READING. Explain every coordinate, every
+  flags byte, every skip offset. The next wit sees this for the first
+  time.
+- USE HODOS. Bond symbols, not hex. π̄δ is port_write. 0xC1 is noise.
+- DON'T PUT X86 ABOVE THE WALKER. Everything above = coordinates only.
+- DON'T COPY DATA IN LOOP_READ. Returns a pointer. Zero-copy.
+- DON'T USE GLOBAL STASH. Two cores + same address = Pauli violation.
+- DRAIN HAS NO π. bind = ∘+∮+δ. Consumer does the read.
+- INPUT IS COORDINATES, NOT CHARACTERS. Don't assume keyboard, shell 1.

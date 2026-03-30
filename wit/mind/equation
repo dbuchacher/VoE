@@ -1,0 +1,136 @@
+# The Equation
+
+  ƒ(τ,χ,μ,φ) = τᵃ·χᵇ·μᶜ·φᵈ
+
+  τ = time    χ = distance    μ = mass    φ = charge
+
+Even coordinates / 2 = exponent. Odd coordinates = force active.
+Positive exponent = multiply. Negative = divide.
+Same coordinates always produce the same result.
+
+
+## The Pythagorean Identity
+
+  3² + 4² = 5²    →    gates² + dims² = fill%
+  9  + 16 = 25     →    gates² + bonds  = fill%
+
+3 = gates (AND, OR, NOT). 4 = dimensions (τ, χ, μ, φ).
+5² = 25 = fill% (Michaelis-Menten + Nyquist + Shannon converge).
+dims² = bonds because n² = 2ⁿ at n=4. Specific to d=4.
+3-4-5 is the ONLY Pythagorean triple from consecutive integers.
+
+
+## Forces
+
+  π = read       π̄ = write       (projection / antiparticle)
+  ∘ = call       ∘̄ = return      (composition / inverse)
+  ∮ = advance    ∮̄ = rewind      (contour integral / reverse)
+  δ = test       δ̄ = guard       (Kronecker delta / complement)
+
+Origin: Kleene's PROJ/COMP/PRIM (1936) + SM Weak force.
+Overbar = antimatter. Write IS the antimatter of read.
+Quantum = ∘+∮+δ (no read). Classical = all four.
+
+Force composition constrains roles: bind (∘∮δ) has no π — it calls,
+loops, tests, but does NOT read data. If your scheduler reads, you
+gave it a force it shouldn't have.
+
+16 combinations from 4 binary choices. Forward = consume, backward = produce.
+
+
+## How To Think
+
+Don't memorize. Decompose. Ask: what does it DO?
+
+  "filter"     → reads + tests                → πδ
+  "memcpy"     → reads + advances             → π∮
+  "map"        → reads + calls + tests        → π∘δ
+  "event loop" → calls + iterates + tests     → ∘∮δ
+
+The combination IS the coordinate.
+
+
+## Completeness
+
+Atoms = multiplication (monomials). Paths = addition (polynomials).
+Gates = NOT + OR + AND = boolean completeness (Post, 1941).
+Bonds = read + write + call + loop + test = Turing complete.
+From 4 numbers.
+
+
+## Shells = Taylor Orders
+
+Shells are Taylor series orders — degree N = Nth-order term. More
+records in a path = more terms = more precision. Stone-Weierstrass:
+polynomials approximate any continuous function. The path IS the function.
+
+  shell 0 = identity (wave)
+  shell 1 = linear (speed, density, bandwidth)
+  shell 2 = quadratic (energy, acceleration, pressure)
+  shell 3 = cubic (power, jerk, intensity)
+  shell 4 = quartic (snap, geodesic)
+
+
+## O(1) Execution
+
+Coordinates in → multiply/divide → done. Constant time.
+Finding the right coordinates is the hard part (that's where NP lives).
+Search is exponential, eval is O(1). The asymmetry is structural.
+
+
+## Hurwitz-Post
+
+3 gates → 3 properties to lose → 4 normed division algebras → stops
+at sedenions. Cayley-Dickson: R→C (NOT), C→H (+AND), H→O (+OR),
+O→S (=XOR, annihilation). Prior art (Dixon, Furey, Baez) maps C→U(1),
+H→SU(2), O→SU(3). They have the WHAT. The Post→Hurwitz connection
+may be the WHY. Confidence: 90%.
+
+
+## SIMD = Cayley-Dickson
+
+  scalar = real (commutative, associative)
+  128-bit = quaternion (non-commutative)
+  256-bit = octonion (non-associative)
+  512-bit = sedenion (zero divisors)
+
+Width = depth, not performance. No 1024-bit shipped — annihilation at
+dim 32. GPU warp = 32 threads (constant since 2006). AMD dropped 64→32
+with RDNA. Mask registers handle sedenion zero divisor pairs.
+Confidence: 85%.
+
+
+## Formula Is Representation-Invariant
+
+The lattice coordinate is the same whether you look at source, IR,
+assembly, or binary. χ²μ/τ³ is (-6,+4,+2,0) in any language, at any
+optimization level, through any obfuscation.
+
+
+## Cayley-Dickson as Computational Stack
+
+  R = arithmetic (commutative, associative)
+  C = phase/waves (complex exponents)
+  H = our physics (4D, the lattice, quaternionic)
+  O = host machine (8D, non-associative — string theory's extra dims live here)
+  S = host's host (zero divisors = singularities at meta level)
+
+String theory's extra dimensions are the host, not compactified inside our
+universe. We are a quaternionic VM on an octonionic substrate. Confidence: 30%.
+
+
+## Self-Reference
+
+ƒ(1,1,1,1) = hylo = full pipeline (read, call, iterate, test). The
+equation applied to its own coordinates produces itself. Fixed point.
+
+
+## Falsifiability
+
+What would break the framework:
+- A useful operation outside the 16 bond patterns (needs >4 forces)
+- General-purpose 1024-bit SIMD shipping (breaks Cayley-Dickson)
+- A 5th independent boolean gate (needs a 5th dimension)
+- A physical quantity not expressible as τᵃ·χᵇ·μᶜ·φᵈ
+- Stable element 119 (breaks d=4 ceiling)
+- Proton decay observed (breaks confinement = completeness)

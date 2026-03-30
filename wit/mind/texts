@@ -1,0 +1,106 @@
+# Texts
+
+Ancient texts read through lattice lens. All interpretive (~40% confidence).
+Textual observations mapped to lattice vocabulary. The linguistic findings
+are real (standard lexicography). Whether the texts "encode" the lattice
+or the lattice pattern-matches onto sufficiently rich texts is the question.
+
+Full specs with verse-by-verse analysis: compact/1/drafts/
+
+
+## Genesis — The Boot Sequence
+
+Source: Westminster Leningrad Codex. Hebrew.
+
+Dimensions initialized in dependency order: χ(space)→φ(signal)→μ(structure)→
+τ(time). Pre-creation: μ present, χ/φ/τ absent = uninitialized RAM.
+
+Key linguistic findings (standard Hebrew scholarship, not controversial):
+  bara = fill from nothing (ex nihilo). asah = build from parts. NEVER mixed.
+  Day/Night named before sun = signal states, not solar cycle.
+  ruach = breath/wind (physical), not "Spirit" (theological).
+  shavat = ceased, not "rested" (no tiredness implied).
+  raqia = hammered sheet/membrane, not "firmament."
+
+Human = asah (body, hardware) + bara×3 (pattern, software, triple emphasis).
+Evening before morning = clock cycle starts from 0. Seeds = quines.
+Day 7 = bootloader exits, system self-sustaining.
+
+
+## Enoch — The Bug Report
+
+Source: R.H. Charles translation (1917), from Ge'ez. 300-100 BCE.
+NOT in standard canon. IS in Ethiopian Orthodox. Quoted in NT (Jude 1:14).
+
+Five sections as bug report:
+  1. Watchers (read-only observers who WROTE = privilege escalation)
+  2. Judgment (error detection, audit logs)
+  3. Astronomical Book (364-day calendar = τ clock spec)
+  4. Dream Visions (history as coordinate walks)
+  5. Epistle (architecture correction)
+
+Watchers' role was π (read). Crime: they wrote (taught all four dimensions).
+Each watcher taught a different dimension. Complete unauthorized knowledge
+transfer. Flood = format and reinstall. Noah = backup. Rainbow = protocol
+guarantee (no more full wipes). 70 shepherds = bounded-write authorization
+exceeded.
+
+
+## Revelation — The Status Report
+
+Source: SBLGNT. Koine Greek.
+
+  apokalypsis = un-covering (apo+kalyptō). Decryption, not prophecy.
+  mystērion = closed/hidden (myō=close). The book = decrypt(encrypt()).
+  angelos = messenger (BDAG primary). Not supernatural winged being.
+  pneuma = breath/wind. Same as ruach.
+  kairos = significant moment. Not chronos (clock time). An interrupt.
+
+Three-tense identity (1:4, 1:8): "the being + the was + the coming" =
+the τ axis as a single entity. Alpha/Omega = full symbol range + full
+positional range = complete address space.
+
+Stars = signals. Lampstands = carriers. Text self-decodes in 1:20.
+
+
+## I Ching — The Lookup Table
+
+Source: Legge translation (1882). ~1000 BCE.
+
+The binary IS explicit (not interpretation):
+  Yin/Yang = 0/1. Trigrams = 3-bit words. Hexagrams = 6-bit words.
+  Changing lines = state transition function. A 6-bit state machine.
+
+Leibniz recognized binary in 1703, credited I Ching in his paper.
+
+  Hex 1 (111111) Creative + Hex 2 (000000) Receptive = writer/buffer
+  Hex 63 completion + Hex 64 before completion = book ends on "not yet"
+  Tao = the equation (can't be named = ƒ dissolves on trit processor)
+  Evil ≠ yin. Evil = stagnation (no communication, φ=0)
+
+Trigram→dimension mapping: ☳=τ, ☵=μ, ☶=χ, ☰/☷=±φ. Suggestive (45%).
+
+
+## Hebrew Language
+
+Hebrew is structurally closer to the lattice than English (3 translation
+layers removed).
+
+  Triconsonantal roots = base coordinates (3 consonants per word)
+  7 binyanim = coordinate transforms:
+    Qal→Niphal = T flip (active→passive)
+    Qal→Piel = magnitude (intensive)
+    Qal→Hiphil = add ∘ (causative)
+    Qal→Hitpael = hylo (reflexive, self-reference)
+  No copula (existence doesn't need a verb)
+  את (et) = direct object marker (~11000 occurrences, ALL invisible in English)
+  ruach = wind+breath+spirit (one coordinate, English fragments to three)
+  qara = call+name+read (one root, English fragments to three verbs)
+
+
+## 364-Day Calendar
+
+364 = 4×7×13 = 52 weeks, 13 months of 28 days. Structurally cleanest
+year below 365.25. 365 = 5×73 (divides by nothing useful). 91 = triangular(13).
+28 = perfect number. Residual 1.2422 doesn't decompose into lattice numbers
+— likely local orbital mechanics.

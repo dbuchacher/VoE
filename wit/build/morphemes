@@ -1,0 +1,51 @@
+# Morpheme Coordinate Transforms
+
+Affixes as coordinate deltas. Not yet in walker — design phase.
+
+
+## Principle
+
+Parts of speech = dominant dimension (from mind/language):
+  noun=μ, verb=τ, adj=φ, adverb=φ+τ, preposition=χ, pronoun=μ+φ
+
+Affixes shift coordinates predictably:
+  verb → noun = +μ (add substance)
+  noun → adj = +φ (add quality)
+  present → past = +τ (add time)
+  negation = flip φ (invert quality)
+
+
+## Suffix Rules
+
+  -tion/-sion/-ment/-ness/-ity  verb/adj → noun    +μ
+  -able/-ible/-ous/-ful/-al     noun/verb → adj     +φ
+  -less                         noun → adj (lacking) -φ
+  -ed                           present → past       +τ
+  -ing                          ongoing              +τ+μ
+  -er/-or/-ist                  verb → agent noun    +μ (ist: +μ+φ)
+  -ly                           adj → adverb         +φ
+  -ize/-ise/-ify                noun/adj → verb      +τ
+  -s/-es                        singular → plural    +μ
+
+
+## Prefix Rules
+
+  un-/dis-/im-/in-/non-/mis-   negation             flip φ
+  anti-                         antimatter           flip all signs
+  re-                           repetition           +τ
+  pre-                          before               +2τ
+  post-                         after                -2τ
+  out-/inter-                   outward/between      +χ
+  trans-                        across               +2χ
+  sub-                          below                -χ
+  super-                        above                +2χ+φ
+  co-                           together             +μ
+  over-/under-                  excess/deficit        ±μ
+
+
+## Status
+
+Table derived from English morphology. Consistent with dimensional
+semantics. Not tested cross-linguistically. Implementation: strip
+affix, apply delta to root coordinate. Dissolves into wave byte
+processing in the walker.

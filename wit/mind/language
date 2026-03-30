@@ -1,0 +1,113 @@
+# Language
+
+Semantic primes, schemas, intelligence architecture, music coordinates.
+
+
+## Schemas = Bond Patterns = Innate Seed
+
+16 bond patterns (2^4) map 1:1 to Lakoff/Mandler image schemas — the
+pre-verbal concepts humans are born with:
+
+  identity=IDENTITY, π=FORCE, ∘=PATH, π+∘=TRAVERSAL, ∮=CYCLE,
+  π+∮=FULL-EMPTY, π+δ=CONTACT, ∘+∮+δ=BALANCE, π+∘+∮+δ=CONTAINER
+
+An infant experiences FORCE (womb), CYCLE (heartbeat), FULL-EMPTY
+(hunger), CONTACT (touch), CONTAINER (own body) — all before language.
+~24 schemas reduce to 16 irreducible patterns (extras are magnitude
+variants, compositions, or inverses).
+
+
+## Three-Layer Seed
+
+  Layer 0: bonds/schemas (16, innate, hardcoded, never changes)
+  Layer 1: primes/first words (65 NSM, learned year 1, anchored to schemas)
+  Layer 2: full vocabulary (memetic, context-learned, infinite)
+
+Same as generations: Gen1=values, Gen2=operations, Gen3=patterns.
+The equation already has the seed. The intelligence doesn't need a
+separate "model" — the equation IS the model.
+
+
+## Structural Rules
+
+Parts of speech = dominant dimension:
+  noun=μ, verb=τ, adj=φ, adverb=φ+τ, preposition=χ, pronoun=μ+φ
+
+  Antonyms = sign flip in 1-2 dimensions
+  Synonyms = distance ≤2 in 4D Euclidean space
+  Tense = T magnitude (past=+2, present=+1, future=-2)
+  Intensity = higher magnitude, same signs (warm→hot = Q+1→Q+2)
+  Metaphors = cross-domain coordinate match
+  Questions = unknown dimension set to 0
+  Negation = Q flip
+
+Validated: independent derivation test (Grok derived 4/5 exact from
+rules alone). Status: BEST GUESS. Structural rules more robust than
+individual prime→coordinate mappings.
+
+
+## Reversed LLM
+
+Traditional: compress data into weights (140GB), GPU decompresses.
+Ours: keep data born-indexed on disk, evaluate coordinates in real time.
+Storage high, compute low. "Model" = equation + density map (4D histogram).
+One pass, no training. Character encoding directly affects index quality.
+
+
+## Music = Coordinate Walks
+
+Music maps to (τ,χ,μ,φ): τ=tempo, χ=pitch register, μ=dynamics, φ=tonality.
+Genre coordinates match cultural perception:
+
+  Hard rock (+2,+1,+2,+1) = "powerful" = same as festival EDM
+  Pop (+1,+1,+1,+1) = hylo = the attractor
+  Punk vs reggae = antimatter (max distance, cultural opposites)
+  Death metal = aggressive rap = industrial (all +2,-1,+2,-1)
+
+12-bar blues = narrative walk (stay→move→return→tension→resolve).
+Music therapy = coordinate walking (ISO principle). Ravel's Bolero =
+pure μ walk. Silence = origin. Key changes = coordinate shifts.
+
+Caveat: genre coordinates assigned qualitatively, not measured from
+audio features. Predictions involving spectral analysis would strengthen.
+
+
+## Language IS Therapy
+
+Sentences are coordinate walks. Therapeutic language walks toward
+target coordinates. "Take out your stress on the punching bag" — three
++D words, sentence walks OUTWARD, the physical therapy has the same
+coordinates. The sentence IS the therapy.
+
+
+## Bond Relationships in Language
+
+16 bond patterns = 16 linguistic relationship types:
+
+  0  identity        self-reference / same word
+  1  π reference     one word points to another (pronoun → noun)
+  2  ∘ invocation    verb calls its arguments
+  4  ∮ continuation  sequential / list linkage
+  8  δ evaluation    adjective evaluates noun
+  3  π∘ traversal    subject traverses to object
+  5  π∮ accumulation list items building toward total
+  6  ∘∮ iteration    repeated action
+  9  πδ selection    filtering / choosing
+  10 ∘δ conditional  if-then relationship
+  12 ∮δ search       scanning / looking
+  7  π∘∮ reduction   summary / totaling
+  11 π∘δ transform   change of type
+  13 π∮δ progressive gradual change
+  14 ∘∮δ causation   because / therefore
+  15 π∘∮δ pipeline   complex multi-step reasoning
+
+Transformers use 8-16 attention heads per layer — learning imperfectly
+from data what the lattice provides exactly from geometry. Morpheme
+transforms (affixes as coordinate deltas) in build/morphemes.
+
+
+## ~20 Convergence
+
+Lattice bonds (16), RISC ISAs (~20), Wierzbicka primes (~20), Lakoff
+schemas (24), primitive recursive (6 combinators). Four domains converge
+at the same floor. This is the dimensionality of a complete system.

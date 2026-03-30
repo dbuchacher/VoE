@@ -1,0 +1,84 @@
+# Characters
+
+Wave characters — coordinates in 4D space, not ASCII, not Unicode.
+
+
+## Dimensions
+
+ACTIVE DESIGN (v2, from briefing-char-encoding / char-encoding-v2):
+
+  τ: duration    (+1=sustained, 0=transitional, -1=transient)
+  χ: place       (+1=front/labial, 0=central/alveolar, -1=back/velar)
+  μ: manner      (+1=open vowel, 0=fricative, -1=stop/nasal)
+  φ: voicing     (+1=voiced, -1=voiceless)
+
+NOTE: design doc v1 had τ=case. v2 changes τ to duration for consistency
+across character/word/architecture levels. Case drops from coordinates
+entirely — 'A'='a' at shell 1. Case = walk-level or shell 2 metadata.
+
+
+## Wave Byte Encoding
+
+  bits [7:6]=τ  [5:4]=χ  [3:2]=μ  [1:0]=φ
+  00=0  01=+1  10=extended  11=-1
+
+Shell 1: 1 byte. Shell 2: 1 + N extension bytes.
+On ternary hardware: fixed-width 4 trits, no shell distinction.
+
+
+## Key Properties
+
+  'a' = (+1,+1,+1,+1) = hylo = simplest vocalization
+  silence = (0,0,0,0) = wave = identity
+
+  is_letter  = μ ≠ 0
+  is_vowel   = μ == +1
+  is_stop    = μ == -1 AND τ == -1
+  is_nasal   = μ == -1 AND τ == +1
+  is_voiced  = φ > 0
+  voice_flip = XOR 0x02
+  stop↔nasal = XOR 0x80 (τ flip)
+
+
+## v2 Collision Resolution
+
+v1 collisions fixed: b≠m, d≠n, a≠w, l≠z (all separated by τ=duration).
+Remaining collisions are genuinely phonetically identical — separated
+at shell 2. Discrimination doubled: ~18→~36 effective regions.
+
+Specific shell-1 collision pairs (all phonetically justified):
+  l=r (alveolar approximants), k=c=q=x (4 English letters for /k/),
+  g=j (back voiced stops), sh=h (back voiceless fricatives),
+  f=th (front voiceless fricatives), v=dh (front voiced fricatives),
+  a=i (front open voiced), o=u (back open voiced).
+
+
+## Cross-Language
+
+Every language fits within shell 2. Shell 3 (7^4=2401) covers all IPA
++ CJK syllable blocks. Tone encoding at shell 2 via τ magnitude.
+
+60% of scripts have no case. The encoding shouldn't penalize them for
+a feature only 40% use.
+
+
+## Network Search
+
+Born-indexed + wave byte trigrams = search without download. Legacy:
+download 2MB, parse, scan. Born-indexed: send 9 wave bytes, get ~20
+bytes back, sub-millisecond. Character encoding IS the search key format.
+
+
+## Ternary Dissolves the Tension
+
+Byte inefficiency is x86 tax. On balanced ternary, every coordinate is
+4 trits, fixed width. No extension bytes, no shell distinction. The 40%
+English overhead goes to zero.
+
+
+## Open Questions
+
+1. Tone: encode pitch height or pitch movement?
+2. Vowel height sign convention (close=M+1 or M+2?)
+3. Digits/symbols: not phonemes, need different scheme
+4. Bottom-up signal: is 1-5% sound symbolism useful for born-index?

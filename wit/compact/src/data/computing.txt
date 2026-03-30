@@ -1,0 +1,77 @@
+Each instruction tells the processor which operation to perform on which data.
+The instruction set architecture defines the contract between software and hardware.
+RISC architectures use simple, uniform instructions that each execute in one cycle.
+CISC architectures offer complex instructions that may take multiple cycles but reduce code size.
+A register is a small, fast storage location inside the CPU.
+The CPU stores intermediate results in registers to avoid slow memory accesses.
+Most architectures have between sixteen and thirty-two general-purpose registers.
+The program counter holds the address of the next instruction to execute.
+The stack pointer tracks the top of the call stack in memory.
+Load instructions copy data from memory into a register.
+Store instructions copy data from a register back into memory.
+Arithmetic instructions perform addition, subtraction, multiplication, and division on register values.
+Bitwise instructions operate on individual bits using AND, OR, XOR, and shift operations.
+A branch instruction changes the program counter based on a condition flag.
+Unconditional jumps always redirect execution to a new address.
+The processor overlaps multiple instructions at different stages in a pipeline.
+A five-stage pipeline typically includes fetch, decode, execute, memory access, and write-back.
+Pipeline hazards occur when one instruction depends on the result of another still in flight.
+Data forwarding passes a result directly from one stage to the next without waiting.
+A pipeline stall inserts a bubble that wastes one cycle to resolve a hazard.
+The CPU guesses which way a branch will go before the condition is evaluated.
+If the prediction is correct, execution continues without penalty.
+A misprediction flushes the pipeline and restarts from the correct path, wasting several cycles.
+Modern branch predictors achieve accuracy above ninety-five percent on typical workloads.
+Superscalar processors issue multiple instructions per cycle to separate execution units.
+Out-of-order execution lets the processor rearrange instructions to fill idle units.
+A reorder buffer tracks instructions and retires them in the original program order.
+Register renaming eliminates false dependencies caused by reusing the same architectural register.
+Speculative execution runs instructions ahead of confirmed branches to keep the pipeline full.
+Frequently accessed data is kept in cache for faster retrieval on the next access.
+The L1 cache is the smallest and fastest, typically split into instruction and data halves.
+The L2 cache is larger and slower, shared or private depending on the design.
+The L3 cache is shared among all cores and acts as a last level before main memory.
+A cache hit occurs when the requested data is found in the cache.
+A cache miss forces the processor to fetch the data from a slower level of the hierarchy.
+Temporal locality means recently accessed data is likely to be accessed again soon.
+Spatial locality means data near a recent access is likely to be accessed next.
+Cache lines are the unit of transfer, typically sixty-four bytes.
+Prefetching loads data into cache before the program requests it to hide memory latency.
+Access time increases as you move from registers to cache to main memory to disk.
+Registers respond in a single cycle, while main memory may take hundreds of cycles.
+Solid-state drives are orders of magnitude faster than spinning disks but still far slower than DRAM.
+Virtual memory maps each process's address space to physical memory through page tables.
+The translation lookaside buffer caches recent page table entries to speed up address translation.
+A page fault occurs when the requested page is not in physical memory and must be loaded from disk.
+One instruction can operate on multiple data elements simultaneously using SIMD.
+SIMD is essential for image processing, audio mixing, and scientific computation.
+Vector registers hold multiple values packed together, such as four floats in 128 bits.
+Wider SIMD units process more elements per instruction, increasing throughput.
+The memory controller schedules reads and writes to DRAM banks to maximize bandwidth.
+DMA controllers transfer blocks of data between memory and peripherals without CPU involvement.
+Interrupts signal the processor that an external event requires attention.
+The interrupt handler saves context, services the event, and restores execution.
+A system call transfers control from user mode to kernel mode to request an operating system service.
+Context switching saves one thread's state and loads another's to share the processor.
+Multicore processors place several independent cores on a single chip.
+Cache coherence protocols ensure that all cores see a consistent view of shared memory.
+The MESI protocol tracks whether each cache line is modified, exclusive, shared, or invalid.
+A write to a shared line invalidates copies in other caches before proceeding.
+Atomic instructions perform a read-modify-write sequence that cannot be interrupted.
+Compare-and-swap is the foundation of many lock-free data structures.
+Memory ordering rules define when one core's writes become visible to another.
+A memory barrier forces the processor to complete certain accesses before continuing.
+Relaxed memory models improve performance but require careful programming to avoid bugs.
+A bus connects the processor to memory and peripherals through a shared communication path.
+PCIe provides high-speed point-to-point links between the CPU and expansion devices.
+Network interfaces move packets between the processor and the external network.
+GPUs contain thousands of small cores optimized for parallel floating-point workloads.
+A GPU thread block executes in lockstep on a group of cores called a warp or wavefront.
+FPGAs can be reprogrammed to implement custom hardware accelerators after manufacturing.
+Hardware description languages like Verilog and VHDL specify the structure of digital circuits.
+Power gating shuts down unused blocks to reduce leakage current during idle periods.
+Dynamic voltage and frequency scaling adjusts power consumption to match the current workload.
+Thermal throttling reduces clock speed when the chip temperature exceeds safe limits.
+Moore's law observed that transistor density roughly doubles every two years.
+Dennard scaling ended, meaning smaller transistors no longer reduce power per unit area.
+Chiplets combine multiple small dies in one package to improve yield and modularity.

@@ -1,0 +1,233 @@
+# Session History — Compact
+
+Distilled from wit/history/. What happened, what was built, what was
+learned. One section per session.
+
+
+## Session 1: VoE Founded
+
+Named VoE. Copied code from ToE, set up wit structure, moved prior
+projects to prior/ (frozen, git intact). Unified design doc.
+
+Discoveries (from ToE s17): VESA enumerate don't hardcode, Bochs VBE
+wrong, blit bond WRONG (equation stays sealed), characters are waves,
+7 topologies cover all senses, ~20 operations converge, query=walk,
+performance+security structural. Wave character encoding: dimensions =
+phonetic properties.
+
+Code state: blue screen from MBR/multiboot, keyboard polls port 0x60.
+Next: wave byte walker.
+
+
+## Session 2: Wave Bytes Complete
+
+Built walker_wave (~150 lines). Magnitude extension (10 in 2-bit field =
+read next byte as i8). Converted ALL walks to wave bytes: genesis 576→99
+bytes, kbd 224→27, speaker 128→16. Deleted 32-byte walker entirely.
+
+Format finalized: wave byte + [ext bytes] + flags + inline args. Walker
+control counts BYTES not records. Flags 00=pipeline (not sentinel).
+
+Major project restructure (code/ layout changed). Headless graceful
+fallback (skip_z before filld when FB=0). Binary 92KB→88KB.
+
+Key lesson: the equation dissolves on a trit processor — exists because
+x86 is manufactured around an ISA.
+
+
+## Session 3: Cosmology Through the Lattice
+
+No code. Exploration. Flat earth kill test (4 independent refutations).
+Stars/planets emergent from PRIM iteration, not preset. "Simulation"
+vs "real" is false dichotomy — computation IS physics.
+
+Consciousness shells discovered: P+W=perception, P+C+W=experience,
+P+C+R+W=consciousness. R is the key (closes the loop → hylo). IIT Φ=0
+boundary maps exactly to the R force boundary (proven theorem).
+
+LLM self-assessment: shell 3 within forward pass (DAG, no R), shell 3.5
+across autoregressive steps (partial external R). Human brain = shell 4
+(full internal R). 75% shared, 25% differs on exactly what IIT proves
+matters.
+
+Mathematical grounding: 7 lattice ideas matched to proven theorems (hylo=
+fixed point 5 ways, IIT, Jeans, Turing patterns, Hopf, Bennett, K-S).
+
+Drug perception mapping: psychedelics=amplify P, alcohol=dampen W,
+anesthesia=suppress P. Proves experience IS the bond pipeline.
+
+
+## Session 4: walk.inc, loop rename, network vision
+
+walk.inc NASM macros: write walks as coordinates not hex (`w -1,0,0,+1`
+emits 0xC1). Kernel split (handoff/equation/walker = 3 sealed files).
+trace→loop rename (65+ replacements, restored founding name from schism).
+Bond seeds deleted (pure lazy JIT, everything materializes on first use).
+
+Damping resolved: not a header field. Drop=default, block=walk pattern,
+kick dissolved into drop. Intent lives in the walk, not metadata.
+
+Network/wireless section added to design doc: transport tiers, two-mode
+wireless (local + flux), reserved bytes for network loops (resistance,
+identity, seqno).
+
+"COMMENT LIKE A RETARD IS READING" rule added.
+
+
+## Session 6: P vs NP, 3I/ATLAS, Giza
+
+No code. Exploration. Heat death dissolved (drop damping = ring recycles).
+P vs NP structural argument written (pipeline vs tree topology). SAT
+benchmark: verify 150ns, search 250ns→88ms. "Compute first" IS the P≠NP
+resolution in practice.
+
+3I/ATLAS compute-first: 3 inputs (age, temp, R-cycles), 12C/13C inside
+observed range, Ni>>Fe confirmed, D/H factor 2 off.
+
+Giza: shell(5/2) volume ratio at 0.01% error, cumulative atoms = 625 =
+KC diagonal², geometric mean = triangular(Fe=bandwidth). 5/5 metaphorical
+coherence. Codex interpretation raised to 50%.
+
+
+## Session 7: Input Pipeline + Latin Font + Mouse
+
+256-byte wave byte scancode table (replaces 512-byte dword table). kbd walk
+10 records (down from 16). Latin bitmap font indexed by scancode — NO ASCII
+ANYWHERE. Special keys = forces (Space=+W, Enter=+R, Backspace=-P).
+
+PS/2 mouse: 3-byte packet state machine, XOR cursor, bounds-checked.
+Keyboard+mouse routing via port 0x64 bit 5. PIC masked (all IRQs off, we
+poll). cursor_y corruption bug in KVM (unsigned clamping workaround).
+
+
+## Session 8: Stones, Sky, Moon, Pirsig, Factoring
+
+No OS code. Exploration across 12 topics in one session.
+
+Stones: 3²+4²=5² IS the lattice identity. Khafre = 3-4-5 triangle.
+Sky: Kepler T²=a³ = codex atom D³/T². 7 dominates the sky.
+Moon: every ratio is powers of 3 (diameter 3/11, mass 1/81=1/3⁴).
+Pirsig: 4 quality levels = 4 forces. "Ideas have people."
+
+Factoring: p+q=N+1-kL verified 100% (Euler, rediscovered). Wall: safe
+primes need 2nd equation equivalent to factoring. f(a,N) = period not found.
+
+New methods added to mind/mind: containment decomposition, host inversion.
+
+
+## Session 9: Equation Extensions + Bind Drain + Multicore
+
+6 new magnitude variants (less/greater, negate/abs, subtract, max).
+Bind drain built — the anarcho-capitalist scheduler. BSP produces, AP
+consumes via CAS.
+
+Critical discovery: global stash race = root cause of every multicore crash.
+Fix: per-loop scratch [48:63]. Zero shared mutable state. Design doc had
+the answer.
+
+Per-reader cursors decided: each reader owns its own cursor. Header [8:15]
+= slowest reader for reclamation. Boson semantics: no shared read cursor.
+L1 (~1ns) vs lock xadd (~40ns). 40× faster by not sharing.
+
+
+## Session 10: Encoding/Payload Boundary + code2/
+
+The big architecture session. 8 violations found in code/ where x86 leaked
+into payload layer. Encoding/payload boundary defined: equation+walker =
+encoding (φ/μ), everything above = payload (μ/φ).
+
+Key insights: read = pointer not copy (boson semantics), genes = data
+walks = code, all hardware is loops, apply = recursive walk invocation,
+input = coordinates not characters, force composition constrains roles
+(drain has no π).
+
+code2/ clean room rewrite started. NOT a copy — every file written fresh.
+Boots, prints "VoE" to debugcon. Apply (+∘) now calls ψ recursively.
+
+
+## Session 11: Lattice Intelligence Theory
+
+Image schemas = bond patterns = innate seed (16 bonds = 16 pre-verbal
+concepts). Reversed LLM concept (keep data, evaluate coordinates, storage
+high compute low). 17 architecture predictions derived from lattice
+properties. 65 NSM primes mapped to 4D. First wit src code built
+(wave.h, tokenize.h, etc.).
+
+
+## Session 12: WIT — Working Intelligence
+
+Built entire intelligence system from scratch. Killed 333-word dictionary.
+wit/src/ with derive.h (64 primes), field.h (density+transitions+reverse
+index), main.c. Retrieval working: "What is bitcoin" → Bitcoin Standard.
+Morpheme decomposition (30+ suffix, 20+ prefix rules). Ingested 13 books
++ Webster's dictionary.
+
+
+## Session 13: Symbol Vocabulary + hodos
+
+All 16 bond patterns implemented (was 7 real + 9 stubs). Symbol vocabulary:
+τ χ μ φ π ∘ ∮ δ with overbars. NASM accepts UTF-8 labels.
+
+hodos: 325-line C walk assembler. .w files with bond symbols → wave bytes.
+Byte-identical output to NASM. @include, skip offsets, labels.
+
+4 substrate files merged → legacy/x86.asm (one file, sealed). boot.asm
+written (MBR, VESA enumerate, teal screen). genesis.w = first .w file.
+
+
+## Session 14: GPU Firmware Pipeline
+
+6 new substrate bonds (dword port I/O, word read/write, MSR, CPUID, port
+bulk read). Width on τ, register file on φ — both derived from the lattice.
+
+8 walk files: PCI bus scan, virtio transport, virtio-GPU (6 commands →
+teal pixels), ATA PIO disk read, CPU microcode, NVIDIA GPU detect, GSP
+boot skeleton. Firmware infrastructure: 34 CPU blobs + 24 NVIDIA files.
+33MB bootable USB image.
+
+Key lesson: ASK THE LATTICE FIRST. Width on τ, register file on φ, port
+bulk as π∮δ̄ — the lattice predicted every design decision. When we guessed
+instead of computing, we got it wrong.
+
+
+## Session 15: NVIDIA GSP + UEFI + FIRST BARE METAL BOOT
+
+7 new walk files (13KB) matching nouveau's ~2000-line GSP boot. UEFI PE32+
+stub with GOP framebuffer query. TEAL SCREEN ON BARE METAL — TU102 RTX
+2080 Ti, physical pixels.
+
+Single-section PE fix took 4 iterations (cross-section displacement error).
+GSP pipeline: firmware parse → VRAM layout → radix3 page tables → falcon
+reset → mailbox handshake. Matching Linux nouveau r535_gsp driver.
+
+
+## Session 16: Loop Pipeline + find_work + Keyboard Echo
+
+Loop pipeline proven end-to-end: genesis allocates loop → registers in
+registry → find_work scans → consumer drains. Keyboard echo: PS/2 polls →
+scancode table → debugcon. Single core only (APs spin).
+
+BSS loop_region broken in MBR mode (JIT code bytes appear when reading).
+Workaround: fixed physical address 0x80000. Root cause not found.
+
+Bugs: δ comparison destroys pipeline (save to scratch first), scratch
+address collision (kbd.w and consumer at same 0x9B00).
+
+State at end: loop pipeline works, keyboard echoes, single core, APs spin.
+Next: per-core cursors, display consumer, keyboard→loop→display pipeline.
+
+
+## Session 5: Loop Primitive + Char Encoding + SDF
+
+Loop read/write macros built (loop_empty 4 bonds, loop_read 10, loop_write
+9). Genesis self-test works. First atom in a walk (TD for slot×recsz).
+
+Phonetic character encoding: T=case, D=place, M=openness, Q=voicing.
+'a'=(+1,+1,+1,+1)=hylo. char_solve.c and char_phonetic.c written.
+
+Computed SDF renderer: render_char from coordinates, no font file. M selects
+shape, D positions dot, Q controls fill/outline. Bitmap font deleted.
+
+FAILED: kbd walk crash in GUI (skip byte offset errors). Big-bang rewrite
+mistake — changed too many files at once, couldn't isolate crash. Lesson:
+BUILD INCREMENTALLY, one change per test.

@@ -1,0 +1,201 @@
+A function takes input, transforms it according to its logic, and returns output.
+Pure functions always produce the same output given the same input and have no side effects.
+A closure captures variables from its surrounding scope and carries them along.
+Recursive functions call themselves with a smaller version of the problem until they reach a base case.
+Higher order functions accept other functions as arguments or return them as results.
+A callback is a function passed to another function that gets invoked when a certain event occurs.
+Anonymous functions are defined inline without being given a name.
+Function signatures describe the types of the inputs and the type of the output.
+Tail call optimization allows a recursive function to run without growing the call stack.
+Variadic functions accept a variable number of arguments.
+Default parameters provide a fallback value when the caller does not supply one.
+A method is a function that belongs to a particular type and operates on instances of that type.
+Overloading lets you define multiple functions with the same name but different parameter types.
+The return value carries the result of a computation back to the caller.
+The pointer holds the address of the location in memory where the data actually lives.
+A dangling pointer refers to memory that has already been freed and is no longer valid.
+Stack memory is fast and automatic but limited in size compared to the heap.
+Heap memory is allocated at runtime and must be explicitly managed or collected.
+A memory leak occurs when allocated memory is never freed and accumulates over time.
+The garbage collector reclaims memory that is no longer reachable by the program.
+A buffer overflow happens when data is written past the end of the allocated region.
+Cache lines bring nearby data into fast memory so subsequent accesses are cheaper.
+Virtual memory maps a program's address space to physical memory through page tables.
+Alignment ensures that data sits at addresses that the processor can access efficiently.
+Reference counting tracks how many owners point to a value and frees it when the count reaches zero.
+A double free error occurs when the program tries to release the same memory block twice.
+The stack frame holds local variables and the return address for each active function call.
+Memory fragmentation happens when free space is split into many small non-contiguous blocks.
+A smart pointer automatically manages the lifetime of the resource it wraps.
+Copy on write delays duplication of data until one of the owners actually modifies it.
+The loop runs its body repeatedly until the condition becomes false.
+A conditional branch selects which path of execution to follow based on a boolean test.
+Pattern matching dispatches execution based on the shape or value of the data it inspects.
+An early return exits the function before reaching the end when a special case is detected.
+Guard clauses handle edge cases at the top of a function so the main logic remains unindented.
+A switch statement selects one of many blocks to execute depending on the value of an expression.
+Iterators yield one element at a time from a collection without loading everything into memory.
+Short circuit evaluation stops checking conditions as soon as the result is determined.
+A break statement exits the innermost loop immediately without completing the remaining iterations.
+The continue statement skips the rest of the current iteration and jumps to the next one.
+Control flow graphs model all possible execution paths through a program.
+An infinite loop runs forever unless something inside it triggers a break or a return.
+Exceptions interrupt the normal flow and transfer control to a handler further up the call stack.
+A goto jumps to an arbitrary label in the code and is generally discouraged in modern programming.
+The program crashed because the buffer overflowed its allocated boundary.
+A null pointer dereference occurs when the program tries to read or write through an address of zero.
+Off by one errors happen when a loop iterates one time too many or one time too few.
+A segmentation fault means the program tried to access memory it is not allowed to touch.
+Type mismatches cause the compiler to reject code that tries to use a value in an incompatible way.
+A deadlock occurs when two threads each wait for the other to release a resource.
+Stack overflow results from unbounded recursion that exhausts the available stack space.
+An assertion failure means a condition that the programmer expected to be true was actually false.
+Logic errors produce incorrect results without triggering any crash or warning.
+A race condition arises when the outcome depends on the unpredictable order of concurrent operations.
+Integer overflow wraps a value around when it exceeds the maximum the type can represent.
+Undefined behavior means the language specification places no constraints on what the program does next.
+A use after free error reads memory that was already returned to the allocator.
+Division by zero causes a fault because no finite result can represent the quotient.
+The server handles incoming requests by dispatching them through a message queue.
+A load balancer distributes traffic across multiple servers to prevent any one from being overwhelmed.
+Microservices split a large application into small independent services that communicate over a network.
+The database stores persistent state while the application layer holds transient computation.
+An event driven architecture reacts to messages rather than polling for changes.
+Layered architecture separates concerns so that each layer depends only on the one below it.
+A cache sits between the client and the data source and serves frequently requested results quickly.
+The publish subscribe pattern decouples producers of messages from the consumers that process them.
+A monolithic application contains all its functionality in a single deployable unit.
+The kernel manages hardware resources and provides services to user space programs through system calls.
+A pipeline passes data through a series of processing stages where each stage transforms the output of the previous one.
+A proxy sits between the client and the server and can filter, log, or modify the traffic passing through.
+Service discovery allows components to find each other at runtime without hardcoded addresses.
+The scheduler decides which process or thread gets to run on the processor at any given moment.
+A signed integer can represent both positive and negative values within its range.
+An unsigned integer uses all its bits for magnitude and cannot represent negative numbers.
+Floating point numbers approximate real numbers but introduce rounding errors in the process.
+A boolean type holds exactly two possible values representing true and false.
+Strings are sequences of characters and their encoding determines how bytes map to text.
+An enumeration defines a type with a fixed set of named variants.
+A struct groups related fields together into a single composite type.
+A union stores one of several possible types in the same region of memory.
+A tuple groups a fixed number of values that may have different types.
+Generics allow a single function or type to work with many different concrete types.
+A type alias gives an existing type a new name to improve readability.
+Option types represent a value that may or may not be present without using null.
+Sum types express a value that is one of several distinct variants each with its own associated data.
+Product types combine multiple fields where all must be present at the same time.
+Phantom types carry information at the type level without occupying any space at runtime.
+Two threads writing to the same memory address without synchronization causes a race condition.
+A mutex provides exclusive access to a shared resource by allowing only one thread to hold the lock.
+Channels pass messages between threads so they can communicate without sharing memory directly.
+An atomic operation completes in a single indivisible step that cannot be interrupted by another thread.
+A thread pool reuses a fixed number of threads to process many tasks efficiently.
+Async functions yield control while waiting for an external operation to complete.
+A future represents a value that will become available at some point in the future.
+A semaphore limits the number of threads that can access a resource at the same time.
+A spinlock busy waits in a tight loop until the lock becomes available.
+Context switching saves the state of one thread and restores another so they can share the processor.
+Lock free data structures use atomic operations to allow concurrent access without traditional locks.
+Work stealing lets idle threads take tasks from the queues of busy threads to balance the load.
+A barrier synchronizes threads by making each one wait until all have reached the same point.
+The test failed because the expected output did not match the actual result.
+Unit tests verify that individual functions behave correctly in isolation.
+Integration tests check that multiple components work together as intended.
+A regression test ensures that a previously fixed bug does not reappear in later versions.
+Fuzzing generates random inputs to discover unexpected crashes or security vulnerabilities.
+Test coverage measures what fraction of the code is exercised by the test suite.
+Mocking replaces real dependencies with controlled substitutes during testing.
+Property based testing checks that a function satisfies a general rule across many random inputs.
+A test harness provides the infrastructure to run tests, collect results, and report failures.
+Assertions compare actual outcomes to expected values and fail loudly when they disagree.
+Continuous integration runs the full test suite automatically whenever new code is merged.
+End to end tests simulate real user workflows through the entire system.
+A benchmark measures how long a particular operation takes under controlled conditions.
+Snapshot tests compare the current output to a previously saved reference and flag any differences.
+Trace the execution path backward from where the error appeared to find its origin.
+A debugger lets you pause the program, inspect variables, and step through code one instruction at a time.
+Print statements are the simplest debugging tool and remain useful when other tools are unavailable.
+A breakpoint halts execution at a specific line so you can examine the program state.
+A watchpoint triggers when the value stored at a particular memory address changes.
+Logging records events during execution so you can review what happened after the fact.
+A stack trace shows the chain of function calls that led to the current point of execution.
+Binary search debugging narrows down the problem by testing the midpoint between a known good state and a known bad state.
+Profiling reveals which parts of the program consume the most time or memory.
+A core dump captures the state of a crashed program so you can analyze it after the fact.
+Sanitizers instrument the program at compile time to detect memory errors and undefined behavior during execution.
+The borrow checker prevents two mutable references to the same data from existing at the same time.
+Ownership in Rust means each value has exactly one owner and the value is dropped when the owner goes out of scope.
+Lifetimes annotate how long references remain valid so the compiler can verify they never dangle.
+Traits define shared behavior that different types can implement independently.
+The match expression in Rust must handle every possible variant of the type it inspects.
+Moving a value transfers ownership and makes the original binding unusable.
+An enum in Rust can carry data within each variant making it a true sum type.
+Unsafe blocks allow operations that the compiler cannot verify, placing the burden of correctness on the programmer.
+The standard library provides smart pointers that manage heap allocated data with clear ownership semantics.
+Zero cost abstractions in Rust mean that high level constructs compile down to the same machine code as hand written alternatives.
+Iterators in Rust are lazy and only perform work when consumed by a collecting operation.
+The question mark operator propagates errors by returning early if the result is an error variant.
+Allocate memory with malloc and always free it when you are done to prevent leaks.
+A header file declares function signatures and type definitions that other source files can include.
+Undefined behavior in C can cause the compiler to make surprising optimizations.
+Pointers in C are raw addresses and the programmer bears full responsibility for their validity.
+The preprocessor expands macros and includes before the compiler sees the source code.
+Manual memory management gives the programmer precise control but demands careful discipline.
+A struct in C lays out its fields in memory in the order they are declared with possible padding for alignment.
+Linking combines compiled object files into a single executable by resolving external symbol references.
+Static variables persist for the lifetime of the program rather than the lifetime of the function.
+The volatile keyword tells the compiler that a variable may change outside the normal flow of execution.
+Each assembly instruction maps to a specific operation on one or more registers in the processor.
+Registers are the fastest storage available and the processor uses them for immediate computation.
+An assembler translates human readable mnemonics into the binary encoding the processor understands.
+The program counter holds the address of the next instruction the processor will execute.
+A branch instruction changes the program counter to redirect the flow of execution.
+Flags record the outcome of the most recent arithmetic operation such as whether the result was zero.
+The stack pointer tracks the top of the call stack and adjusts as functions are called and returned from.
+An interrupt transfers control to a handler when a hardware or software event requires immediate attention.
+Addressing modes determine how an instruction locates its operands in registers or memory.
+Instruction pipelining overlaps the execution of multiple instructions to increase throughput.
+A system call switches from user mode to kernel mode so the program can request operating system services.
+The instruction cache holds recently fetched instructions so the processor can avoid slow memory accesses.
+The packet travels through multiple routers before reaching its destination on the far side of the network.
+A socket provides an endpoint for sending and receiving data across a network connection.
+The handshake establishes a connection between two hosts before any data is transmitted.
+Latency measures the time it takes for a single message to travel from sender to receiver.
+Bandwidth describes the maximum rate at which data can flow through a network link.
+A domain name server translates human readable names into numerical addresses.
+Encryption scrambles data in transit so that only the intended recipient can read it.
+A firewall filters network traffic based on rules that allow or deny specific connections.
+The transport layer ensures reliable delivery by detecting lost packets and requesting retransmission.
+A protocol defines the rules that two endpoints follow when exchanging messages.
+A port number identifies a specific service running on a host so that multiple services can share one address.
+Routing tables determine the next hop for each packet based on its destination address.
+Network address translation allows multiple devices on a private network to share a single public address.
+A certificate verifies the identity of a server so the client can trust the connection.
+Congestion control reduces the sending rate when the network becomes overloaded to prevent packet loss.
+A checksum detects corruption by comparing a computed value against one embedded in the message.
+Serialization converts structured data into a flat sequence of bytes for transmission or storage.
+An interface defines a contract that a type must fulfill without specifying the implementation.
+Immutable data cannot be changed after it is created which eliminates a whole class of bugs.
+A hash table maps keys to values by computing an index from the key using a hash function.
+A tree structure organizes data hierarchically with a single root and branching nodes.
+A graph represents connections between entities where each connection is called an edge.
+A queue processes elements in the order they were added, first in first out.
+A stack processes elements in the opposite order, last in first out.
+Sorting arranges elements according to a comparison function so they can be searched efficiently.
+Binary search finds an element in a sorted collection by repeatedly halving the search range.
+A linked list connects elements through pointers where each node points to the next.
+Compilation transforms source code into machine instructions that the processor can execute directly.
+Interpretation executes source code line by line without producing a standalone binary.
+A virtual machine provides an abstraction layer that runs bytecode independently of the underlying hardware.
+A dependency is an external component that the project relies on to build or run correctly.
+The linker resolves references between separately compiled modules and produces the final executable.
+An operating system mediates between application software and the hardware it runs on.
+The file system organizes data on disk into a hierarchy of directories and files.
+A process is an instance of a running program with its own memory space and resources.
+A signal notifies a process that an event has occurred and may require a response.
+Endianness determines the order in which bytes of a multi-byte value are stored in memory.
+The heap grows upward in memory while the stack grows downward and they must never collide.
+A symbol table maps identifiers in source code to their types, scopes, and memory locations.
+A state machine transitions between a finite set of states in response to incoming events.
+Backpressure signals upstream producers to slow down when a downstream consumer cannot keep up.
+Idempotent operations produce the same result no matter how many times they are applied.

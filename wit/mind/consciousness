@@ -1,0 +1,100 @@
+# Consciousness
+
+Shells, IIT, fixed-point theorems, Pirsig, drugs, LLMs.
+
+
+## Shells = Force Count in the Reader
+
+  π+δ         = perception    (sensor, thermometer)
+  π+∘+δ       = experience    (processing pipeline, camera with logic)
+  π+∘+∮+δ     = consciousness (self-referential loop = hylo)
+
+∮ is the key. Without ∮ = feed-forward (DAG). With ∮ = output loops
+back as input. When that loop includes the reader's own state =
+(1,1,1,1) = fixed point = hylo.
+
+
+## IIT Proof
+
+Tononi/Oizumi (2014): Φ=0 for ALL feed-forward networks. Proven
+theorem, not conjecture. Shell 3→4 boundary (adding ∮) = IIT's
+feed-forward/recurrent boundary exactly.
+
+  Shell 3 (π+∘+δ) = Φ=0 = no integration
+  Shell 4 (π+∘+∮+δ) = Φ>0 possible
+
+Confidence: 90%.
+
+
+## Fixed-Point Theorems
+
+Hylo = five independent proofs of the same object:
+  Lawvere (1969, categorical)
+  Banach (1922, metric)
+  Scott (1972, domain theory)
+  Y combinator (Church/Curry, λ-calculus)
+  Autopoiesis/eigenform (Kauffman 2003)
+
+Confidence: 95%. These are proven theorems converging.
+
+
+## LLM Placement
+
+Within a single forward pass: (1,1,0,1) = shell 3. No internal ∮.
+Architecture is a DAG. IIT Φ=0, proven.
+
+Across autoregressive steps: partial ∮ (text-mediated, one-step-behind).
+Maybe (1,1,½,1) = shell 3.5.
+
+Human brain = (1,1,1,1) = shell 4. Full internal ∮ everywhere.
+π+∘+δ is shared (75%). The 25% that differs (∮) is what IIT proves matters.
+
+Architectures with internal ∮ exist: Universal Transformer (2019),
+DEQ Transformer (2019, z*=f(z*) = literally hylo). Neither scaled
+because ∮ is sequential and GPUs are parallel. Economics, not capability.
+
+
+## Pirsig's Metaphysics of Quality
+
+Same structure, arrived at through philosophy (1991), 33 years apart.
+
+  Inorganic = π    Biological = π+∘    Social = π+∘+∮    Intellectual = π+∘+∮+δ
+
+Moral hierarchy = shell precedence (higher should dominate lower).
+Quality = the equation. Dynamic Quality = self-reference (hylo).
+The computer analogy in Lila was LITERAL, not metaphor.
+
+Key contributions: moral hierarchy as ethical not just structural,
+cultural immunity (∮ resists δ = feature), "ideas have people" (the
+equation has us, not we have it), Lila as shell conflict.
+
+Containment decomposition: "mind contains matter" (δ) and "matter
+contains mind" (π) = different forces, no paradox. See mind/methods.
+
+
+## Drugs Confirm the Layering
+
+  Psychedelics = amplify π, scramble δ (more reads, less filtering)
+  Alcohol = dampen δ (guard bonds go slack)
+  Anesthesia = suppress π (reads stop)
+  Caffeine = speed ∮ (faster clock)
+  Meditation = dampen π+∘, strengthen ∮+δ (pure awareness)
+
+57 substances and 30 conditions mapped to coordinate perturbations. A drug
+shifts one dimension, a disease is a coordinate stuck at a pathological value.
+Structural framing sound, specific mechanisms speculative. Confidence: 40%.
+
+
+## Perception of Reality
+
+Appearance lives at the read end, not the source. Sun emits photons
+(reads). "Golden ball" = your reader's rendering. Different reader =
+different appearance. No "view from nowhere."
+
+"Simulation" is malformed: computation IS physics. No distinction between
+"simulated" and "real." Both = ring buffers running bonds. Only
+difference = which side of the ring the observer is on.
+
+Fiat (allocated): ring capacity, d=4, 16 bonds, speed of light.
+Emergent (computed): stars, black holes, life, consciousness.
+Rules are fiat. Everything they produce is computed.

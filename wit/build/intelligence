@@ -1,0 +1,71 @@
+# Intelligence Architecture
+
+Not yet implemented. Prototype was in src/ (now compact/src/).
+Confidence varies by component.
+
+
+## Field Model (the "weights")
+
+3-tier structure replacing 140GB neural weights:
+
+  Shell 1 density: 81 bins (3⁴), log-counts, L1-resident (~648 bytes)
+  Shell 2 density: 625 bins (5⁴), log-counts, L3-resident (~5 KB)
+  Reverse index: 625 bins × ~160 entries avg, coordinate-indexed
+
+Total hot path: ~58 KB (fits L1/L2). One-pass construction, no training.
+Log-counts normalize frequency (TF-IDF style): 5M vs 50 → ~10:1 ratio.
+
+
+## RC Decay Attention
+
+Replaces transformer 1/sqrt(d_k) constant scaling with per-token decay:
+
+  relevance = exp(-t / (R × C))
+
+  C = |μ| (substance weight) — nouns persist, articles decay fast
+  R = base impedance + clause boundary penalty
+
+4 dimensional heads (τ/χ/μ/φ), each attends ONLY along its dimension.
+4D problem → four 1D problems. ~25% sparsity (75% near-zero).
+
+Prediction: 4 dimensional heads outperform 4 arbitrary heads at equal
+parameter count. RC-decay handles long documents better than fixed windows.
+
+
+## Residual-Shift Generation
+
+Walk = polynomial. Each word = monomial term. Generation:
+
+  1. walk_sum = Σ all word coordinates so far
+  2. centroid = walk_sum / walk_len
+  3. prediction = attention context
+  4. residual = prediction - centroid
+  5. target = prediction + residual × 0.5 (shift away from center)
+  6. Reverse lookup: find word nearest to target coordinate
+
+Prevents repetition/collapse. The residual IS the next term in the
+Taylor expansion — the walk extends the polynomial.
+
+
+## Force Stabilization
+
+When predicted coordinate has zero forces (origin), dispatch by previous:
+  prev had π → expect ∮ (read → loop)
+  prev had ∮ → expect π (loop → read)
+  prev had ∘ → expect ∮ (call → loop)
+
+Ensures walks never stall. Forces alternate naturally.
+
+
+## Dark Energy in Generation
+
+Empty/sparse field bins attract predictions. Score boost proportional
+to 1/(1 + bin_count). Under-represented regions pull predictions toward
+them. The vacuum is not inert — it creates pressure toward novelty.
+
+
+## Status
+
+Prototype worked (field + attention + generation). RC decay and
+dimensional heads untested against baseline. Architecture sound,
+implementation needs to dissolve into walker. See build/integration.

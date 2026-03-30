@@ -1,0 +1,55 @@
+# Walker-Wit Integration
+
+How the nomos walker and the wit intelligence prototype converge.
+Not yet implemented — this is the design thesis.
+
+
+## The Convergence
+
+The wit prototype (now compact/src/) built a standalone intelligence:
+tokenize → derive coordinates → field lookup → generate. Every
+component maps to something the walker already does:
+
+  wit component    walker equivalent
+  ─────────────    ────────────────────────────
+  tokenize.h       wave byte encoding (in walker)
+  derive.h         coordinate IS the wave byte
+  field.h          JIT cache + density histogram
+  attention.h      RC decay over pipeline register
+  bonds.h          bond dispatch (in walker)
+  morpheme.h       affix = coordinate delta (walk op)
+  generate.h       reverse lookup from ƒ evaluation
+
+
+## What Dissolves
+
+  ρ (pipeline)     IS the polynomial — not a separate accumulator
+  ƒ (equation)     IS the embedding — not learned weights
+  bond dispatch    IS query understanding — not mode routing
+  walk bytes       ARE tokens — not separate tokenization
+  RC decay         IS attention — not a learned mask
+  reverse index    IS the JIT cache — not a separate index
+
+
+## Remaining Gap
+
+The walker processes coordinates. Intelligence needs:
+1. A density map (what coordinates have been seen, how often)
+2. A transition map (what follows what at shell 1)
+3. Reverse lookup (given target coordinate, find content)
+
+These three = the "field." The only state intelligence carries.
+Everything else is stateless evaluation.
+
+Total field size: ~58 KB hot path. Compare: GPT-4 ≈ 1.8 TB.
+
+
+## Implementation Path
+
+1. Born-index walk bytes from text input
+2. Walk the bytes through the walker
+3. ρ accumulates the polynomial
+4. At generation point: evaluate residual, reverse lookup
+5. Field updates as one-pass histogram (no training)
+
+The intelligence IS the walker with a field. No separate system.

@@ -2,50 +2,12 @@
 prior/
 .claude/
 
-# compiled binaries (no extension = ELF executable)
-code2/hodos
-code2/wa
-code2/wasm
-side-quest/chat
-side-quest/check_density
-side-quest/index
-side-quest/lattice_chat
-side-quest/test_phase1
-side-quest/test_phase2
-side-quest/train
-side-quest/wiki2wave
-wit/lattice/gen
-wit/lattice/3i_compute
-wit/lattice/3i_derive
-wit/lattice/atlas
-wit/lattice/char_phonetic
-wit/lattice/char_solve
-wit/lattice/factor
-wit/lattice/factor2
-wit/lattice/factor3
-wit/lattice/factor_L
-wit/lattice/factor_hunt
-wit/lattice/factor_test
-wit/lattice/factor_wall
-wit/lattice/giza
-wit/lattice/giza_cosmic
-wit/lattice/giza_deep
-wit/lattice/giza_unknown
-wit/lattice/integral
-wit/lattice/lqc
-wit/lattice/moon
-wit/lattice/quantum
-wit/lattice/sky
+# compiled binaries
+code/hodos
+code/wa
+code/wasm
 
 # data
-side-quest/data/
-wit/src/data/
 *.bin
-!code2/firmware/**/*.bin
-
-# wit/src build artifacts
-wit/src/wit
-wit/src/check_bins
-wit/src/test_spread
-wit/src/wit.field
+!code/firmware/**/*.bin
 *.pdf

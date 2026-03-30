@@ -1,0 +1,96 @@
+# Methods
+
+How to use the lattice. Thinking tools, not results.
+
+
+## Compute First
+
+The most important method. Most "hard" problems were P in an NP costume.
+
+  1. Think from first principles (what IS this?)
+  2. Get stuck (which parameter? which material?)
+  3. Express as lattice coordinates (dimensional analysis)
+  4. Compute — write code if needed
+  5. The answer is a coordinate, not an opinion
+
+  antimatter: Z²×ρ/A → iridium. One formula. Done.
+  oil: 350 + 63×√N pm → 568 pm. One formula. Done.
+  alpha: 544/4 + 1 + 3/84 → 137.035714. Three ratios. Done.
+  3I/ATLAS: 3 inputs (age, temp, R-cycles) → 12C/13C inside observed range.
+
+If you're listing options instead of computing coordinates, you're
+searching when you could be evaluating. Do the math.
+
+
+## Topological Decomposition
+
+Separate depth from branching before reasoning about scaling.
+Pipeline = O(n). Tree = O(2^n). The topology determines complexity.
+
+
+## Domain Extension Test
+
+If an objection looks fatal, extend the algebra (real → complex →
+quaternion → octonion). If it dissolves, it was a domain boundary.
+If it survives all extensions, it's real.
+
+
+## Lateral Transfer
+
+A validated lattice condition in domain A becomes a search query in
+domain B. Water's 104.48° → what other system needs that angle?
+
+
+## Reverse-Engineer Success
+
+Decompose a working system into bond graphs. Find the structural
+property that explains why it works. If it works, the lattice says why.
+
+
+## Dimensional Locking
+
+If a coupling law forces two quantities onto the same shell, their ratio
+cannot diverge. Check for the coupling before analyzing blow-up.
+
+
+## Anomaly Unification
+
+Multiple "weird" observations reducing to one lattice distinction = the
+framework doing explanatory work. Look for the single condition.
+
+
+## Completeness Audit
+
+Enumerate the lattice exhaustively at a shell. Compare against what's
+known. Gap pattern maps human knowledge boundaries, not lattice holes.
+
+
+## Dual Projection
+
+Project between offset sub-lattices (half-integer ↔ integer). Semantic
+matches validate the duality. Circuit theory on projected values gives
+free predictions.
+
+
+## Containment Decomposition
+
+When "A contains B" and "B contains A" both seem true, ask what each
+containment DOES. The verb tells you the force. Different forces = both
+true (orthogonal). Same force = one is wrong.
+
+  "mind contains matter" = δ (models)
+  "matter contains mind" = π (hosts)
+  Different forces, no paradox.
+
+
+## Host Inversion
+
+When a pattern appears designed, invert the ownership. Don't ask "who put
+this here?" — ask "what is expressing itself through this host?" Same
+pattern in unrelated hosts = the pattern is primary. Ideas have people.
+
+
+## Backlog Triage
+
+Periodically audit prior work: answered / forgotten / wrong / open.
+Surfaces forgotten items and confirms no contradictions.

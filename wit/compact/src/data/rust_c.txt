@@ -1,0 +1,81 @@
+In Rust, each value has exactly one owner at any time.
+When the owner goes out of scope, the value is automatically dropped and its memory freed.
+Ownership can be transferred by moving the value to a new binding.
+After a move, the original binding can no longer be used.
+You can lend a reference to a value without giving up ownership.
+An immutable reference lets you read the data but not modify it.
+A mutable reference lets you modify the data, but only one may exist at a time.
+The borrow checker enforces these rules at compile time with no runtime cost.
+The compiler tracks how long each reference remains valid through lifetimes.
+Lifetime annotations tell the compiler which references must outlive which others.
+Most lifetimes are inferred automatically by the elision rules.
+Explicit lifetime annotations become necessary when the compiler cannot determine the relationship.
+Rust's type system guarantees memory safety without a garbage collector.
+The Result type forces you to handle errors explicitly instead of ignoring them.
+The Option type eliminates null pointer dereferencing by encoding absence in the type.
+Pattern matching lets you destructure enums and handle each variant exhaustively.
+Traits define shared behavior that different types can implement.
+Generics let you write code that works across many types without duplication.
+Monomorphization specializes generic code for each concrete type at compile time.
+The compiler optimizes away the overhead of safe wrappers, achieving zero-cost abstractions.
+Iterators in Rust are lazy and compose into efficient pipelines without intermediate allocations.
+Closures capture variables from their environment and can be passed as arguments.
+The Send and Sync traits mark types that can safely cross thread boundaries.
+Rust's ownership model prevents data races at compile time.
+Unsafe blocks let you bypass the safety checks when low-level operations demand it.
+Inside unsafe you can dereference raw pointers, call foreign functions, and mutate global state.
+The unsafe keyword does not turn off the borrow checker; it only unlocks specific operations.
+Responsible use of unsafe means containing it in small, well-audited modules.
+Foreign function interfaces let Rust call C libraries and vice versa.
+Rust's ABI compatibility with C makes it straightforward to wrap existing C code.
+In C, the programmer is responsible for allocating memory with malloc and freeing it with free.
+Forgetting to free memory causes a leak that slowly consumes available resources.
+Freeing memory twice causes undefined behavior that can corrupt the heap.
+A dangling pointer refers to memory that has already been freed.
+Dereferencing a dangling pointer can crash the program or silently return garbage.
+A pointer contains the address of another value in memory.
+Pointer arithmetic lets you navigate arrays by adding offsets to a base address.
+In C, arrays and pointers are closely related but not identical.
+The name of an array decays to a pointer to its first element in most contexts.
+Buffer overflows happen when code writes past the end of an array and corrupts adjacent memory.
+Stack buffer overflows are a common source of security vulnerabilities in C programs.
+Heap buffer overflows can overwrite allocator metadata and enable arbitrary code execution.
+Bounds checking prevents overflows but C does not perform it by default.
+Rust checks array bounds at runtime and panics if an index is out of range.
+The unsafe keyword can bypass bounds checks when performance demands it and safety is proven.
+Null pointers cause segmentation faults in C when dereferenced.
+Rust has no null; the Option type replaces it with an explicit Some or None.
+Structs in C group related fields into a single named type.
+Rust structs serve the same purpose but support methods, traits, and pattern matching.
+Enums in Rust can carry data in each variant, unlike C enums which are just integers.
+Tagged unions in C approximate Rust enums but require manual discipline to use correctly.
+Undefined behavior in C means the compiler may do anything, including optimizing away your checks.
+Signed integer overflow is undefined in C, so the compiler may assume it never happens.
+Rust defines signed integer overflow to either panic in debug mode or wrap in release mode.
+The volatile keyword in C tells the compiler that a variable may change outside its control.
+Volatile accesses prevent the compiler from optimizing away reads and writes to hardware registers.
+Rust uses core volatile read and write functions instead of a type qualifier.
+Smart pointers in Rust like Box, Rc, and Arc manage ownership with different strategies.
+Box allocates a value on the heap and deallocates it when the box is dropped.
+Rc provides reference counting for shared ownership within a single thread.
+Arc adds atomic reference counting so multiple threads can share ownership safely.
+Interior mutability with RefCell or Mutex lets you mutate data behind a shared reference.
+RefCell enforces borrowing rules at runtime instead of compile time.
+Mutex provides mutual exclusion so only one thread can access the data at a time.
+The lock is released automatically when the guard goes out of scope.
+Rust's standard library provides channels for message passing between threads.
+C relies on pthreads for threading, which requires the programmer to manage all synchronization.
+Race conditions in C are easy to introduce and hard to diagnose.
+Static analysis tools can catch some C bugs but cannot match Rust's compile-time guarantees.
+The Rust compiler produces detailed error messages that explain why your code does not compile.
+Cargo manages dependencies, builds, and tests in a single integrated tool.
+C lacks a standard build system, leading to fragmented tooling across platforms.
+Makefiles are the traditional approach but grow unwieldy for large C projects.
+Linking in C combines object files and libraries into a final executable.
+Rust compiles each crate into a single compilation unit, simplifying the linking process.
+Inline functions in both languages let the compiler eliminate call overhead for small functions.
+Link-time optimization can inline across compilation units for additional performance.
+Profile-guided optimization uses runtime data to inform the compiler's decisions.
+Const generics in Rust let you parameterize types by compile-time integer values.
+C uses preprocessor macros for code generation, which operate on text and ignore types.
+Rust macros operate on the syntax tree and respect the type system.

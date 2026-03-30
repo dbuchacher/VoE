@@ -1,5 +1,0 @@
-#!/bin/sh
-set -e
-cc -O3 -Wall -Wno-unused-function -march=native -o wit main.c -lm
-cc -O2 -Wall -Wno-unused-function -o test_spread test_spread.c -lm
-echo "built: wit test_spread"

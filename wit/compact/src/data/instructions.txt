@@ -1,0 +1,150 @@
+Heat the oil until it shimmers across the surface of the pan.
+Add the onions and stir them gently until they turn translucent.
+Bring the water to a rolling boil before adding the pasta.
+Season the broth with salt and pepper to taste.
+Let the dough rest for thirty minutes before rolling it out.
+Slice the vegetables into even pieces so they cook at the same rate.
+Preheat the oven to three hundred and fifty degrees before placing anything inside.
+Fold the egg whites into the batter slowly to keep the air trapped.
+Reduce the heat to a simmer and cover the pot with a lid.
+Toast the spices in a dry pan until they become fragrant.
+Drain the excess fat from the pan before adding the sauce.
+Whisk the mixture continuously to prevent lumps from forming.
+Let the meat rest for ten minutes after removing it from the heat.
+Chop the herbs finely and sprinkle them over the finished dish.
+Stir the sauce every few minutes to keep it from sticking to the bottom.
+Brown the butter slowly until it smells nutty and turns golden.
+Deglaze the pan with wine and scrape up the browned bits from the bottom.
+Blanch the greens in boiling water for thirty seconds then plunge them into ice water.
+Roast the garlic whole until the cloves become soft and sweet.
+Measure twice, cut once.
+Sand the surface smooth before applying any finish.
+Drive the nail at a slight angle for a stronger hold.
+Check that the wall is level before hanging anything on it.
+Apply primer to bare wood before painting over it.
+Tighten the bolts in a star pattern to distribute pressure evenly.
+Use a stud finder to locate the beams behind the drywall.
+Wear safety glasses when operating the circular saw.
+Cut along the marked line and keep the blade on the waste side.
+Seal the joint with caulk to prevent water from seeping through.
+Let the glue cure for at least twenty four hours before applying stress.
+Drill a pilot hole before inserting the screw to avoid splitting the wood.
+Strip the wire back half an inch and twist the exposed strands together.
+Secure the workpiece with clamps before making any cuts.
+Plumb the vertical post before pouring the concrete around it.
+Replace the washer if the faucet continues to drip after tightening.
+File down any rough edges to prevent injury.
+Apply wood filler to the crack and let it dry before sanding.
+Turn left after the bridge and continue along the river road.
+Continue straight for two miles then take the second exit at the roundabout.
+Follow the trail markers until you reach the clearing at the top.
+Bear right at the fork and stay on the paved path.
+Cross the intersection and the entrance will be on your left.
+Head north until you see the water tower then turn east.
+Keep the mountain on your right side as you walk along the ridge.
+Take the underpass beneath the highway and emerge on the far side.
+If you reach the old barn you have gone too far and should turn back.
+Follow the coastline south until the path curves inland.
+Pass through the gate and continue along the fence line for a quarter mile.
+When the road splits, take the lower path toward the valley.
+Merge onto the highway heading west and stay in the right lane.
+Exit at the second ramp and loop around to rejoin the road heading east.
+The trailhead is marked by a wooden sign just past the parking area.
+Navigate by the stars if the compass fails.
+Open the terminal and verify that you are in the correct directory.
+Type the command exactly as shown and press enter to execute it.
+Save the file before closing the editor to avoid losing your changes.
+Restart the service after modifying the configuration file.
+Check the log output for any error messages that explain what went wrong.
+Back up the database before running the migration script.
+Set the permissions on the file so that only the owner can write to it.
+Install the required dependencies before attempting to build the project.
+Run the test suite to confirm that nothing is broken.
+Clear the cache if the application displays stale data.
+Update the package manager index before installing new software.
+Verify the checksum of the downloaded file to ensure it was not corrupted.
+Connect to the remote server using a secure shell session.
+Create a new branch before making experimental changes.
+Review the differences carefully before committing your work.
+Always wear hearing protection when operating loud machinery.
+Never touch exposed wires with your bare hands.
+Keep a fire extinguisher within reach whenever welding.
+Disconnect the power supply before working on any electrical component.
+Make sure the ladder is stable before climbing it.
+Do not operate this equipment if you are tired or distracted.
+Ventilate the area when working with volatile chemicals.
+Wear gloves when handling sharp materials or rough surfaces.
+Keep children away from the workspace at all times.
+Read the entire manual before using the tool for the first time.
+Store flammable materials away from any source of heat or spark.
+Test the smoke detector once a month to ensure it still works.
+Never bypass a safety switch or disable a guard mechanism.
+Secure loose clothing and tie back long hair before using rotating equipment.
+Wear a dust mask when sanding or cutting materials that produce fine particles.
+If the blade binds, release the trigger immediately and wait for it to stop.
+Start with the simplest approach and add complexity only when needed.
+Test before deploying to make sure everything works as expected.
+Break the problem into smaller parts and solve each one individually.
+Write down the steps before you begin so you can follow them in order.
+Ask for clarification if the instructions are unclear or ambiguous.
+Keep a record of what you changed and why in case you need to undo it.
+Focus on one task at a time to reduce the chance of mistakes.
+Verify your assumptions before building on top of them.
+Label everything clearly so others can understand your system.
+Document the process as you go rather than trying to remember it afterward.
+Double check the measurements before committing to the cut.
+Remove distractions from your workspace before starting detailed work.
+Practice the technique on scrap material before applying it to the real piece.
+Set a time limit to prevent spending too long on a single step.
+First prepare the base layer and make sure it is completely dry.
+Then add each successive layer carefully allowing time between coats.
+Begin by gathering all the materials and laying them out in order.
+Next attach the frame pieces together using the pre-drilled holes.
+After the frame is assembled, attach the panels starting from the bottom.
+Once the structure is complete, apply the weatherproof sealant to all joints.
+Start by reading the entire recipe from beginning to end.
+Prepare all your ingredients before you start cooking.
+First mix the dry ingredients together in a large bowl.
+Then combine the wet ingredients in a separate bowl.
+Pour the wet mixture into the dry mixture and stir until just combined.
+Transfer the batter into the prepared pan and spread it evenly.
+Begin with the foundation and work upward one section at a time.
+Lay the first row of bricks along the string line to keep them straight.
+Apply mortar to the top of each row before setting the next course.
+Check the level after every third row and make corrections immediately.
+After the wall reaches full height, cap it with the finishing stones.
+Finally clean the excess mortar from the joints before it hardens.
+Do not exceed the rated capacity marked on the label.
+If the motor overheats, stop immediately and allow it to cool before restarting.
+Never force a connection that does not fit easily into the socket.
+If you smell gas, leave the area and call for help from outside.
+Do not use water to extinguish a grease fire.
+Stop the machine if it makes an unusual noise or vibration.
+If the blade starts to wobble, power off and inspect the mount before continuing.
+Never reach into a running mechanism to clear a jam.
+If the pressure gauge enters the red zone, shut down the system at once.
+Do not mix different types of batteries in the same device.
+Unplug the appliance before attempting to clean or adjust internal parts.
+If the surface becomes too hot to touch, something is wrong.
+Reduce speed when visibility is poor or the road surface is wet.
+Always check behind you before reversing.
+Use both hands to grip the steering wheel during sharp turns.
+Maintain a safe following distance of at least three seconds.
+Signal your intention well before making a turn or changing lanes.
+Pull over to the shoulder if your tire blows out at high speed.
+Do not attempt to cross a flooded road if you cannot see the pavement.
+Keep your headlights on during rain, fog, or twilight.
+Plan your route before departure so you can navigate without distraction.
+Make a small test batch first to check the proportions.
+Adjust the settings incrementally rather than making large jumps.
+Clean all tools and return them to their proper place when finished.
+Sharpen the blade before each use for cleaner and safer cuts.
+Replace any worn or damaged safety equipment without delay.
+Mark the location of underground utilities before you start digging.
+Confirm that all fasteners are tight before applying any load.
+Inspect the rope for fraying or damage before each use.
+Align the parts precisely before welding them together.
+Allow fresh concrete to cure for at least seven days before walking on it.
+Ventilate the room for at least an hour after applying varnish or lacquer.
+Test the circuit with a multimeter before reconnecting the power.
+Keep a clean rag nearby to wipe away excess adhesive before it dries.

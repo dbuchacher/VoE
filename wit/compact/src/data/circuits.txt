@@ -1,0 +1,78 @@
+Voltage equals current multiplied by resistance, which is Ohm's fundamental law.
+Current flows from higher voltage to lower voltage through any conductive path.
+Resistance opposes the flow of current and converts electrical energy into heat.
+A resistor in series adds its resistance directly to the total.
+Resistors in parallel share current, and the combined resistance is less than the smallest one.
+Power equals voltage times current in a purely resistive circuit.
+Power dissipated by a resistor also equals the current squared times the resistance.
+A capacitor stores energy in an electric field between two conductive plates.
+The capacitor charges exponentially toward the supply voltage with time constant RC.
+When the supply is removed, the capacitor discharges through the resistor with the same time constant.
+After five time constants the capacitor is effectively fully charged or discharged.
+Capacitors block direct current but allow alternating current to pass.
+The reactance of a capacitor decreases as the frequency of the signal increases.
+An inductor stores energy in a magnetic field created by current flowing through a coil.
+Inductors resist changes in current and produce a voltage proportional to the rate of change.
+The time constant of an RL circuit is the inductance divided by the resistance.
+Together, an inductor and capacitor form an LC circuit that oscillates at a natural frequency.
+The resonant frequency of an LC circuit equals one over two pi times the square root of LC.
+At resonance, the impedance of a series RLC circuit drops to its minimum value.
+A parallel RLC circuit reaches maximum impedance at its resonant frequency.
+Quality factor Q measures how sharp the resonance peak is relative to its center frequency.
+Higher Q means lower energy loss per oscillation cycle.
+Bandwidth is inversely proportional to Q for a resonant circuit.
+Higher bandwidth allows more information to pass through a channel per unit time.
+A low-pass filter attenuates frequencies above its cutoff while passing lower ones.
+A high-pass filter does the reverse, blocking low frequencies and passing high ones.
+A band-pass filter allows only a narrow range of frequencies to pass through.
+The cutoff frequency of an RC low-pass filter is one over two pi RC.
+Decibels express the ratio of two power levels on a logarithmic scale.
+A gain of three decibels corresponds to a doubling of power.
+Operational amplifiers have very high gain and are used in almost every analog circuit.
+An op-amp in negative feedback amplifies by a factor set by the external resistors.
+A voltage follower has unity gain and is used to buffer signals without loading the source.
+Kirchhoff's current law says the total current entering a node equals the total leaving it.
+Kirchhoff's voltage law says the voltages around any closed loop sum to zero.
+These two laws are sufficient to analyze any linear circuit.
+Thevenin's theorem reduces any linear network to a single voltage source and series resistor.
+Norton's theorem reduces the same network to a current source and parallel resistor.
+Superposition lets you analyze each source independently and add the results.
+A transformer transfers energy between circuits through a shared magnetic field.
+The voltage ratio of a transformer equals the ratio of turns in its windings.
+Transformers only work with alternating current because they require a changing magnetic field.
+Diodes allow current to flow in one direction and block it in the other.
+A forward-biased diode has a voltage drop of roughly 0.7 volts for silicon.
+Zener diodes are designed to conduct in reverse at a precise breakdown voltage.
+LEDs emit light when current flows through them and the semiconductor recombines carriers.
+A transistor can act as a switch or as an amplifier depending on the circuit.
+In saturation a bipolar transistor acts like a closed switch between collector and emitter.
+In cutoff no current flows and the transistor acts like an open switch.
+MOSFETs are voltage-controlled devices that draw almost no gate current.
+CMOS logic uses complementary pairs of MOSFETs to minimize static power consumption.
+Static power in CMOS is nearly zero because one transistor is always off in each pair.
+Dynamic power increases with switching frequency and the square of the supply voltage.
+Reducing the supply voltage is the most effective way to lower dynamic power.
+Clock distribution networks must deliver the clock edge to every flip-flop simultaneously.
+Clock skew occurs when different parts of the circuit receive the clock at slightly different times.
+Signal integrity degrades as traces grow longer and frequencies grow higher.
+Crosstalk happens when a signal on one trace induces noise on an adjacent trace.
+Impedance matching prevents reflections at the boundary between different transmission lines.
+A termination resistor absorbs the signal at the end of a line to prevent reflections.
+Decoupling capacitors placed near power pins filter high-frequency noise from the supply.
+Ground planes provide a low-impedance return path and reduce electromagnetic interference.
+Differential signaling carries the signal as the voltage difference between two wires.
+Differential pairs reject common-mode noise that affects both wires equally.
+Analog-to-digital converters sample a continuous voltage and produce a digital code.
+The Nyquist theorem says you must sample at twice the highest frequency to avoid aliasing.
+Resolution determines the smallest voltage change the converter can distinguish.
+A successive approximation ADC converges on the answer one bit at a time from the most significant.
+Sigma-delta converters trade speed for very high resolution by oversampling and noise shaping.
+Digital-to-analog converters reconstruct an analog voltage from a digital code.
+Phase-locked loops lock an oscillator's frequency and phase to a reference signal.
+PLLs are used for clock recovery, frequency synthesis, and modulation.
+Switching regulators convert voltage levels more efficiently than linear regulators.
+The duty cycle of a switching regulator determines the output voltage ratio.
+Thermal management matters because every watt of loss becomes heat the package must dissipate.
+Junction temperature must stay within limits or the device will degrade or fail.
+Heat sinks increase the surface area available for convection and radiation.
+Electromagnetic compatibility ensures a device neither emits nor is susceptible to interference.

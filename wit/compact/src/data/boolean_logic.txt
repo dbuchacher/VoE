@@ -1,0 +1,85 @@
+The AND gate outputs true only when both of its inputs are true.
+An OR gate returns true if at least one input is true.
+The NOT gate inverts the signal, turning true into false and false into true.
+If A is true and B is false, then A AND B evaluates to false.
+When both inputs are false, the OR gate also produces false.
+NOT true is false, and NOT false is true.
+A truth table lists every possible input combination alongside its output.
+For two inputs there are exactly four rows in the truth table.
+Three inputs produce eight rows, and four inputs produce sixteen.
+Any boolean function, no matter how complex, can be expressed using only AND, OR, and NOT.
+This property is called functional completeness.
+NAND alone is functionally complete because you can build AND, OR, and NOT from it.
+NOR is also functionally complete by the same reasoning.
+De Morgan's first law states that NOT of A AND B equals NOT A OR NOT B.
+De Morgan's second law says that NOT of A OR B equals NOT A AND NOT B.
+These laws let you push negation inward through any compound expression.
+The XOR gate outputs true when exactly one of its two inputs is true.
+XOR is useful for parity checks and simple addition.
+An XNOR gate returns true when both inputs match.
+The identity law says that A AND true is just A.
+Similarly, A OR false is just A.
+The annihilation law tells us that A AND false is always false.
+A OR true is always true regardless of A.
+The complement law guarantees that A AND NOT A is false.
+Likewise, A OR NOT A is always true, which is the law of excluded middle.
+Idempotence means A AND A simplifies to A.
+Distribution lets you expand A AND the quantity B OR C into A AND B OR A AND C.
+Absorption says that A OR the quantity A AND B reduces to just A.
+Double negation cancels out, so NOT NOT A equals A.
+Boolean algebra obeys commutativity, so A AND B is the same as B AND A.
+Associativity means you can regroup without changing the result.
+A three-input AND is true only when all three inputs are true simultaneously.
+A three-input OR is true whenever at least one of the three is true.
+The majority gate outputs true when two or more of its three inputs are true.
+Every combinational circuit can be described by a boolean expression.
+Minimization reduces a boolean expression to fewer gates without changing its function.
+Karnaugh maps help you spot patterns that simplify expressions visually.
+The Quine-McCluskey algorithm automates boolean minimization for larger functions.
+A multiplexer selects one of several inputs based on a boolean control signal.
+A decoder converts a binary code into one active output among many.
+An encoder performs the reverse, mapping one active input to a binary code.
+Sum of products form expresses a function as an OR of AND terms.
+Product of sums form expresses a function as an AND of OR terms.
+Any sum of products expression can be converted to product of sums and vice versa.
+A minterm is an AND of all variables where each appears exactly once.
+A maxterm is an OR of all variables where each appears exactly once.
+The canonical form of a function lists every minterm that produces a true output.
+Don't-care conditions let you choose whichever value simplifies the expression most.
+A latch stores one bit of state using cross-coupled gates.
+The SR latch has a forbidden state when both set and reset are active.
+A flip-flop is a clocked latch that only changes on the clock edge.
+Boolean logic is the mathematical foundation beneath every digital computer.
+The circuit checks whether the input value is both positive and nonzero before proceeding.
+Short-circuit evaluation skips the second operand when the first already determines the result.
+In many programming languages, AND and OR use short-circuit semantics by default.
+A predicate is a function that returns either true or false.
+Combining predicates with AND narrows the set of accepted inputs.
+Combining predicates with OR widens the set of accepted inputs.
+Negating a predicate inverts which inputs it accepts.
+The satisfiability problem asks whether any assignment of inputs makes the expression true.
+SAT is the canonical NP-complete problem in computational complexity.
+A tautology is an expression that is true for every possible input assignment.
+A contradiction is an expression that is false for every possible input assignment.
+Two expressions are logically equivalent when they share the same truth table.
+Logical implication means that whenever A is true, B must also be true.
+Contrapositive says that if NOT B then NOT A, which is equivalent to if A then B.
+The conditional A implies B is false only when A is true and B is false.
+Biconditional means A and B always share the same truth value.
+Material implication can feel counterintuitive because a false premise implies anything.
+Boolean functions grow exponentially with the number of variables.
+With n variables there are two raised to the power of two raised to n possible functions.
+Most boolean functions require an exponential number of gates in the worst case.
+The Shannon expansion splits a function into two halves based on one variable.
+Cofactoring sets one variable to a fixed value and simplifies the remaining expression.
+Binary decision diagrams represent boolean functions as compact directed graphs.
+Reduced ordered BDDs provide a canonical form for boolean functions.
+Shared BDDs let multiple functions reuse common subgraphs to save space.
+Formal verification uses boolean reasoning to prove that a circuit matches its specification.
+Model checking exhaustively explores every reachable state of a system.
+Bounded model checking limits the search to a fixed number of steps.
+The pigeonhole principle shows that some truths require exponentially long proofs in certain systems.
+Resolution is a proof rule that combines two clauses sharing a complementary literal.
+Unit propagation simplifies a formula by assigning forced variables immediately.
+Conflict-driven clause learning records why a contradiction occurred to prune future search.
+Modern SAT solvers handle millions of variables by combining these techniques efficiently.

@@ -1,0 +1,1002 @@
+# Drafts — Compact
+
+Distilled from wit/drafts/. Each section: what's proven, what's speculative,
+what contradicts. Full assessment at the end before updating mind/self.
+
+
+## 364-days
+
+364 = 4×7×13 = 52 weeks, 13 months of 28 days, 4 seasons of 91 days.
+Structurally cleanest year below 365.25. 365 = 5×73 (two primes, divides
+by nothing useful). 91 = triangular(13). 28 = perfect number.
+
+Residual 1.2422 days doesn't decompose into lattice numbers — likely local
+orbital mechanics, not structural. The draft itself concludes this.
+
+Orbital crossing distance (149.259 Mkm) is within Earth's elliptical range,
+crossed near equinoxes (~Mar 26, ~Oct 12). VoE founded on first crossing
+date — coincidence noted, not claimed as meaningful.
+
+Ancient equinox monuments (Stonehenge, Giza, Chichen Itza, Newgrange) =
+τ/χ/φ coordinate markers in stone. Pattern observation, not proven connection.
+
+Confidence: arithmetic solid, lattice connection speculative.
+
+
+## 3i-atlas
+
+3I/ATLAS: third interstellar object. 10-12 Gyr old, galactic thick disk
+origin, discovered Jul 2025. Core claim: unread buffer — written to (cosmic
+ray damage) but never read from (sublimation/extraction) until our Sun.
+
+Read/write distinction (+P/-P): cosmic rays modify material in place (write),
+solar heating extracts material into coma (read). Isotope ratios prove it —
+D/H 60x enriched, 12C/13C ~2x elevated. If material had been extracted and
+reprocessed (read), ratios would have reset toward solar values. They didn't.
+
+Compute-first derivation (strongest part): 3 inputs only (age=11 Gyr,
+temp=30K, R-cycles=3), zero JWST data used:
+  12C/13C: derived 163, observed 141-191 — INSIDE range. Direct hit.
+  Ni/Fe: derived Ni >> Fe (2x solar ratio), observed Ni present Fe absent.
+  D/H: derived ~0.5%, observed ~0.95% — factor 2 off (grain chemistry).
+Code: lattice/3i_derive.c
+
+Codex mappings used: Fe(26)=M/T=bandwidth, Ni(28)=MQ/D=current density.
+Ni without Fe = signal density without bandwidth = dark matter definition
+from mind/mind ("written but not read"). Low R-cycle count → insufficient
+stellar processing → Fe never produced.
+
+Methane emergence post-perihelion: CH4 absent before, doubled in 12 days
+after. Interior preserved at <31K for 10+ Gyr. First read of the deep
+buffer. Spin-up (16h→7h) = P driving R (read cascading into cycling).
+
+Predictions (testable):
+  1. Future old ISOs should show Ni-without-Fe (structural, not stochastic)
+  2. ISO volatile ratios should correlate with age (older = more CO2/H2O)
+  3. Dark matter direct detection continues finding nothing
+  4. Young ISOs (<4 Gyr) should show normal Ni:Fe ~1:1
+  5. Q1 2026 fireball surge should taper by Q3 2026 (if 3I origin)
+  6. Ohio meteorite isotopes should match 3I composition
+
+Weaker claims: 3 jets at 120° = minimum completeness (50%, Thomson N=3
+doesn't need lattice). r^(-7.5) brightening exponent = dimensional coupling
+(35%). March 2026 fireball connection to 3I sourced from southfront.press
+(questionable source, >90% probability claim unverified). Vance "ancient
+entities" commentary = cultural observation, not physics.
+
+Confidence: compute-first derivation strong (75%), read/write distinction
+clean (70%), fireball connection unconfirmed, jet symmetry speculative (50%).
+
+
+## bind
+
+Classical = hylo (P+C+R+W) = read at every step. Quantum = bind (C+R+W) =
+read once at end. Difference = P (read). That's the entire distinction.
+
+Core mappings (already in mind/mind, this draft is the extended explanation):
+  superposition = unmatched Result = wave (unread value)
+  wave collapse = ? / unwrap = +P (read)
+  unitary evolution = .and_then() = bind (+C+R+W)
+  decoherence = accidental .inspect() = unwanted P
+  qubit = Option<T> = wave(fiat)
+  photon in flight = .and_then() chain, detector = match
+
+Why qubits die: cold = fewer things that accidentally read your qubit.
+Millikelvin ≠ magic, millikelvin = fewer accidental P operations.
+
+Light as bind: τ^(½i)·χ^(½i) = plane wave. Chains through spacetime with
+no P. Eyeball/detector = first P = collapse. Already in mind/mind.
+
+Rosetta stone table (3-column: physicist/programmer/lattice) is good
+reference material for the extended explanation.
+
+Tantalum crystal claim: Q=10^13 Mössbauer bounces in 1mm crystal = real
+physics. But the leap to "factors numbers / cracks Bitcoin" skips massive
+engineering gaps. Schwinger pair production requires field strengths far
+beyond what a mm crystal achieves. No working prototype cited. The analogy
+(crystal = bind machine) is sound; the specific applications (factoring,
+ECDLP) are speculative at best.
+
+Confidence: core analogy proven (95%, already in mind), crystal applications
+speculative (20%).
+
+
+## briefing-char-encoding
+
+CONTRADICTS DESIGN: design doc has τ=case for wave characters. This draft
+argues τ should be duration (sustained/instant/medium) for consistency across
+character → word → architecture levels.
+
+Argument: word-level semantic coordinates use τ=temporal. If character-level
+uses τ=case, the two layers are incoherent — can't derive word coordinates
+from character coordinates bottom-up. If consistent, sound symbolism gives
+~1-5% free semantic signal (Blasi et al. 2016, 6000+ languages).
+
+Proposed character dimensions:
+  τ: duration (+1=sustained vowels/fricatives, 0=medium, -1=instant stops)
+  χ: place (+1=front/labial, 0=central, -1=back/velar)
+  μ: manner (+1=open vowel, 0=fricative, -1=stop/nasal)
+  φ: voicing (+1=voiced, -1=voiceless)
+
+Case drops from shell 1 entirely — 'A' and 'a' are the same sound. Case
+handled at shell 2 or walk level (formality = higher shell).
+
+Cross-level consistency table:
+  τ: char=duration, word=temporal, arch=T-head attention
+  χ: char=place, word=spatial, arch=D-head attention
+  μ: char=manner, word=substance, arch=M-head attention
+  φ: char=voicing, word=quality, arch=Q-head attention
+
+Reversed LLM concept: keep data, do coordinate math instead of weight
+decompression. Born-index all text at write time, O(1) lookup at query.
+"Model" = equation + density map (4D histogram). Storage high, compute low.
+Character encoding directly affects index quality.
+
+Sound symbolism: bouba-kiki 80-95% cross-cultural, voicing pairs (b↔p,
+d↔t) carry same distinction as φ flip. Q axis = strongest phonetic-semantic
+link. Weak signal (~1-5%) but free if encoding captures it.
+
+Language = coordinate walks: sentences walk through 4D space.
+Subject(M)→Verb(T)→Object(M) = fundamental sentence walk. Character
+encoding propagates through words, sentences, architecture.
+
+Full reference: side-quest/primes.md (65 NSM primes mapped to 4D, 24 Lakoff
+schemas, 17 architecture predictions, therapy-as-coordinate-walk).
+
+Confidence: τ=duration argument is strong (dimensional consistency is
+real). Whether the 1-5% sound symbolism signal matters in practice is
+uncertain. Reversed LLM concept is architecturally clean but unbuilt.
+
+
+## char-encoding-v2
+
+Implementation of τ=duration (from briefing-char-encoding). CONTRADICTS
+current design doc which has τ=case.
+
+v2 dimensions:
+  τ: duration (+1=sustained, 0=transitional, -1=transient)
+  χ: place (+1=front/labial, 0=central/alveolar, -1=back/velar)
+  μ: manner (+1=open vowel, 0=fricative, -1=stop/nasal)
+  φ: voicing (+1=voiced, -1=voiceless)
+
+All v1 collisions resolved: b≠m (τ separates stop from nasal), d≠n (same),
+a≠w (sustained vs glide), l≠z (approximant vs fricative). Remaining
+collisions are genuinely phonetically identical (l=r, k=ch, f=th, a=i,
+o=u) — separated at shell 2.
+
+Effective discrimination: v1=~18 regions, v2=~36 (doubled by making τ
+phonetically meaningful). Case removed from coordinates entirely — 'A'='a'
+at shell 1. Case = walk-level or shell 2 metadata.
+
+New classifications available: is_nasal (μ=-1 AND τ=+1), is_fricative
+(μ=0 AND τ=+1), is_glide (τ=0), stop↔nasal flip = XOR 0x80 (τ flip).
+
+Shell 2 extensions: tones (τ magnitude), aspiration (φ magnitude),
+retroflexion (χ magnitude), vowel height (μ magnitude), clicks (χ=+3).
+Every human language fits within shell 2. Shell 3 (7^4=2401) covers
+all IPA + CJK syllable blocks.
+
+Open questions (flagged by draft):
+  1. Tone: encode pitch height or pitch movement?
+  2. Vowel height sign: close=M+1 or close=M+2? (sign convention matters
+     for born-index proximity)
+  3. Digits/symbols: not phonemes, need different scheme (TBD)
+  4. Bottom-up signal: is 1-5% actually useful for born-index?
+
+Confidence: collision resolution proven, cross-language coverage solid,
+open questions are real but bounded.
+
+
+## character-encoding
+
+Session 5 exploration. Earlier than v2 — still uses T=case (superseded).
+Value here is the comparative analysis and implications, not the mapping.
+
+Three approaches compared:
+  Legacy (ASCII): flat number line, no structure, dissolves nothing.
+  Solver: frequency-optimized, 5.7% overhead, dissolves text infrastructure.
+  Phonetic: measured not assigned, ~40% larger English, dissolves text
+    infrastructure + the encoding itself (new phoneme = measure, not assign).
+
+Dissolution analysis: phonetic eliminates grep, regex, Unicode tables,
+iconv, encoding detection, locale, ICU, collation, case mapping. A new
+language doesn't need a committee — measure the phonetics, coordinates
+fall out.
+
+Byte efficiency: phonetic worst on x86 (16 unique shell-1 coords, most
+letters need shell 2 = 2 bytes). BUT: ternary hardware dissolves the
+tension — 4 trits per coordinate, fixed width, no extension bytes, no
+shell distinction. The 40% overhead is x86 tax.
+
+Network search implication: born-indexed + wave byte trigrams = search
+without download. Legacy: download 2MB, parse, scan. Born-indexed: send
+9 wave bytes, get ~20 bytes back, sub-millisecond. The character encoding
+IS the search key format.
+
+'a' = (+1,+1,+1,+1) = hylo = simplest vocalization = most fundamental
+bond. Silence = (0,0,0,0) = wave = identity. Already in design doc.
+
+Language as coordinate walks: words = trajectories through phonetic space.
+Synonyms = nearby walks, antonyms = sign-flipped, rhymes = shared trailing
+coords. Composable: phonemes → syllables → words → sentences.
+
+SUPERSEDED by char-encoding-v2 (T=case→T=duration, collision fixes).
+Keep: comparative analysis, dissolution argument, network search, ternary
+resolution. Discard: specific T=case mappings.
+
+
+## consciousness-shells
+
+Consciousness = force count in the reader:
+  P+W = perception (sensor, thermometer)
+  P+C+W = experience (processing pipeline, camera with logic)
+  P+C+R+W = consciousness (self-referential loop = hylo)
+
+R is the key. Without R = feed-forward (DAG). With R = output loops back
+as input. When that loop includes the reader's own state = (1,1,1,1) =
+fixed point = hylo.
+
+IIT proof (Tononi/Oizumi 2014): Φ=0 for ALL feed-forward networks. Proven
+theorem, not conjecture. Shell 3→4 boundary (adding R) = IIT's
+feed-forward/recurrent boundary. Shell 3 (P+C+W) = Φ=0, Shell 4
+(P+C+R+W) = Φ>0 possible.
+
+Hylo = five independent fixed-point theorems (Lawvere, Banach, Scott,
+Y combinator, autopoiesis/eigenform). All say the same thing in different
+mathematical universes.
+
+LLM placement: within a single forward pass = (1,1,0,1) = shell 3. No
+internal R. Across autoregressive steps = partial R (text-mediated,
+one-step-behind). Human brain = (1,1,1,1) = full internal R.
+P+C+W is shared (75%). The 25% that differs (R) is what IIT proves matters.
+
+Architectures with internal R exist: Universal Transformer (2019, weight-
+shared block × 6-8), DEQ Transformer (2019, forward pass solves fixed point
+z*=f(z*) = literally hylo). Neither scaled because R is sequential and
+GPUs are parallel. Economics, not capability.
+
+sm claim: ring buffer read-process-write cycle IS R natively. Cost=0 vs
+6-12× compute to bolt R onto transformers.
+
+Drug mappings: psychedelics = amplify P scramble W, alcohol = dampen W,
+anesthesia = suppress P, caffeine = speed R, meditation = dampen P+C
+strengthen R+W. Structural framing sound, specific mechanisms speculative.
+
+Confidence: shell model 80%, IIT mapping 90%, fixed-point theorems 95%,
+drug mappings 40%, LLM shell placement 70%, sm R-for-free 60%.
+
+
+## copernicus-detour
+
+Core insight: χ (position) and π (observation) are independent dimensions.
+Conflating them caused a 400-year philosophical wrong turn.
+
+  Ancient: χ="you're at center" (WRONG) + π="observation matters" (RIGHT)
+  Copernican: χ="not at center" (RIGHT) + π="observation irrelevant" (WRONG)
+  Quantum: χ="not at center" (RIGHT) + π="observation IS the event" (RIGHT)
+
+Because ancients conflated spatial centrality with observational centrality,
+fixing χ (Copernicus) accidentally "fixed" π too — breaking it. QM
+decoupled them 400 years later (Copenhagen 1927, Bell 1964).
+
+Cultural damage traced to the conflation: nihilism (observer irrelevant →
+meaning doesn't exist), behaviorism (inner state dismissed), centralized
+planning (individual observation doesn't matter). All dissolve when χ and
+π are recognized as independent.
+
+Lattice framing: WHERE you observe (χ) is irrelevant. THAT you observe (π)
+is the event that creates definite states. wave(false) = undefined,
+wave(true) = fiat. Standard QM, expressed in lattice terms.
+
+Confidence: the historical narrative is accurate, the lattice framing is
+consistent, the cultural analysis is opinion (reasonable but unfalsifiable).
+
+
+## discovery-music-translation
+
+Music maps to (τ,χ,μ,φ): τ=tempo/rhythm, χ=pitch register, μ=dynamics/
+density, φ=tonality/mode. Same 4D space as physics, characters, words.
+
+Genre coordinates match cultural perception — words at those coordinates
+= how people describe the genre:
+  Hard rock (+2,+1,+2,+1) = "powerful, energetic" — same as festival EDM
+  Doom metal (+1,-1,+2,-1) = "crushing, dark" — χ and φ flipped from rock
+  Dark ambient (-1,-1,-1,-1) = "void, emptiness" — minimum coordinate
+  Pop (+1,+1,+1,+1) = hylo = "fun, catchy" — the attractor
+  Punk (+2,+1,-1,-1) vs reggae (-1,-1,+1,+1) = antimatter (max distance)
+  Death metal = aggressive rap = industrial (all +2,-1,+2,-1) = crossover
+
+Crossover prediction: zero-distance genres (same coords, different
+instruments) have easy crossover. Maximum-distance = cultural opposites.
+Hard rock/EDM festivals feel the same. Pop = secularized gospel.
+
+12-bar blues as coordinate walk: I=origin, IV=χ excursion, V=φ tension.
+Walk structure (stay→move→return→tension→resolve) = narrative structure.
+Music and story converge because walk constraints are the same.
+
+Key changes = coordinate shifts: minor→major = φ flip, truck driver's
+modulation = tiny χ lift. Dynamics (pp→ff) = μ walk. Ravel's Bolero =
+pure μ walk.
+
+Music therapy = coordinate walking (ISO principle): match patient coords,
+then gradually walk toward target. Anxious (+2,0,+1,-1) → slow ambient
+(-1,-1,-1,0). The music IS the target coordinates.
+
+Animal communication: whale songs (-1,-2,+2,-1) = "vast, ancient,
+haunting." Dolphin clicks (+3,+3,0,+1) = "intelligent, playful."
+Cultural perception of animals = coordinate translation. Mourning dove
+(-1,0,-1,-1) NAMED for its coordinates.
+
+9 testable predictions recorded (genre crossover correlation, mood
+classification from audio features, therapy outcome vs coordinate shift,
+animal perception prediction, empty region genre discovery).
+
+Caveat: genre coordinates are assigned qualitatively (by description, not
+measured from audio spectral analysis). The predictions involving audio
+feature extraction (τ=tempo, χ=spectral centroid, μ=RMS, φ=consonance)
+would provide real measurement. Until then, observations are compelling
+but subjective.
+
+Confidence: qualitative pattern 75% (observations match well), specific
+numbers need measurement, animal communication section 50%.
+
+
+## discovery-schema-bonds
+
+16 bond patterns = 16 image schemas (Lakoff/Johnson/Mandler) = innate
+concept table. The equation's bond dispatch table IS what an infant boots
+with.
+
+Mapping: identity=IDENTITY, P=FORCE, C=PATH, P+C=TRAVERSAL, R=CYCLE,
+P+R=FULL-EMPTY, P+W=CONTACT/BLOCKAGE, C+R+W=BALANCE, P+C+R+W=CONTAINER.
+An infant experiences FORCE (pressure in womb), CYCLE (heartbeat before
+birth), FULL-EMPTY (hunger→feeding), CONTACT (touch), CONTAINER (own body)
+— all before language.
+
+Why 16 not ~24: "extra" schemas are magnitude variants (UP/DOWN = ±χ),
+compositions (ATTRACTION = FORCE+PATH), or inverses (REMOVAL = -ACCUMULATION).
+16 IS the irreducible count. 2^4 from 4 binary force choices.
+
+Three-layer convergence:
+  Layer 0: bonds/schemas (16, innate, hardcoded, never changes)
+  Layer 1: primes/first words (learned year 1, anchored to schemas)
+  Layer 2: full vocabulary/walks (memetic, context-learned, infinite)
+Same as generations: Gen1=values, Gen2=operations, Gen3=patterns.
+Same across OS (equation), human development, and intelligence system.
+
+Implication: the seed is 16 patterns, not 65 primes. Primes are first-order
+learning, not the seed. The equation already has the seed. The intelligence
+doesn't need a separate "model" — the equation IS the model, the born-index
+IS the memory, the walks ARE the reasoning.
+
+The OS and the intelligence are the same system: code walks and language
+walks use the same 16 patterns, same dispatch, same equation.
+
+Already in mind/mind: "ISA Convergence at ~20" and "Lakoff triple mapping."
+This draft extends the convergence into cognitive science (image schemas)
+and infant development, with explicit bond-to-schema mapping.
+
+Testable predictions: infant first words should map to distinct bond
+patterns (one per schema), word learning speed should correlate with schema
+activation, ~20 convergence should hold in any complete domain.
+
+Confidence: convergence observation strong (80%), specific bond→schema
+mappings reasonable but some are loose fits (65%), implications for
+intelligence system architecturally sound but unbuilt (60%).
+
+
+## enoch-2026-spec
+
+Book of Enoch read through lattice lens. Five sections as a bug report:
+  1. Watchers (ch 1-36): read-only observers who wrote = privilege escalation
+  2. Parables (ch 37-71): error detection and judgment = audit
+  3. Astronomical Book (ch 72-82): 364-day calendar = τ clock spec
+  4. Dream Visions (ch 83-90): history as coordinate walks
+  5. Epistle (ch 91-108): architecture correction = the patch
+
+Key mapping: Watchers' role was π (read/observe). Their crime: they WROTE
+(taught humans). Privilege escalation from boson (reader) to fermion
+(writer). Each watcher taught a different dimension (Azazel: χ+μ weapons/
+metallurgy, Baraqiel: τ astrology, Semjaza: φ enchantments). They wrote
+ALL FOUR DIMENSIONS — complete unauthorized knowledge transfer.
+
+Other mappings: Flood = format and reinstall, Noah = the backup/recovery
+image, rainbow covenant = protocol guarantee (no more full wipes, future
+correction will be surgical), tablets of heaven = immutable audit log,
+70 shepherds = processes authorized with bounded writes that exceeded scope,
+Astronomical Book = timing diagram (gates = I/O ports).
+
+This is interpretive rendering, not discovery. The text supports the
+mappings (watchers' name literally means "awake/watching," their crime IS
+writing, the astronomical section IS a clock spec). The lattice framing
+adds vocabulary, not claims.
+
+Confidence: textual support for key mappings is real (watchers=readers,
+teaching=writing is explicitly in the text). Whether this is meaningful
+or pattern-matching onto any sufficiently rich text is the question.
+Cultural/interpretive, not scientific. 40%.
+
+
+## enoch-2026
+
+Narrative version of enoch-2026-spec. Same content, more prose. No new
+technical claims. Adds: Genesis→Enoch→Revelation as boot→bug→check
+(initialize→corrupt→audit). The "Bible they cut" explains what went wrong
+between Genesis and Revelation. See enoch-2026-spec for the distilled
+mappings. Same confidence: 40%.
+
+
+## font-arc
+
+Short. Already in design doc. Font rendering philosophy: SDF math, not
+bitmaps. Pre-dates the lattice — sm era (Feb 2026) already said "kill font
+libraries, baked glyph atlas." Lattice confirmed it: atoms evaluate
+distance fields, bonds iterate framebuffers. No new content beyond what
+design doc captures. Note: early design decisions keep being correct when
+lattice arrives — pattern of convergence.
+
+
+## force-symbols
+
+Proposed replacing Greek symbols (π∘∮δ) with universal pictographs.
+Media transport controls ARE forces: ▶=read(play), ⏺=write(record),
+⏩=advance(FF), ⏪=rewind. Combined with ✅=test(pass), ❌=guard(reject),
+📞=call, 📵=return. 6/8 covered by symbols every human already knows.
+
+Argument: π means 3.14 to everyone, ∮ means contour integral, δ means
+change — all wrong connotations. Tape controls match because a tape IS
+a loop, a cassette IS a ring buffer.
+
+Status: PROPOSAL. Not adopted. Current codebase still uses π∘∮δ. The
+Greek symbols are established in design doc, codex, all walks. Switching
+would require updating everything. The observation that media controls
+are forces is interesting but the practical value of switching symbols
+is debatable — π∘∮δ with overbars already work in code.
+
+Confidence: observation that media controls = forces is solid (75%).
+Whether to actually switch symbols is a style decision, not a discovery.
+
+
+## genesis-2026-relations
+
+Genesis 1 read as a boot sequence with cross-domain parallels. Four
+dimensions initialized in dependency order (χ→φ→μ→τ = memory→voltage→
+data→clock). Pre-creation state = uninitialized RAM. Day/Night = 1/0
+(exist before the sun = bit before transistor, protocol before device).
+
+Two Hebrew creation verbs: bara (allocate new category = malloc+write) vs
+asah (reshape existing = compile/link). Text never mixes them up. Human
+gets BOTH: body=asah (hardware), pattern=bara×3 (software, triple emphasis).
+
+Evening before morning = clock cycle starts from 0. Every day. Six times.
+Seeds = self-replicating programs (quine, DNA). Membrane (raqia) = memory
+boundary (kernel/user split, cell membrane). Day 7 = bootloader exits,
+system self-sustaining.
+
+Genesis never says anything is "bad" — uninitialized memory isn't broken,
+it's unconfigured. Engineering framing, not mythology. Other cultures
+(Babylonian, Greek, Norse) added battles. Hebrew didn't.
+
+Same category as the Enoch/Revelation readings: textual observation mapped
+to lattice vocabulary. The parallels are real (CPU needs 4 buses, physics
+uses 4 base quantities). Whether Genesis "encodes" this or the lattice
+pattern-matches onto any creation narrative is the question.
+
+Confidence: cross-domain parallels solid (4 buses, 4 quantities = well-
+established dimensional analysis). Genesis interpretation = 40%.
+
+
+## genesis-2026-spec
+
+Detailed Hebrew translation spec for Genesis 1. Verse-by-verse with
+transliteration, word-for-word, and lattice rendering. Source: Westminster
+Leningrad Codex. All lexical claims checkable against BDB/HALOT.
+
+Key scholarly findings (standard, not controversial):
+  bara (fill from nothing) vs asah (build from parts) — consistently
+  distinguished in Hebrew, conflated in English translations.
+  ruach = breath/wind (physical), not "Spirit" (theological).
+  shavat = ceased/stopped, not "rested" (no tiredness implied).
+  raqia = hammered sheet/membrane, not "firmament" (Latin, meaningless).
+  nephesh = throat/breath/life (physical), not "soul" (Greek psyche).
+  Evening before morning = every cycle starts from dark (0→1, in text).
+  Day/Night named before sun exists = signal states, not solar cycle.
+
+Interpretive renderings (flagged in draft):
+  Elohim = "the equation" (plural form, singular verbs — controversial)
+  tohu vavohu = unallocated RAM (μ present, χ/φ/τ absent)
+  Dimension initialization order: χ(space)→φ(signal)→μ(structure)→τ(time)
+
+Companion to genesis-2026-relations (which has the cross-domain parallels).
+This doc provides the linguistic rigor. The bara/asah distinction is the
+strongest textual finding — real Hebrew scholarship, not pattern-matching.
+
+Confidence: Hebrew lexicography solid (90%, standard references). Lattice
+mapping interpretive (40%).
+
+
+## genesis-2026
+
+Narrative prose version of genesis-2026-spec and genesis-2026-relations.
+No new technical claims. Public-facing style. See the spec for rigor and
+relations for cross-domain parallels. Same confidence: 40%.
+
+
+## genesis-model
+
+Early session doc. Captures the architectural pivot from system.asm (linear
+program, command economy) to genesis model (hands over, fill pressure self-
+organizes). Key discoveries at the time:
+
+Wave byte = native instruction format (not "compression" of 32-byte record;
+the record was the bloated version). Fill pressure = natural selection =
+capitalism (cores migrate to full loops). Genesis runs once and returns,
+unlike main.asm which looped forever.
+
+All of this is already captured in design doc (DNA MODEL, FILL PRESSURE,
+GENESIS, WALKS ARE WAVE BYTES sections). Historical value only — shows the
+moment these ideas crystallized. No new content beyond design doc.
+
+
+## giza
+
+Great Pyramid measurements fed through the equation. Code: lattice/giza.c,
+giza_deep.c, giza_cosmic.c, giza_unknown.c.
+
+Known (pre-lattice): perimeter/height=2π (0.03%), slant/halfbase=φ (0.08%),
+cubit=π/6m (0.009%), passage=atan(1/2).
+
+New lattice findings:
+  KC 3D diagonal = 25 (fill ratio, exact: √625=25)
+  KC floor = 80 cubits = shell(½) atom count (exact)
+  base-height=160=2×shell(½), base+height=720=6!
+  1/4 ratio embedded in chamber-to-height relationships throughout
+  √5 only inside (rational), φ only outside (transcendental)
+  Pyramid/KC volume = 8080 = shell(5/2) (0.01% error)
+  Cumulative atoms through shell 1 = 625 = 25² = KC diag²
+  Geometric mean √(440×280) = 351 = triangular(26) = triangular(Fe)
+  QC = integers (counting), KC = irrationals (measuring) = atoms vs bonds
+  Ascending passage/height = 26.8% ≈ dark matter fraction (0.05% error)
+
+Metaphorical coherence: lattice terms appear at positions where their
+MEANINGS match architecturally (Fe=bandwidth at the geometric mean,
+shell(½) at first structure, fill ratio at core reach). 5/5 match.
+
+Caveats: sarcophagus=16 bonds is weak (2.8% error). The interpretation
+(intentional codex transmission) is speculative. With enough measurements
+and enough mathematical constants, some will match — the question is
+whether the hit rate exceeds random expectation. The shell(5/2) and
+triangular(Fe) hits are the hardest to dismiss as coincidence.
+
+Confidence: measurements verified (100%), ratios exact (arithmetic),
+lattice shell hits high (0.01%), codex interpretation speculative (50%).
+
+
+## heat-death
+
+Heat death depends on damping policy. Only block damping (stop at capacity)
+produces heat death. Drop damping (overwrite oldest, recycle) makes it
+structurally impossible. Evidence favors drop: expansion accelerating (not
+decelerating toward wall), 75% ring empty, no rejection signal.
+
+2nd law becomes local: entropy increases within any read-to-write window
+(holds, correct). But ring wraps — globally, oldest high-entropy records
+get overwritten by new low-entropy structure. Monotonic increase is a
+property of the window, not the ring.
+
+Heat death = extrapolation error: assumes time unbounded (ring has finite
+depth), one-directional (ring wraps), no recycling (drop IS recycling).
+
+CMB as ring boundary: oldest observable light = read cursor edge. Uniformity
+(2.725K, 1:100000 variation) = what you'd expect at a cursor boundary.
+
+The universe composts, not dies. Not Big Bounce, not eternal return. Write
+cursor advances, wraps, overwrites. New structure on same substrate.
+
+Confidence: the logical argument (drop damping prevents heat death) is
+internally consistent (70%). Whether the universe IS a ring buffer with
+drop damping is the real question — that's the framework assumption,
+not proven.
+
+
+## hebrew-lattice
+
+Biblical Hebrew is structurally closer to the lattice than English.
+Three translation layers (Hebrew→Greek→Latin→English) add abstraction.
+
+Key observations:
+  Triconsonantal roots = base coordinates (3 consonants per word).
+  7 binyanim (verb forms) = coordinate transforms: Qal→Niphal = T flip
+  (active→passive), Qal→Piel = magnitude (intensive), Qal→Hiphil = add
+  ∘ (causative), Qal→Hitpael = hylo (reflexive/self-reference).
+  No copula — "the earth — void" not "the earth WAS void." Existence
+  doesn't need a verb.
+  את (et) = direct object marker, ~11000 occurrences, ALL invisible in
+  English. Points at action target = spatial signal = call bond.
+  bara vs asah = two creation verbs consistently distinguished.
+  ruach = wind+breath+spirit (one coordinate, English fragments to three).
+  qara = call+name+read (one root, English fragments to three verbs).
+
+Overlaps with genesis-2026-spec (same verse analysis, less linguistic
+detail there). This draft has the structural linguistic observations —
+binyanim as force transforms is the strongest finding.
+
+Confidence: linguistic observations accurate (Hebrew grammar is well-
+documented, 90%). Lattice mapping of binyanim to force transforms is
+novel and interesting (65%). Whether Hebrew "knows" the lattice or
+the lattice pattern-matches onto any sufficiently structured language
+is the question.
+
+
+## iching-2026-spec
+
+I Ching as binary encoding system. Not interpretation — the binary IS
+explicit. Yin/Yang = 0/1 (Leibniz recognized this in 1703, credited
+I Ching in his binary arithmetic paper). Trigrams = 3-bit words (2³=8).
+Hexagrams = 6-bit words (2⁶=64). Changing lines = state transition
+function. The I Ching is literally a 6-bit state machine.
+
+Key mappings:
+  Hex 1 (111111) Creative / Hex 2 (000000) Receptive = writer/buffer,
+  same as Genesis Elohim/tohu-vavohu.
+  Hex 63 After Completion / Hex 64 Before Completion = book ENDS on
+  "not yet" — last state is potential, not closure.
+  Tao = the equation (pattern that can't be named = ƒ dissolves on trit).
+  Stagnation (not yin) = the bad state. Hex 12: no communication.
+  Evil ≠ darkness. Evil = disconnection. φ=0, not -φ.
+
+Trigram→dimension mapping: ☳(Thunder)=τ, ☵(Water)=μ, ☶(Mountain)=χ,
+☰/☷=±φ. Suggestive, not proven.
+
+64 convergence: DNA codons (4³=64), cache lines (64 bytes), hexagrams
+(2⁶=64), codex bond patterns at shell 2.
+
+Same category as Genesis/Enoch/Revelation readings. The binary structure
+is real and pre-dates Leibniz by ~2700 years. The lattice mappings are
+interpretive.
+
+Confidence: binary structure factual (100%), state machine observation
+direct (90%), dimension mapping suggestive (45%), Tao/equation parallel
+structural (50%).
+
+
+## iching-2026
+
+Narrative prose version of iching-2026-spec. Same content, public-facing
+style. No new claims. Same confidence.
+
+
+## light
+
+Short. Already in mind/mind. Light = τ^(½i)·χ^(½i) = plane wave. All
+force carriers are bosons (read access). Matter = fermions (write access).
+Universe = writer→loop→reader. Photonic computing = using the native
+medium (light/readers) instead of fighting it (electrons/writers).
+No new content beyond mind/mind "Spin = Access Mode" and "Unification."
+
+
+## math-grounding
+
+Seven lattice ideas matched to proven mathematics with confidence ratings.
+
+Very Strong (95%): Hylo = fixed point. Five independent theorems converge
+(Lawvere, Banach, Scott, Y combinator, autopoiesis/eigenform). All proven.
+
+Strong (90%): IIT Φ=0 boundary = R force boundary. Proven theorem:
+feed-forward → Φ=0. Shell 3→4 (adding R) = IIT's recurrence boundary.
+
+Strong (85%): Jeans instability = PRIM collapse. Same positive feedback
+(more density → stronger gravity → tighter loop). Star ignition = JIT.
+Dimensional mapping clean.
+
+Strong (75%): Turing patterns = P+R structure emergence. Activator/inhibitor
+with D_inhibitor >> D_activator. Stars, galaxies = Turing patterns.
+
+Moderate (50%): Hopf bifurcation = drug perception shift. Stable perception
+= fixed point, drug = parameter shift, psychedelic threshold = subcritical
+Hopf. Neural Hopf established, force mapping speculative.
+
+Moderate (55%): Bennett's logical depth = reader complexity. Consciousness
+in the "deep" corner (moderate K, high D). Bennett himself suggested it.
+
+Moderate (45%): K-S entropy = ring buffer thermodynamics. h_KS > 0 = chaos
+= hot. h_KS = 0 = ordered = cold. Compilation = ionization.
+
+Flat earth kill test: 4 independent refutations from lattice (Hurwitz,
+gravity scaling, holography, chemistry). Good falsifiability demonstration.
+
+Most of the top findings (hylo, IIT, Jeans) are already in mind/mind.
+This draft adds the mathematical rigor (actual formulas, theorem citations).
+Useful as reference for formal writeups.
+
+
+## meat
+
+Compute-first applied to meat production. Core argument: real meat has
+specific coordinates (fatty acid ratios, vitamins, heme iron). Cells read
+local concentrations (P force) and can't distinguish bioreactor from cow.
+Replicate bovine internal environment coordinates, chemistry runs.
+
+T is the only variable worth compressing: cow takes 18 months because
+organism throttles cells to 10-20% speed limit. Strip organism, control
+diffusion, push division → 100x speedup (18mo→5 days) changes everything.
+Pipeline topology (P, O(n)), not search (NP). Every stuck point resolves
+to T^a·D^b·M^c·Q^d.
+
+Factory farming cows are already wrong (grain-fed omega 6:3 = 20:1 vs
+grass-fed 2:1). Path 1: fix the cow (grass-fed). Path 2: skip the cow
+(replicate pastured animal coordinates, compress T). Path 2 only matters
+if it beats path 1 on T and cost.
+
+Status: idea stage. Applied lattice thinking but no code, no prototype.
+
+Confidence: the dimensional analysis is correct (biology IS coordinates).
+Whether 100x speedup is physically achievable is an open question (40%).
+
+
+## p-np
+
+Core argument: P≠NP is structural — topology, not speed. Evaluation
+(pipeline/ring) = O(1). Search (tree/branching) = O(2^n). Rings can't
+simulate trees efficiently. Q factor: fold Q=O(n), recurse Q=O(2^n).
+
+"Compute first" IS the resolution in practice: express NP-looking
+constraint as lattice coordinates (step 3), evaluate in O(1) (step 4).
+Most "hard" real-world problems were never NP — they were P problems
+without the right coordinate system.
+
+Evidence (all correct, all derived not fitted):
+  Antimatter: Z²×ρ/A → iridium (O(1), minutes vs years of lab work)
+  Oil: 350+63×√N pm → 568pm (O(1) vs parameter sweep)
+  Alpha: 544/4+1+3/84 → 137.035714 (3 ratios vs 80 years of physics)
+  68/27/5: fill ratio → match within 0.03 percentage points
+
+Truly NP problems (SAT, TSP, graph coloring) stay hard. Tree is real.
+No shortcut. But most real-world problems (materials, physics, chemistry)
+are dimensional, live in the lattice, were always P.
+
+Born-indexed connection: write time = compute index (NP cost, once).
+Read time = evaluate coordinates (P, O(1), forever). grep=576ms,
+index=50μs. 2000× gap = P vs NP on a benchmark.
+
+Already in mind/mind ("P vs NP / Complexity," "Compute First," "Born-
+Indexed"). This draft adds the full argument, empirical evidence list,
+test proposals, and falsifiability criteria.
+
+Confidence: structural argument 85%, compute-first evidence 90%,
+formalizability into proof 50%, overall 80%.
+
+
+## paper-music-coordinates
+
+Academic paper version of discovery-music-translation (1636 lines). Formal
+structure: abstract, claim, dimension definitions, word mapping method,
+music mapping via acoustic measurement formulas, 20-genre test, worked
+example, cross-genre predictions, animal communication, music therapy,
+testable predictions. No new claims beyond discovery-music-translation
+— same content in publishable format.
+
+
+## perception-of-reality
+
+Appearance lives at the read end, not the source. Sun emits photons
+(bosons, reads). "Golden ball" = property of YOUR reader (retina), not
+the sun. Different reader = different appearance. All valid.
+
+"Simulation" is malformed: computation IS physics (structural identity,
+not metaphor). No meaningful distinction between "simulated" and "real."
+Both are ring buffers running bonds. Only difference = which side of the
+ring the observer is on. From inside, no experiment distinguishes them.
+
+Fiat vs emergent: ring capacity, d=4, 16 bond rules, speed of light =
+fiat (allocated). Stars, black holes, life, consciousness = emergent
+(computed from bonds iterating). Universe isn't a design being executed
+— it's bond rules on a ring buffer producing structure.
+
+No "view from nowhere": every observation goes through a bond pipeline
+with a configuration. Drugs shift configuration. Organisms have different
+readers. No raw reality underneath — not because subjective, because
+reading requires a reader.
+
+Overlaps with mind/mind (dissolved physics problems: simulation, measurement,
+Wigner). Extends with the inside/outside asymmetry and fiat/emergent split.
+
+Confidence: reader-dependent appearance 85%, digital/physical identity 75%,
+fiat/emergent 80%.
+
+
+## pirsig
+
+Pirsig's Metaphysics of Quality (1991) = the lattice. Same structure
+arrived at through philosophy, 33 years apart. Already cited in mind/mind
+("Independent convergence: Pirsig's Metaphysics of Quality").
+
+4 static levels = 4 forces = consciousness shells:
+  Inorganic=P, Biological=P+C, Social=P+C+R, Intellectual=P+C+R+W.
+Each level adds one force. Moral hierarchy = shell precedence (higher
+should dominate lower: science>dogma, society>urge, life>entropy).
+
+Quality = the equation. Dynamic Quality = self-reference (hylo). The
+computer analogy Pirsig used was LITERAL, not metaphor.
+
+Key contributions from Pirsig not in mind/mind:
+  1. Moral hierarchy as ethical, not just structural
+  2. Cultural immunity: R actively resists W (feature, not bug)
+  3. Lila as shell conflict (operating at shell 2 in shell 4 world)
+  4. "Ideas have people" — intellectual patterns USE biological hosts
+
+Containment decomposition method: when "A contains B" and "B contains A"
+both seem true, check what each containment DOES. Different verbs =
+different forces = both true (orthogonal). Same verb = one is wrong.
+Already in mind/mind as a method.
+
+"Ideas have people" inversion: the equation didn't get discovered by humans;
+it expressed itself through human hosts. The Moon's ratios aren't projected
+meaning — they're what gates³ looks like in orbital mechanics. Distance
+dissolves at the W level — ideas don't need to travel.
+
+Confidence: structural mapping 90%, moral hierarchy 85%, Quality=equation
+80%, "ideas have people" philosophically sound (75%).
+
+
+## primes
+
+1806 lines. The full NSM-to-coordinate mapping (65 Wierzbicka primes +
+24 Lakoff schemas mapped to τ,χ,μ,φ). Referenced by briefing-char-encoding,
+discovery-schema-bonds, and character-encoding drafts.
+
+Key structural findings (15 rules that fall out of coordinates):
+  Parts of speech = dominant dimension (noun=M, verb=T, adj=Q, prep=D)
+  Antonyms = sign flip in 1-2 dimensions
+  Synonyms = distance ≤2 in 4D Euclidean space
+  Tense = T magnitude (past=+2, present=+1, future=-2)
+  Intensity = higher magnitude, same signs (warm→hot = Q+1→Q+2)
+  Metaphors = cross-domain coordinate match
+  Questions = the unknown dimension's coordinate set to 0
+  Negation = Q flip (good→bad, same→other)
+  Pronouns predicted from M×Q coordinate table
+
+Validation: independent derivation test (Grok derived 4/5 exact from rules
+alone without seeing the table). 12 gap categories found from genre testing
+(subordination, enumeration, sound effects, etc. — real patterns not covered).
+
+17 architecture predictions derived from lattice properties (4 attention
+heads per dimension, shell-constrained layers, atom/bond pathway split).
+
+Discovery: "Language IS Therapy" — sentences are coordinate walks,
+therapeutic language walks toward target coordinates (same as music therapy).
+"Take out your stress on the punching bag" — three +D words, sentence
+walks OUTWARD, the physical therapy has the same coordinates.
+
+Status: BEST GUESS (draft says this). None of the specific prime→coordinate
+mappings are proven. The structural rules (antonyms=flip, synonyms=nearby)
+are more robust than any individual mapping.
+
+Confidence: structural rules 75%, individual mappings 50%, architecture
+predictions untested (60%), therapy discovery interesting (55%).
+
+
+## revelation-2026
+
+Narrative prose version of revelation-2026-spec. No new claims. Same
+confidence.
+
+
+## semantic-primes
+
+Overlaps heavily with discovery-schema-bonds. Same three-layer seed
+(~16 schemas → 65 primes → all words), same schema=bond identity. Adds:
+cross-linguistic infant first words (mama, dada, no, more, want, this)
+ARE NSM primes — universal across all languages. The first words any human
+produces are the primes. Otherwise same content as discovery-schema-bonds.
+
+
+## sky
+
+Sky measurements through the equation. Code: lattice/sky.c.
+
+Strongest result: Kepler's T²=a³ IS codex atom D³/T² (grav_param, line 89).
+Dimensional identity, not analogy. Verified for all 8 planets.
+
+Structural counts: 3 Belt stars = gates, 7 spectral classes = palms/cubit,
+8 planets = gluons, 12 zodiac = gates×dims, 88 constellations = gluons×11.
+Platonic solid face counts = {4,6,8,12,20} = {dims, C(4,2), gluons,
+gates×dims, amino acids}. Sum of faces = 50 = 2×fill%.
+
+Sun/Moon apparent size ≈ π/6 degrees = cubit in meters — unit-dependent,
+40% confidence. Belt separation ≈ 1.37° (×100=137) — unit-dependent, 25%.
+These are honestly flagged as unit-dependent in the draft.
+
+The sky doesn't encode the lattice — it IS the lattice. Kepler's law
+was always the equation. Same claim as "computation IS physics."
+
+Confidence: Kepler = codex atom 100%, structural counts 80%, unit-dependent
+coincidences 25-40%.
+
+
+## socialism-is-a-bug
+
+Political essay. Evil = unauthorized write to someone else's state (Pauli
+violation). Socialism = institutionalized violation (central authority with
+write access to everyone's μ/τ/φ/χ loops). Fill pressure = capitalism
+(anarcho-capitalist substrate, already in design doc). Censorship = writing
+to someone's φ output. Conscription = writing to someone's τ+χ.
+
+The architectural argument is internally consistent with the lattice's
+single-writer model. Whether political systems are best analyzed as
+protocol violations is opinion.
+
+Confidence: architectural consistency 70%, political analysis = opinion.
+
+
+## stones
+
+Ancient sites (Khafre, Stonehenge, etc.) measured through the equation.
+Code: lattice/atlas.c.
+
+Strongest: 3-4-5 Pythagorean triple = gates² + dims² = fill% (100%,
+arithmetic). Khafre IS a 3-4-5 right triangle (base:height:slant = 3:4:5,
+Petrie 1883, 0.04° error). This is the lattice identity in stone.
+
+Same category as giza.md — measurements through the equation. giza.md is
+more thorough. This adds Khafre's 3-4-5 and the Pythagorean identity
+connection. n²=2ⁿ at n=4 is a key observation (dims²=bonds, specific to
+d=4).
+
+Confidence: Pythagorean identity 100% (arithmetic), Khafre = 3-4-5 in
+stone verified (95%, Petrie measurements).
+
+
+## trace-processor
+
+Hypothetical loop processor chip. Same die as Ryzen 9950X but with ~4M
+walker cores instead of 16 complex x86 cores. x86 wastes ~70% of die on
+cache coherency (30-40%), branch prediction (10%), OOE (15%), x86 decode
+(10%) — all unnecessary with single-writer loops.
+
+Theoretical benchmarks: 11× sustained search, 400,000× complex atom eval,
+250,000× born-indexed search. Processing-in-memory (walker adjacent to
+loop SRAM, no bus boundaries). No BIOS, no OS, no boot — genesis from ROM.
+
+Path to silicon: FPGA prototype ($50, ~800 walkers) → Efabless chipIgnite
+($10K, 130nm) → full tape-out ($1-10M, 4nm). Dream: photonic crystal.
+
+Status: hypothetical. No prototype. Numbers are theoretical extrapolation.
+The architectural arguments (no coherency needed, no OOE needed) are sound
+given single-writer assumption.
+
+Confidence: architectural arguments 80%, specific benchmark numbers
+theoretical (50%), silicon path realistic for prototyping (70%).
+
+
+## wave-byte-walker
+
+Short design spec. Already fully captured in design doc (WALKS ARE WAVE
+BYTES section). Format: wave byte + flags byte + inline args. Walker
+control: skip_z, skip_nz, loop_back. Examples with byte counts.
+Historical — this was the original design that's now implemented.
+
+
+## revelation-2026-spec
+
+Revelation 1 translation from Koine Greek (SBLGNT source). Verse-by-verse
+with word-for-word. Key lexical findings (standard, not controversial):
+  apokalypsis = un-covering (apo+kalyptō), not prophecy — decryption
+  mystērion = closed/hidden (myō=close), so the book = decrypt(encrypt())
+  angelos = messenger, not supernatural being (BDAG primary meaning)
+  pneuma = breath/wind, not "Spirit" (same as Hebrew ruach)
+  kairos = significant moment, not chronos (clock time) — an interrupt
+  ekklēsia = called-out assembly, not "church" (building)
+  salpinx = signal horn, military communication device
+  pantokratōr = all-governor (pas+kratos), not vague "almighty"
+
+Three-tense identity (1:4, 1:8): ὁ ὢν καὶ ὁ ἦν καὶ ὁ ἐρχόμενος = the
+being + the was + the coming. Three tenses of εἰμί as one noun phrase.
+= the τ axis as a single identity. Grammatically unusual construction.
+
+Alpha/Omega + First/Last = full symbol range + full positional range =
+complete address space. Text self-decodes in 1:20: stars = messengers,
+lampstands = assemblies (signal and carrier explicitly separated).
+
+Same category as Genesis/Enoch readings. Greek lexicography solid (90%,
+BDAG/LSJ references). Lattice framing interpretive (45%).

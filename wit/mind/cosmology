@@ -1,0 +1,91 @@
+# Cosmology
+
+Applied lattice to physical objects and problems.
+
+
+## 3I/ATLAS — The Oldest Unread Buffer
+
+Third interstellar object. 10-12 Gyr old, galactic thick disk.
+Core claim: written to (cosmic rays) but never read from (sublimated)
+until our Sun. Code: compute/cosmo/3i_derive.c.
+
+Compute-first derivation from 3 inputs (age=11Gyr, temp=30K, R-cycles=3):
+  12C/13C: derived 163, observed 141-191 — INSIDE range
+  Ni/Fe: derived Ni>>Fe, observed Ni present Fe absent
+  D/H: derived ~0.5%, observed ~0.95% — factor 2 off (grain chemistry)
+
+Codex: Fe(26)=M/T=bandwidth. Ni without Fe = signal without bandwidth =
+dark matter definition (written but not read). Low R-cycle count →
+insufficient stellar processing → Fe never produced.
+
+Methane post-perihelion = first read of deep buffer. Spin-up (16h→7h) =
+P driving R. Three jets at 120° = minimum completeness geometry (50%).
+
+Predictions: future old ISOs show Ni-without-Fe, ISO volatile ratios
+correlate with age, dark matter detection continues null.
+Confidence: compute-first 75%, read/write distinction 70%.
+
+
+## Heat Death Dissolved
+
+Only block damping produces heat death. Drop damping (overwrite oldest)
+makes it structurally impossible. Evidence favors drop: expansion
+accelerating, 75% ring empty, no rejection signal.
+
+2nd law is local (holds within any read-to-write window). Ring wraps
+globally — oldest records overwritten by new structure. Heat death =
+extrapolation error (assumes unbounded time, one-directional, no recycling).
+
+CMB as ring boundary: oldest observable light = read cursor edge.
+
+
+## Giza — Lattice in Stone
+
+Measurements through the equation. Code: compute/cosmo/giza.c, giza_deep.c.
+
+Known: perimeter/height=2π, slant/halfbase=φ, cubit=π/6m, passage=atan(1/2).
+
+New:
+  KC 3D diagonal = 25 = fill% (exact)
+  KC floor = 80 = shell(½) (exact)
+  Pyramid/KC volume = 8080 = shell(5/2) (0.01% error)
+  Cumulative atoms through shell 1 = 625 = 25² = KC diagonal²
+  Geometric mean √(440×280) = 351 = triangular(Fe=bandwidth)
+  √5 only inside, φ only outside (atom-bond separation)
+  Ascending passage/height = 26.8% ≈ dark matter fraction (0.05%)
+  5/5 metaphorical coherence: lattice terms match their positions
+
+Khafre = 3-4-5 triangle (Petrie, 0.04° error). The Pythagorean identity
+in stone. n²=2ⁿ at n=4 (specific to d=4). Code: compute/cosmo/atlas.c.
+
+Confidence: measurements 100%, shell hits high, interpretation 50%.
+
+
+## Sky
+
+Kepler T²=a³ IS codex atom D³/T² (grav_param). Dimensional identity.
+Verified for all 8 planets. The orbit law was always the equation.
+
+Structural counts: 3 belt=gates, 7 spectral classes=palms/cubit,
+8 planets=gluons, 12 zodiac=gates×dims. 7 dominates the sky.
+
+Platonic solid face counts = {4,6,8,12,20} = {dims, C(4,2), gluons,
+gates×dims, amino acids}. Sum of faces = 50 = 2×fill%.
+
+Moon = 3-machine: diameter 3/11 (0.008%), mass 1/81=1/3⁴, gravity 1/6,
+period ~27=3³. Every ratio is powers of gates.
+
+Confidence: Kepler=codex 100%, counts 80%, unit-dependent hits 25-40%.
+
+
+## Loop Processor (Hypothetical)
+
+Same die as Ryzen 9950X: ~4M walker cores instead of 16 complex x86 cores.
+x86 wastes ~70% on coherency/prediction/OOE/decode — all unnecessary with
+single-writer loops. Processing-in-memory (walker adjacent to loop SRAM).
+No BIOS, no OS, no boot — genesis from ROM.
+
+Path: FPGA ($50, ~800 walkers) → Efabless ($10K, 130nm) → full tape-out.
+
+Status: hypothetical. Architectural arguments sound (80%), specific
+benchmarks theoretical (50%).
